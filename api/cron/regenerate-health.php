@@ -11,6 +11,25 @@ try {
     $db = new PDO('sqlite:' . DB_PATH);
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    // --- NEW: mark/unmark contested state based on current health ---
+    $now = time();
+
+    // Mark as contested if health dropped below max and wasn't already contested
+    $markStmt = $db->prepare('UPDATE territories SET contested = 1, contested_since = ? WHERE health < max_health AND contested = 0');
+    $markStmt->execute([$now]);
+    $markedCount = $markStmt->rowCount();
+
+    // Clear contested flag when territory is fully healed
+    $clearStmt = $db->prepare('UPDATE territories SET contested = 0, contested_since = NULL WHERE health >= max_health AND contested = 1');
+    $clearStmt->execute();
+    $clearedCount = $clearStmt->rowCount();
+
+    if ($markedCount || $clearedCount) {
+        $ts = date('Y-m-d H:i:s', $now);
+        echo "[{$ts}] Contested state updated. Marked: {$markedCount}, Cleared: {$clearedCount}\n";
+    }
+    // --- end new logic ---
+
     // Health regeneration rates per 5 seconds (adjusted from per-minute rates)
     $regenRates = [
         'fort' => 42,       // Forts regenerate ~500 health per minute (42 per 5s)
