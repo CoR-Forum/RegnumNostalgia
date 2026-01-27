@@ -1,6 +1,17 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
+// CORS: use a whitelist from environment variable `CORS_ALLOWED_ORIGINS` (comma-separated).
+// If not set, fall back to wildcard for development convenience.
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = array_filter(array_map('trim', explode(',', getenv('CORS_ALLOWED_ORIGINS') ?: '')));
+if (!empty($allowedOrigins)) {
+    if ($origin && in_array($origin, $allowedOrigins, true)) {
+        header('Access-Control-Allow-Origin: ' . $origin);
+    }
+} else {
+    // No whitelist configured — keep previous behavior (wildcard). Set this in production!
+    header('Access-Control-Allow-Origin: *');
+}
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, X-Session-Token');
 
@@ -728,66 +739,80 @@ function handleEquipItem() {
     if (!$inventoryId) respondError('inventoryId is required');
 
     $db = getDB();
-    // verify ownership
-    $stmt = $db->prepare('SELECT inventory_id, quantity FROM inventory WHERE inventory_id = ? AND user_id = ?');
-    $stmt->execute([$inventoryId, $session['user_id']]);
-    $inv = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$inv) respondError('Inventory item not found', 404);
+    try {
+        $db->beginTransaction();
 
-    // fetch item template info (equipment_slot)
-    $stmt = $db->prepare('SELECT items.item_id, items.equipment_slot FROM inventory inv JOIN items ON inv.item_id = items.item_id WHERE inv.inventory_id = ?');
-    $stmt->execute([$inventoryId]);
-    $tpl = $stmt->fetch(PDO::FETCH_ASSOC);
-    $templateSlot = $tpl['equipment_slot'] ?? null;
-
-    // Items without a template equipment_slot are not equippable
-    if (!$templateSlot) {
-        respondError('This item cannot be equipped', 400);
-    }
-
-    // decide target slot: use the item's template slot (auto-assigned)
-    $targetSlot = $templateSlot;
-    if (!in_array($targetSlot, $slots)) {
-        respondError('Item template references an invalid equipment slot', 500);
-    }
-
-    // ensure equipment row exists
-    $equip = ensureEquipmentRow($db, $session['user_id']);
-    // clear any other slot that references this inventory id
-    foreach ($slots as $s) {
-        if (!empty($equip[$s]) && (int)$equip[$s] === $inventoryId) {
-            $equip[$s] = null;
+        // verify ownership
+        $stmt = $db->prepare('SELECT inventory_id, quantity FROM inventory WHERE inventory_id = ? AND user_id = ?');
+        $stmt->execute([$inventoryId, $session['user_id']]);
+        $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$inv) {
+            $db->rollBack();
+            respondError('Inventory item not found', 404);
         }
+
+        // fetch item template info (equipment_slot)
+        $stmt = $db->prepare('SELECT items.item_id, items.equipment_slot FROM inventory inv JOIN items ON inv.item_id = items.item_id WHERE inv.inventory_id = ?');
+        $stmt->execute([$inventoryId]);
+        $tpl = $stmt->fetch(PDO::FETCH_ASSOC);
+        $templateSlot = $tpl['equipment_slot'] ?? null;
+
+        // Items without a template equipment_slot are not equippable
+        if (!$templateSlot) {
+            $db->rollBack();
+            respondError('This item cannot be equipped', 400);
+        }
+
+        // decide target slot: use the item's template slot (auto-assigned)
+        $targetSlot = $templateSlot;
+        if (!in_array($targetSlot, $slots)) {
+            $db->rollBack();
+            respondError('Item template references an invalid equipment slot', 500);
+        }
+
+        // ensure equipment row exists
+        $equip = ensureEquipmentRow($db, $session['user_id']);
+        // clear any other slot that references this inventory id
+        foreach ($slots as $s) {
+            if (!empty($equip[$s]) && (int)$equip[$s] === $inventoryId) {
+                $equip[$s] = null;
+            }
+        }
+
+        // if target slot already occupied, unequip it first
+        if (!empty($equip[$targetSlot])) {
+            $equip[$targetSlot] = null;
+        }
+
+        // set target slot
+        $equip[$targetSlot] = $inventoryId;
+        $equip['updated_at'] = now();
+
+        // build update statement
+        $setParts = [];
+        $params = [];
+        foreach ($slots as $s) {
+            $setParts[] = "$s = ?";
+            $params[] = $equip[$s] !== null ? $equip[$s] : null;
+        }
+        $setParts[] = "updated_at = ?";
+        $params[] = $equip['updated_at'];
+        $params[] = $equip['equipment_id'];
+
+        $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
+        // prepare and execute
+        $stmt = $db->prepare($sql);
+        $stmt->execute(array_merge(array_values($params)));
+
+        $db->commit();
+
+        // return updated equipment
+        handleGetEquipment();
+    } catch (Exception $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('Equip transaction failed: ' . $e->getMessage());
+        respondError('Server error', 500);
     }
-
-    // if target slot already occupied, unequip it first
-    if (!empty($equip[$targetSlot])) {
-        $equip[$targetSlot] = null;
-    }
-
-    // set target slot
-    $equip[$targetSlot] = $inventoryId;
-    $equip['updated_at'] = now();
-
-    // build update statement
-    $setParts = [];
-    $params = [];
-    foreach ($slots as $s) {
-        $setParts[] = "$s = ?";
-        $params[] = $equip[$s] !== null ? $equip[$s] : null;
-    }
-    $setParts[] = "updated_at = ?";
-    $params[] = $equip['updated_at'];
-    $params[] = $equip['equipment_id'];
-
-    $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
-    // note: equipment_id appended in $params already
-    // prepare and execute
-    $stmt = $db->prepare($sql);
-    $stmt->execute(array_merge(array_values($params)));
-
-    // return updated equipment
-    handleGetEquipment();
 }
 
 function handleUnequipItem() {
@@ -799,28 +824,39 @@ function handleUnequipItem() {
     if (!in_array($slot, $slots)) respondError('Invalid slot');
 
     $db = getDB();
-    $equip = ensureEquipmentRow($db, $session['user_id']);
+    try {
+        $db->beginTransaction();
 
-    if (empty($equip[$slot])) {
-        respondError('Slot is already empty');
+        $equip = ensureEquipmentRow($db, $session['user_id']);
+
+        if (empty($equip[$slot])) {
+            $db->rollBack();
+            respondError('Slot is already empty');
+        }
+
+        $equip[$slot] = null;
+        $equip['updated_at'] = now();
+
+        $setParts = [];
+        $params = [];
+        foreach ($slots as $s) {
+            $setParts[] = "$s = ?";
+            $params[] = $equip[$s] !== null ? $equip[$s] : null;
+        }
+        $setParts[] = "updated_at = ?";
+        $params[] = $equip['updated_at'];
+        $params[] = $equip['equipment_id'];
+
+        $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
+        $stmt = $db->prepare($sql);
+        $stmt->execute(array_merge(array_values($params)));
+
+        $db->commit();
+
+        handleGetEquipment();
+    } catch (Exception $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        error_log('Unequip transaction failed: ' . $e->getMessage());
+        respondError('Server error', 500);
     }
-
-    $equip[$slot] = null;
-    $equip['updated_at'] = now();
-
-    $setParts = [];
-    $params = [];
-    foreach ($slots as $s) {
-        $setParts[] = "$s = ?";
-        $params[] = $equip[$s] !== null ? $equip[$s] : null;
-    }
-    $setParts[] = "updated_at = ?";
-    $params[] = $equip['updated_at'];
-    $params[] = $equip['equipment_id'];
-
-    $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
-    $stmt = $db->prepare($sql);
-    $stmt->execute(array_merge(array_values($params)));
-
-    handleGetEquipment();
 }
