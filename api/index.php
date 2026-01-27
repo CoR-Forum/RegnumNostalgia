@@ -79,6 +79,10 @@ function validateSession() {
     $stmt = $db->prepare('UPDATE sessions SET last_activity = ?, expires_at = ? WHERE session_id = ?');
     $stmt->execute([now(), $newExpiresAt, $sessionToken]);
 
+    // Update player last_active
+    $stmt = $db->prepare('UPDATE players SET last_active = ? WHERE user_id = ?');
+    $stmt->execute([now(), $session['user_id']]);
+
     return $session;
 }
 
