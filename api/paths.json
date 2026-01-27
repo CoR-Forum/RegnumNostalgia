@@ -1,0 +1,28 @@
+[
+  {
+    "id": "herbred-path",
+    "name": "Herbred Patrol Path",
+    "positions": [
+      [2809, 3249],
+      [2767, 3332],
+      [2781, 3361],
+      [2745, 3411],
+      [2748, 3448],
+      [2747, 3472],
+      [2729, 3489]
+    ],
+    "loop": false
+  },
+    {
+        "id": "herbred-safe-path",
+        "name": "Herbred Safe Path",
+        "positions": [
+        [2728, 3486],
+        [2675, 3475],
+        [2659, 3490],
+        [2637, 3489],
+        [2605, 3476]
+        ],
+        "loop": false
+    }
+]

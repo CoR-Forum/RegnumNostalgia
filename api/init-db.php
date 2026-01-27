@@ -83,21 +83,23 @@ try {
     $db->exec('CREATE INDEX IF NOT EXISTS idx_superbosses_health ON superbosses(health)');
 
     // Create items table (item templates)
-    $db->exec('
+    $db->exec("
         CREATE TABLE IF NOT EXISTS items (
             item_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             type TEXT NOT NULL,
             description TEXT,
             stats TEXT,
-            rarity TEXT DEFAULT "common",
+            rarity TEXT DEFAULT 'common',
             stackable INTEGER DEFAULT 1,
             level INTEGER DEFAULT 1,
             equipment_slot TEXT DEFAULT NULL
         )
-    ');
+    ");
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_items_type ON items(type)');
+
+    // NOTE: paths are now loaded from a JSON file (not stored in DB)
 
     // Create inventory table (player ownership)
     $db->exec('
@@ -147,6 +149,19 @@ try {
     ');
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_equipment_user_id ON equipment(user_id)');
+
+    // Create walkers table (player movement jobs)
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS walkers (
+            walker_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            positions TEXT NOT NULL,
+            current_index INTEGER NOT NULL DEFAULT 0,
+            started_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+        )
+    ');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_walkers_user_id ON walkers(user_id)');
 
     // Seed territories with forts, castles, and walls
     $territories = [
@@ -262,6 +277,8 @@ try {
         }
         echo "  - Seeded " . count($items) . " item templates\n";
     }
+
+    // Paths are provided via api/paths.json (not seeded into DB)
 
     // Seed starter items for existing players
     $stmt = $db->prepare('SELECT user_id FROM players WHERE user_id NOT IN (SELECT DISTINCT user_id FROM inventory)');

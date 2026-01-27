@@ -151,6 +151,12 @@ if ($path === '/login' && $requestMethod === 'POST') {
     handleEquipItem();
 } elseif ($path === '/equipment/unequip' && $requestMethod === 'POST') {
     handleUnequipItem();
+} elseif ($path === '/paths' && $requestMethod === 'GET') {
+    handleGetPaths();
+} elseif ($path === '/paths/get' && $requestMethod === 'GET') {
+    handleGetPath();
+} elseif ($path === '/player/move' && $requestMethod === 'POST') {
+    handleStartMove();
 } else {
     respondError('Endpoint not found', 404);
 }
@@ -287,8 +293,10 @@ function handleRealmSelect() {
 }
 
 /* ================================================================
-    GET PLAYER POSITION
+    GET PLAYER POSITION (includes active walker/destination if present)
 ================================================================ */
+
+// Include walker/destination info in position responses
 function handleGetPosition() {
     $session = validateSession();
 
@@ -305,17 +313,40 @@ function handleGetPosition() {
         respondError('Player not found', 404);
     }
 
-    respondSuccess([
-        'position' => [
-            'x' => (int)$player['x'],
-            'y' => (int)$player['y']
-        ],
+    // Fetch active walker for this user (if any)
+    $walker = null;
+    $stmt = $db->prepare('SELECT positions, current_index FROM walkers WHERE user_id = ? LIMIT 1');
+    $stmt->execute([$session['user_id']]);
+    $w = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($w) {
+        $positions = json_decode($w['positions'], true);
+        if (is_array($positions) && count($positions) > 0) {
+            $last = $positions[count($positions)-1];
+            // ensure [x,y]
+            $dest = [ (int)$last[0], (int)$last[1] ];
+            // normalize positions to integer pairs
+            $norm = [];
+            foreach ($positions as $pp) {
+                $nx = isset($pp[0]) ? (int)$pp[0] : 0;
+                $ny = isset($pp[1]) ? (int)$pp[1] : 0;
+                $norm[] = [$nx, $ny];
+            }
+            $walker = [ 'currentIndex' => (int)$w['current_index'], 'destination' => $dest, 'steps' => count($positions), 'positions' => $norm ];
+        }
+    }
+
+    $resp = [
+        'position' => [ 'x' => (int)$player['x'], 'y' => (int)$player['y'] ],
         'realm' => $player['realm'],
         'health' => (int)$player['health'],
         'maxHealth' => (int)$player['max_health'],
         'mana' => (int)$player['mana'],
         'maxMana' => (int)$player['max_mana']
-    ]);
+    ];
+
+    if ($walker) $resp['walker'] = $walker;
+
+    respondSuccess($resp);
 }
 
 /* ================================================================
@@ -435,6 +466,200 @@ function handleGetSuperbosses() {
     }
 
     respondSuccess(['superbosses' => $result]);
+}
+
+/* ================================================================
+    PATHS (named paths of positions)
+================================================================ */
+function handleGetPaths() {
+    $session = validateSession();
+    $pathsFile = __DIR__ . '/paths.json';
+    if (!is_readable($pathsFile)) {
+        respondSuccess(['paths' => []]);
+    }
+
+    $json = file_get_contents($pathsFile);
+    $data = json_decode($json, true);
+    if (!is_array($data)) $data = [];
+
+    // normalize entries
+    $result = [];
+    foreach ($data as $p) {
+        $result[] = [
+            'pathId' => isset($p['id']) ? $p['id'] : null,
+            'name' => $p['name'] ?? null,
+            'positions' => $p['positions'] ?? [],
+            'loop' => !empty($p['loop']),
+            'createdAt' => isset($p['createdAt']) ? (int)$p['createdAt'] : null
+        ];
+    }
+
+    respondSuccess(['paths' => $result]);
+}
+
+function handleGetPath() {
+    $session = validateSession();
+    $name = $_GET['name'] ?? ($_GET['id'] ?? '');
+    if ($name === '') respondError('name is required');
+
+    $pathsFile = __DIR__ . '/paths.json';
+    if (!is_readable($pathsFile)) respondError('Path not found', 404);
+    $json = file_get_contents($pathsFile);
+    $data = json_decode($json, true);
+    if (!is_array($data)) respondError('Path not found', 404);
+
+    foreach ($data as $p) {
+        if ((isset($p['id']) && $p['id'] === $name) || (isset($p['name']) && $p['name'] === $name)) {
+            $result = [
+                'pathId' => $p['id'] ?? null,
+                'name' => $p['name'] ?? null,
+                'positions' => $p['positions'] ?? [],
+                'loop' => !empty($p['loop']),
+                'createdAt' => isset($p['createdAt']) ? (int)$p['createdAt'] : null
+            ];
+            respondSuccess(['path' => $result]);
+        }
+    }
+
+    respondError('Path not found', 404);
+}
+
+/* ================================================================
+    START MOVE (pathfinding + create walker)
+================================================================ */
+function handleStartMove() {
+    $session = validateSession();
+    if ($session['realm'] === null) respondError('Realm not selected');
+
+    $targetX = isset($_POST['x']) ? (int)$_POST['x'] : null;
+    $targetY = isset($_POST['y']) ? (int)$_POST['y'] : null;
+    if ($targetX === null || $targetY === null) respondError('x and y are required');
+
+    // load paths
+    $pathsFile = __DIR__ . '/paths.json';
+    if (!is_readable($pathsFile)) respondError('No paths available', 500);
+    $json = file_get_contents($pathsFile);
+    $data = json_decode($json, true);
+    if (!is_array($data)) respondError('Invalid paths data', 500);
+
+    // Build graph of nodes (each point in paths)
+    $nodes = []; // {id: int, x, y}
+    $nodeIndex = []; // mapping pathIdx->pointIdx->nodeId
+    $nextId = 0;
+    foreach ($data as $pi => $p) {
+        $pts = $p['positions'] ?? [];
+        foreach ($pts as $pj => $pt) {
+            // support [x,y] or {x,y}
+            if (is_array($pt) && array_values($pt) === $pt) {
+                $x = (int)$pt[0]; $y = (int)$pt[1];
+            } else {
+                $x = isset($pt['x']) ? (int)$pt['x'] : (int)($pt[0] ?? 0);
+                $y = isset($pt['y']) ? (int)$pt['y'] : (int)($pt[1] ?? 0);
+            }
+            $nodes[$nextId] = ['x'=>$x,'y'=>$y,'path'=>$p['id'] ?? ($p['name'] ?? $pi),'pathIndex'=>$pi,'pointIndex'=>$pj];
+            $nodeIndex[$pi][$pj] = $nextId;
+            $nextId++;
+        }
+    }
+
+    if (count($nodes) === 0) respondError('No path nodes available', 500);
+
+    // Build adjacency with edges between consecutive points and cross-path links within threshold
+    $adj = [];
+    foreach ($nodes as $id => $n) $adj[$id] = [];
+    // consecutive edges
+    foreach ($nodeIndex as $pi => $pts) {
+        $prev = null;
+        foreach ($pts as $pj => $nid) {
+            if ($prev !== null) {
+                $d = distance($nodes[$prev]['x'],$nodes[$prev]['y'],$nodes[$nid]['x'],$nodes[$nid]['y']);
+                $adj[$prev][$nid] = $d;
+                $adj[$nid][$prev] = $d;
+            }
+            $prev = $nid;
+        }
+    }
+    // cross links (threshold)
+    $linkThreshold = 40; // pixels
+    $ids = array_keys($nodes);
+    for ($i = 0; $i < count($ids); $i++) {
+        for ($j = $i+1; $j < count($ids); $j++) {
+            $a = $nodes[$ids[$i]]; $b = $nodes[$ids[$j]];
+            $d = distance($a['x'],$a['y'],$b['x'],$b['y']);
+            if ($d <= $linkThreshold) {
+                $adj[$ids[$i]][$ids[$j]] = $d;
+                $adj[$ids[$j]][$ids[$i]] = $d;
+            }
+        }
+    }
+
+    // find nearest node to player and nearest node to target
+    $db = getDB();
+    $stmt = $db->prepare('SELECT x,y FROM players WHERE user_id = ?');
+    $stmt->execute([$session['user_id']]);
+    $p = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$p) respondError('Player not found',404);
+    $px = (int)$p['x']; $py = (int)$p['y'];
+
+    $start = null; $end = null; $minS = PHP_INT_MAX; $minE = PHP_INT_MAX;
+    foreach ($nodes as $nid => $n) {
+        $ds = distance($px,$py,$n['x'],$n['y']);
+        if ($ds < $minS) { $minS = $ds; $start = $nid; }
+        $de = distance($targetX,$targetY,$n['x'],$n['y']);
+        if ($de < $minE) { $minE = $de; $end = $nid; }
+    }
+
+    if ($start === null || $end === null) respondError('No path endpoints found',500);
+
+    // Dijkstra from start to end
+    $pathNodeIds = dijkstra($adj, $start, $end);
+    if ($pathNodeIds === null) respondError('No route found', 400);
+
+    // Build positions array of [x,y]
+    $positions = [];
+    foreach ($pathNodeIds as $nid) {
+        $positions[] = [$nodes[$nid]['x'],$nodes[$nid]['y']];
+    }
+
+    // append final exact target as last step so player reaches clicked location (on path nearest to it)
+    $positions[] = [$targetX, $targetY];
+
+    // upsert walker row for user
+    $now = time();
+    $stmt = $db->prepare('INSERT INTO walkers (user_id, positions, current_index, started_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET positions = excluded.positions, current_index = 0, started_at = excluded.started_at, updated_at = excluded.updated_at');
+    $stmt->execute([$session['user_id'], json_encode($positions), 0, $now, $now]);
+
+    $destination = $positions[count($positions)-1];
+    $norm = [];
+    foreach ($positions as $pp) {
+        $nx = isset($pp[0]) ? (int)$pp[0] : 0;
+        $ny = isset($pp[1]) ? (int)$pp[1] : 0;
+        $norm[] = [$nx, $ny];
+    }
+    $walkerInfo = ['currentIndex' => 0, 'destination' => [(int)$destination[0], (int)$destination[1]], 'steps' => count($positions), 'positions' => $norm];
+    respondSuccess(['message'=>'walking started','steps'=>count($positions),'walker' => $walkerInfo]);
+}
+
+// small helpers
+function distance($x1,$y1,$x2,$y2){
+    $dx = $x1-$x2; $dy = $y1-$y2; return sqrt($dx*$dx + $dy*$dy);
+}
+
+function dijkstra($adj, $start, $goal){
+    $dist = [];$prev = [];$Q = [];
+    foreach ($adj as $v => $_) { $dist[$v] = INF; $prev[$v]=null; $Q[$v]=true; }
+    $dist[$start]=0;
+    while (!empty($Q)){
+        $u = null; $best = INF;
+        foreach ($Q as $v => $_){ if ($dist[$v] < $best){ $best=$dist[$v]; $u=$v; } }
+        if ($u === null) break;
+        if ($u == $goal) break;
+        unset($Q[$u]);
+        foreach ($adj[$u] as $v => $w){ if (!isset($dist[$v])) continue; $alt = $dist[$u] + $w; if ($alt < $dist[$v]){ $dist[$v]=$alt; $prev[$v]=$u; } }
+    }
+    if ($dist[$goal]===INF) return null;
+    $S = []; $u = $goal; while ($u!==null){ array_unshift($S,$u); $u = $prev[$u]; }
+    return $S;
 }
 
 /* ================================================================
