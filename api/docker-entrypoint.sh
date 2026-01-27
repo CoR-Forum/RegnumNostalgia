@@ -7,22 +7,29 @@ apk add --no-cache sqlite-dev
 # Install PDO SQLite extension
 docker-php-ext-install pdo pdo_sqlite
 
+# Ensure application directory exists and is writable before initializing DB
+mkdir -p /var/www/api
+chown -R www-data:www-data /var/www/api || true
+find /var/www/api -type d -exec chmod 750 {} + || true
+
 # Initialize database if it doesn't exist
 if [ ! -f /var/www/api/database.sqlite ]; then
     echo "Initializing database..."
-    php /var/www/api/init-db.php
+    if ! php /var/www/api/init-db.php; then
+        echo "ERROR: Database initialization failed. Check filesystem permissions and that the host mount is writable by the container." >&2
+        ls -la /var/www || true
+        ls -la /var/www/api || true
+        exit 1
+    fi
 else
     echo "Database already exists, skipping initialization"
 fi
 
-# Ensure the application directory and sqlite file are writable by PHP-FPM
-# (PHP-FPM typically runs as www-data inside the official images)
+# Ensure the sqlite file is writable by PHP-FPM
 if [ -f /var/www/api/database.sqlite ]; then
     chown www-data:www-data /var/www/api/database.sqlite || true
     chmod 660 /var/www/api/database.sqlite || true
 fi
-chown -R www-data:www-data /var/www/api || true
-find /var/www/api -type d -exec chmod 750 {} + || true
 
 # Set up health regeneration loop (every 5 seconds)
 echo "Starting health regeneration background service..."
