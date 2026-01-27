@@ -117,6 +117,12 @@ if ($path === '/login' && $requestMethod === 'POST') {
     handleRemoveInventoryItem();
 } elseif ($path === '/items' && $requestMethod === 'GET') {
     handleGetItems();
+} elseif ($path === '/equipment' && $requestMethod === 'GET') {
+    handleGetEquipment();
+} elseif ($path === '/equipment/equip' && $requestMethod === 'POST') {
+    handleEquipItem();
+} elseif ($path === '/equipment/unequip' && $requestMethod === 'POST') {
+    handleUnequipItem();
 } else {
     respondError('Endpoint not found', 404);
 }
@@ -417,7 +423,17 @@ function handleGetInventory() {
     }
 
     $db = getDB();
-    $stmt = $db->prepare('
+    // Exclude any inventory rows that are currently equipped by this user
+    $equip = ensureEquipmentRow($db, $session['user_id']);
+    $slots = getEquipmentSlots();
+    $excluded = [];
+    foreach ($slots as $s) {
+        if (!empty($equip[$s])) $excluded[] = (int)$equip[$s];
+    }
+
+    if (count($excluded) > 0) {
+        $placeholders = implode(',', array_fill(0, count($excluded), '?'));
+        $sql = '
         SELECT 
             inv.inventory_id, 
             inv.item_id,
@@ -428,13 +444,38 @@ function handleGetInventory() {
             items.description,
             items.stats,
             items.rarity,
-            items.stackable
+            items.stackable,
+            items.equipment_slot
+        FROM inventory inv
+        JOIN items ON inv.item_id = items.item_id
+        WHERE inv.user_id = ? AND inv.inventory_id NOT IN (' . $placeholders . ')
+        ORDER BY inv.acquired_at DESC
+        ';
+        $params = array_merge([$session['user_id']], $excluded);
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+    } else {
+        $sql = '
+        SELECT 
+            inv.inventory_id, 
+            inv.item_id,
+            inv.quantity, 
+            inv.acquired_at,
+            items.name,
+            items.type,
+            items.description,
+            items.stats,
+            items.rarity,
+            items.stackable,
+            items.equipment_slot
         FROM inventory inv
         JOIN items ON inv.item_id = items.item_id
         WHERE inv.user_id = ? 
         ORDER BY inv.acquired_at DESC
-    ');
-    $stmt->execute([$session['user_id']]);
+        ';
+        $stmt = $db->prepare($sql);
+        $stmt->execute([$session['user_id']]);
+    }
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $result = [];
@@ -449,6 +490,7 @@ function handleGetInventory() {
             'stats' => json_decode($item['stats'], true),
             'rarity' => $item['rarity'],
             'stackable' => (bool)$item['stackable'],
+            'equipmentSlot' => $item['equipment_slot'] !== null ? $item['equipment_slot'] : null,
             'acquiredAt' => (int)$item['acquired_at']
         ];
     }
@@ -586,7 +628,7 @@ function handleGetItems() {
     $session = validateSession();
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT item_id, name, type, description, stats, rarity, stackable FROM items ORDER BY type, name');
+    $stmt = $db->prepare('SELECT item_id, name, type, description, stats, rarity, stackable, equipment_slot FROM items ORDER BY type, name');
     $stmt->execute();
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -599,9 +641,185 @@ function handleGetItems() {
             'description' => $item['description'],
             'stats' => json_decode($item['stats'], true),
             'rarity' => $item['rarity'],
-            'stackable' => (bool)$item['stackable']
+            'stackable' => (bool)$item['stackable'],
+            'equipmentSlot' => $item['equipment_slot'] !== null ? $item['equipment_slot'] : null
         ];
     }
 
     respondSuccess(['items' => $result]);
+}
+
+/* ================================================================
+    EQUIPMENT ENDPOINTS
+================================================================ */
+function getEquipmentSlots() {
+    return ['head','body','hands','shoulders','legs','weapon_right','weapon_left','ring_right','ring_left','amulet'];
+}
+
+function ensureEquipmentRow($db, $userId) {
+    $stmt = $db->prepare('SELECT * FROM equipment WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) return $row;
+
+    $now = now();
+    $stmt = $db->prepare('INSERT INTO equipment (user_id, created_at, updated_at) VALUES (?, ?, ?)');
+    $stmt->execute([$userId, $now, $now]);
+    $id = $db->lastInsertId();
+    $stmt = $db->prepare('SELECT * FROM equipment WHERE equipment_id = ?');
+    $stmt->execute([$id]);
+    return $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+function fetchEquippedItemDetails($db, $inventoryId) {
+    if (!$inventoryId) return null;
+    $stmt = $db->prepare('
+        SELECT inv.inventory_id, inv.item_id, inv.quantity, items.name, items.type, items.description, items.stats, items.rarity, items.stackable, items.equipment_slot
+        FROM inventory inv
+        JOIN items ON inv.item_id = items.item_id
+        WHERE inv.inventory_id = ?
+    ');
+    $stmt->execute([$inventoryId]);
+    $it = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$it) return null;
+    return [
+        'inventoryId' => (int)$it['inventory_id'],
+        'itemId' => (int)$it['item_id'],
+        'name' => $it['name'],
+        'type' => $it['type'],
+        'quantity' => (int)$it['quantity'],
+        'description' => $it['description'],
+        'stats' => json_decode($it['stats'], true),
+        'rarity' => $it['rarity'],
+        'stackable' => (bool)$it['stackable'],
+        'equipmentSlot' => isset($it['equipment_slot']) ? $it['equipment_slot'] : null
+    ];
+}
+
+function handleGetEquipment() {
+    $session = validateSession();
+    if ($session['realm'] === null) respondError('Realm not selected');
+
+    $db = getDB();
+    $equip = ensureEquipmentRow($db, $session['user_id']);
+
+    $slots = getEquipmentSlots();
+    $result = [];
+    foreach ($slots as $slot) {
+        $invId = $equip[$slot] ?? null;
+        $result[$slot] = [
+            'inventoryId' => $invId ? (int)$invId : null,
+            'item' => $invId ? fetchEquippedItemDetails($db, $invId) : null
+        ];
+    }
+
+    respondSuccess(['equipment' => $result]);
+}
+
+function handleEquipItem() {
+    $session = validateSession();
+    if ($session['realm'] === null) respondError('Realm not selected');
+
+    $inventoryId = isset($_POST['inventoryId']) ? (int)$_POST['inventoryId'] : 0;
+
+    $slots = getEquipmentSlots();
+
+    if (!$inventoryId) respondError('inventoryId is required');
+
+    $db = getDB();
+    // verify ownership
+    $stmt = $db->prepare('SELECT inventory_id, quantity FROM inventory WHERE inventory_id = ? AND user_id = ?');
+    $stmt->execute([$inventoryId, $session['user_id']]);
+    $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$inv) respondError('Inventory item not found', 404);
+
+    // fetch item template info (equipment_slot)
+    $stmt = $db->prepare('SELECT items.item_id, items.equipment_slot FROM inventory inv JOIN items ON inv.item_id = items.item_id WHERE inv.inventory_id = ?');
+    $stmt->execute([$inventoryId]);
+    $tpl = $stmt->fetch(PDO::FETCH_ASSOC);
+    $templateSlot = $tpl['equipment_slot'] ?? null;
+
+    // Items without a template equipment_slot are not equippable
+    if (!$templateSlot) {
+        respondError('This item cannot be equipped', 400);
+    }
+
+    // decide target slot: use the item's template slot (auto-assigned)
+    $targetSlot = $templateSlot;
+    if (!in_array($targetSlot, $slots)) {
+        respondError('Item template references an invalid equipment slot', 500);
+    }
+
+    // ensure equipment row exists
+    $equip = ensureEquipmentRow($db, $session['user_id']);
+    // clear any other slot that references this inventory id
+    foreach ($slots as $s) {
+        if (!empty($equip[$s]) && (int)$equip[$s] === $inventoryId) {
+            $equip[$s] = null;
+        }
+    }
+
+    // if target slot already occupied, unequip it first
+    if (!empty($equip[$targetSlot])) {
+        $equip[$targetSlot] = null;
+    }
+
+    // set target slot
+    $equip[$targetSlot] = $inventoryId;
+    $equip['updated_at'] = now();
+
+    // build update statement
+    $setParts = [];
+    $params = [];
+    foreach ($slots as $s) {
+        $setParts[] = "$s = ?";
+        $params[] = $equip[$s] !== null ? $equip[$s] : null;
+    }
+    $setParts[] = "updated_at = ?";
+    $params[] = $equip['updated_at'];
+    $params[] = $equip['equipment_id'];
+
+    $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
+    // note: equipment_id appended in $params already
+    // prepare and execute
+    $stmt = $db->prepare($sql);
+    $stmt->execute(array_merge(array_values($params)));
+
+    // return updated equipment
+    handleGetEquipment();
+}
+
+function handleUnequipItem() {
+    $session = validateSession();
+    if ($session['realm'] === null) respondError('Realm not selected');
+
+    $slot = trim($_POST['slot'] ?? '');
+    $slots = getEquipmentSlots();
+    if (!in_array($slot, $slots)) respondError('Invalid slot');
+
+    $db = getDB();
+    $equip = ensureEquipmentRow($db, $session['user_id']);
+
+    if (empty($equip[$slot])) {
+        respondError('Slot is already empty');
+    }
+
+    $equip[$slot] = null;
+    $equip['updated_at'] = now();
+
+    $setParts = [];
+    $params = [];
+    foreach ($slots as $s) {
+        $setParts[] = "$s = ?";
+        $params[] = $equip[$s] !== null ? $equip[$s] : null;
+    }
+    $setParts[] = "updated_at = ?";
+    $params[] = $equip['updated_at'];
+    $params[] = $equip['equipment_id'];
+
+    $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
+    $stmt = $db->prepare($sql);
+    $stmt->execute(array_merge(array_values($params)));
+
+    handleGetEquipment();
 }

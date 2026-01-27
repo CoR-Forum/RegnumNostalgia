@@ -386,6 +386,22 @@
       border-radius: 3px;
     }
 
+    /* Equipment Slot Styles */
+    .equipment-area{ padding: 8px; border: 2px solid #1a2538; border-radius: 3px; margin-bottom: 8px; background: rgba(0,0,0,0.12);}    
+    .equipment-row{ display:flex; gap:6px; justify-content: flex-start; margin-bottom:6px; }
+    .equipment-slot{ width:44px; height:44px; background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%); border: 2px solid #2a3f5f; border-radius: 4px; display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer; }
+    .equipment-slot.empty{ opacity:0.45; }
+    .equipment-slot .slot-icon{ font-size:22px; }
+    .equipment-slot .slot-rarity-border{ inset: -2px; border-radius:4px; }
+    .equipment-slot.drag-over{ outline: 2px dashed #0d6efd; }
+
+    /* Visual for items that cannot be equipped into any slot */
+    .not-equippable{ opacity: 0.6; filter: grayscale(80%); }
+
+    /* Brief invalid equip animation (flash) */
+    .invalid-equip{ animation: invalidFlash 0.35s ease-in-out; }
+    @keyframes invalidFlash{ 0%{ box-shadow: 0 0 0 rgba(255,0,0,0); } 50%{ box-shadow: 0 0 8px rgba(255,0,0,0.8); } 100%{ box-shadow: 0 0 0 rgba(255,0,0,0); } }
+
     .inventory-slot{
       aspect-ratio: 1;
       background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
@@ -651,6 +667,24 @@
       <div id="inventory-loading" style="text-align: center; color: #e0e0e0; padding: 40px;">
         <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
         <div style="font-size: 11px;">Loading inventory...</div>
+      </div>
+      <div id="equipment-area" style="display:none; margin-bottom:8px;">
+        <div class="equipment-area">
+          <div class="equipment-row" id="equipment-row-top">
+            <div class="equipment-slot empty" data-slot="head" title="Head"><div class="slot-icon">👑</div></div>
+            <div class="equipment-slot empty" data-slot="body" title="Body"><div class="slot-icon">🛡️</div></div>
+            <div class="equipment-slot empty" data-slot="hands" title="Hands"><div class="slot-icon">🧤</div></div>
+            <div class="equipment-slot empty" data-slot="shoulders" title="Shoulders"><div class="slot-icon">🧥</div></div>
+            <div class="equipment-slot empty" data-slot="legs" title="Legs"><div class="slot-icon">👖</div></div>
+          </div>
+          <div class="equipment-row" id="equipment-row-bottom">
+            <div class="equipment-slot empty" data-slot="weapon_right" title="Weapon R"><div class="slot-icon">⚔️</div></div>
+            <div class="equipment-slot empty" data-slot="weapon_left" title="Weapon L"><div class="slot-icon">🪓</div></div>
+            <div class="equipment-slot empty" data-slot="ring_right" title="Ring R"><div class="slot-icon">💍</div></div>
+            <div class="equipment-slot empty" data-slot="ring_left" title="Ring L"><div class="slot-icon">💍</div></div>
+            <div class="equipment-slot empty" data-slot="amulet" title="Amulet"><div class="slot-icon">📿</div></div>
+          </div>
+        </div>
       </div>
       <div id="inventory-items" style="display: none;"></div>
       <div id="inventory-empty" style="text-align: center; color: #e0e0e0; padding: 40px; display: none; font-size: 11px;">
@@ -1054,10 +1088,17 @@
       document.getElementById('inventory-loading').style.display = 'block';
       document.getElementById('inventory-items').style.display = 'none';
       document.getElementById('inventory-empty').style.display = 'none';
+      document.getElementById('equipment-area').style.display = 'block';
 
       try {
-        const data = await apiCall('/inventory');
-        displayInventory(data.items);
+        // Fetch inventory and equipment in parallel
+        const [invData, equipData] = await Promise.all([
+          apiCall('/inventory'),
+          apiCall('/equipment')
+        ]);
+
+        displayEquipment(equipData.equipment);
+        displayInventory(invData.items);
       } catch (error) {
         console.error('Failed to fetch inventory:', error);
         alert('Failed to load inventory: ' + error.message);
@@ -1123,6 +1164,18 @@
           ${item.quantity > 1 ? `<div class="item-quantity">×${item.quantity}</div>` : ''}
         `;
 
+        // Make draggable and attach dragstart payload (include equipmentSlot)
+        const invId = item.inventoryId ?? item.inventory_id ?? item.inventoryId ?? item.inventoryId;
+        const equipSlot = item.equipmentSlot ?? item.equipment_slot ?? null;
+        itemDiv.draggable = true;
+        itemDiv.dataset.inventoryId = invId;
+        itemDiv.dataset.equipmentSlot = equipSlot || '';
+        // Do not visually de-emphasize non-equippable items; server still enforces equips
+        itemDiv.addEventListener('dragstart', (ev) => {
+          const payload = JSON.stringify({ inventoryId: invId, equipmentSlot: equipSlot });
+          try { ev.dataTransfer.setData('application/json', payload); } catch(_) { ev.dataTransfer.setData('text/plain', payload); }
+        });
+
         // Tooltip on hover
         itemDiv.addEventListener('mouseenter', (e) => showTooltip(e, item));
         itemDiv.addEventListener('mouseleave', hideTooltip);
@@ -1134,6 +1187,29 @@
       // Update gold display
       document.getElementById('inventory-gold').textContent = `${totalGold.toLocaleString()} Gold`;
     }
+
+    // Make inventory container accept drops from equipment slots (unequip)
+    (function(){
+      const invContainer = document.getElementById('inventory-items');
+      if(!invContainer) return;
+      invContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
+      invContainer.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        try {
+          const payload = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+          if(!payload) return;
+          const data = JSON.parse(payload);
+          if(data.fromSlot && data.slot){
+            // Unequip slot
+            const form = new URLSearchParams();
+            form.append('slot', data.slot);
+            await apiCall('/equipment/unequip', { method: 'POST', body: form });
+            // refresh inventory and equipment
+            await openInventory();
+          }
+        } catch(err){ console.error('Failed to unequip:', err); }
+      });
+    })();
 
     let currentTooltip = null;
 
@@ -1178,6 +1254,99 @@
         currentTooltip.remove();
         currentTooltip = null;
       }
+    }
+
+    // Equipment rendering and drag/drop handlers
+    function getEquipIcon(type, slotName){
+      const map = {
+        weapon: '⚔️',
+        armor: '🛡️',
+        consumable: '🧪',
+        currency: '💰',
+        misc: '📦'
+      };
+      if(slotName && slotName.startsWith('ring')) return '💍';
+      if(slotName && slotName.includes('weapon')) return '⚔️';
+      if(type && map[type]) return map[type];
+      return '🔹';
+    }
+
+    function displayEquipment(equipment){
+      try{
+        const slots = ['head','body','hands','shoulders','legs','weapon_right','weapon_left','ring_right','ring_left','amulet'];
+        slots.forEach(slot => {
+          const el = document.querySelector(`.equipment-slot[data-slot="${slot}"]`);
+          if(!el) return;
+          const info = equipment[slot] || { inventoryId: null, item: null };
+          el.classList.toggle('empty', !info || !info.inventoryId);
+          el.dataset.slot = slot;
+          // clear previous listeners by cloning node
+          const newEl = el.cloneNode(true);
+          el.parentNode.replaceChild(newEl, el);
+          const target = newEl;
+
+          if(info && info.inventoryId){
+            const it = info.item || {};
+            const icon = getEquipIcon(it.type, slot);
+            target.innerHTML = `<div class="slot-icon">${icon}</div>`;
+            target.dataset.inventoryId = info.inventoryId;
+            // Tooltip
+            target.addEventListener('mouseenter', (e)=>{
+              const tooltipItem = {
+                itemName: it.name || it.itemName || '',
+                itemType: it.type || it.itemType || '',
+                description: it.description || '',
+                stats: it.stats || {},
+                rarity: it.rarity || 'common',
+                quantity: it.quantity || 1
+              };
+              showTooltip(e, tooltipItem);
+            });
+            target.addEventListener('mousemove', moveTooltip);
+            target.addEventListener('mouseleave', hideTooltip);
+
+            // Make slot draggable to allow unequip (drag to inventory)
+            target.draggable = true;
+            target.addEventListener('dragstart', (ev) => {
+              const payload = JSON.stringify({ fromSlot: true, slot: slot, inventoryId: info.inventoryId });
+              try{ ev.dataTransfer.setData('application/json', payload); }catch(_){ ev.dataTransfer.setData('text/plain', payload); }
+            });
+          } else {
+            // empty fallback content: keep the icon already present
+            target.innerHTML = target.innerHTML || `<div class="slot-icon">🔸</div>`;
+            target.removeAttribute('data-inventory-id');
+            target.draggable = false;
+            target.addEventListener('mouseenter', ()=>{});
+          }
+
+          // Accept drops from inventory items
+          target.addEventListener('dragover', (e)=>{ e.preventDefault(); target.classList.add('drag-over'); });
+          target.addEventListener('dragleave', ()=>{ target.classList.remove('drag-over'); });
+          target.addEventListener('drop', async (e)=>{
+            e.preventDefault(); target.classList.remove('drag-over');
+            try{
+              const payload = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+              if(!payload) return;
+              const data = JSON.parse(payload);
+              if(data.inventoryId){
+                const itemSlot = data.equipmentSlot || null;
+                // Validate client-side: item must declare an equipmentSlot and it must match the target slot
+                if(!itemSlot || itemSlot !== slot){
+                  target.classList.add('invalid-equip');
+                  setTimeout(()=> target.classList.remove('invalid-equip'), 380);
+                  return;
+                }
+
+                // Server will determine the final slot from the item template; send only inventoryId
+                const form = new URLSearchParams();
+                form.append('inventoryId', data.inventoryId);
+                await apiCall('/equipment/equip', { method: 'POST', body: form });
+                await openInventory();
+              }
+            }catch(err){ console.error('Equip failed', err); }
+          });
+        });
+      }catch(err){ console.error('displayEquipment error', err); }
     }
 
     function hideModal() {

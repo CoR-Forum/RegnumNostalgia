@@ -90,7 +90,8 @@ try {
             description TEXT,
             stats TEXT,
             rarity TEXT DEFAULT "common",
-            stackable INTEGER DEFAULT 1
+            stackable INTEGER DEFAULT 1,
+            equipment_slot TEXT DEFAULT NULL
         )
     ');
 
@@ -200,16 +201,16 @@ try {
 
     // Seed items (item templates)
     $items = [
-        ['Health Potion', 'consumable', 'Restores 100 health', '{"heal": 100}', 'common', 1],
-        ['Mana Potion', 'consumable', 'Restores 50 mana', '{"mana": 50}', 'common', 1],
-        ['Iron Sword', 'weapon', 'A basic iron sword', '{"damage": 15, "speed": 1.2}', 'common', 0],
-        ['Steel Sword', 'weapon', 'A sturdy steel sword', '{"damage": 25, "speed": 1.3}', 'uncommon', 0],
-        ['Wooden Shield', 'armor', 'A simple wooden shield', '{"defense": 10}', 'common', 0],
-        ['Iron Armor', 'armor', 'Basic iron chest armor', '{"defense": 20, "health": 50}', 'common', 0],
-        ['Magic Staff', 'weapon', 'A staff imbued with magic', '{"damage": 20, "mana_boost": 30}', 'rare', 0],
-        ['Gold Coin', 'currency', 'A shiny gold coin', '{"value": 1}', 'common', 1],
-        ['Health Elixir', 'consumable', 'Fully restores health', '{"heal": 9999}', 'rare', 1],
-        ['Teleport Scroll', 'consumable', 'Teleports to spawn point', '{}', 'uncommon', 1],
+        ['Health Potion', 'consumable', 'Restores 100 health', '{"heal": 100}', 'common', 1, NULL],
+        ['Mana Potion', 'consumable', 'Restores 50 mana', '{"mana": 50}', 'common', 1, NULL],
+        ['Iron Sword', 'weapon', 'A basic iron sword', '{"damage": 15, "speed": 1.2}', 'common', 0, 'weapon_right'],
+        ['Steel Sword', 'weapon', 'A sturdy steel sword', '{"damage": 25, "speed": 1.3}', 'uncommon', 0, 'weapon_right'],
+        ['Wooden Shield', 'armor', 'A simple wooden shield', '{"defense": 10}', 'common', 0, 'weapon_left'],
+        ['Iron Armor', 'armor', 'Basic iron chest armor', '{"defense": 20, "health": 50}', 'common', 0, 'body'],
+        ['Magic Staff', 'weapon', 'A staff imbued with magic', '{"damage": 20, "mana_boost": 30}', 'rare', 0, 'weapon_right'],
+        ['Gold Coin', 'currency', 'A shiny gold coin', '{"value": 1}', 'common', 1, NULL],
+        ['Health Elixir', 'consumable', 'Fully restores health', '{"heal": 9999}', 'rare', 1, NULL],
+        ['Teleport Scroll', 'consumable', 'Teleports to spawn point', '{}', 'uncommon', 1, NULL],
     ];
 
     $stmt = $db->prepare('SELECT COUNT(*) FROM items');
@@ -217,7 +218,7 @@ try {
     $count = $stmt->fetchColumn();
 
     if ($count == 0) {
-        $stmt = $db->prepare('INSERT INTO items (name, type, description, stats, rarity, stackable) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt = $db->prepare('INSERT INTO items (name, type, description, stats, rarity, stackable, equipment_slot) VALUES (?, ?, ?, ?, ?, ?, ?)');
         foreach ($items as $item) {
             $stmt->execute($item);
         }
@@ -257,7 +258,7 @@ try {
     echo "  - players (user_id, username, realm, x, y, health, max_health, mana, max_mana, last_active)\n";
     echo "  - territories (territory_id, realm, name, type, health, x, y, owner_realm, owner_players, contested, contested_since)\n";
     echo "  - superbosses (boss_id, name, health, max_health, x, y, last_attacked, respawn_time)\n";
-    echo "  - items (item_id, name, type, description, stats, rarity, stackable)\n";
+    echo "  - items (item_id, name, type, description, stats, rarity, stackable, equipment_slot)\n";
     echo "  - inventory (inventory_id, user_id, item_id, quantity, acquired_at)\n";
     echo "  - equipment (equipment_id, user_id, head, body, hands, shoulders, legs, weapon_right, weapon_left, ring_right, ring_left, amulet, created_at, updated_at)\n";
 } catch (PDOException $e) {
