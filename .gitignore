@@ -1,1 +1,4 @@
 .DS_Store
+database.sqlite
+cor-forum-api-reference.txt
+.env

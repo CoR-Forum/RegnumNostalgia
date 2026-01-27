@@ -25,7 +25,19 @@ jobs:
         run: |
           set -euo pipefail
           echo "Rsync to $SSH_PATH"
-          rsync -avz --delete --exclude '.git' -e "ssh -o StrictHostKeyChecking=no" ./ "$SSH_PATH"
+          rsync -avz --delete --exclude '.git' --exclude '.env' -e "ssh -o StrictHostKeyChecking=no" ./ "$SSH_PATH"
+
+      - name: Create .env file on remote
+        env:
+          SSH_PATH: ${{ vars.SSH_PATH }}
+          COR_FORUM_API_KEY: ${{ secrets.COR_FORUM_API_KEY }}
+        run: |
+          set -euo pipefail
+          SSH_PATH="${SSH_PATH}"
+          REMOTE_HOST="${SSH_PATH%%:*}"
+          REMOTE_DIR="${SSH_PATH#*:}"
+          echo "Creating .env file on $REMOTE_HOST"
+          ssh -o StrictHostKeyChecking=no "$REMOTE_HOST" "echo 'COR_FORUM_API_KEY=$COR_FORUM_API_KEY' > \"$REMOTE_DIR/.env\""
 
       - name: Restart docker compose on remote
         env:

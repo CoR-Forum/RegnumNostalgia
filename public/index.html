@@ -135,9 +135,301 @@
         box-shadow: 0 8px 26px rgba(0,0,0,0.55);
       }
     }
+
+    /* Login/Realm Modal Styles */
+    #modal-overlay{
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    #modal-overlay.hidden{ display: none; }
+
+    .modal-content{
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      border-radius: 12px;
+      padding: 40px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      border: 2px solid rgba(255,255,255,0.1);
+    }
+
+    .modal-step{ display: none; }
+    .modal-step.active{ display: block; }
+
+    .modal-title{
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 0 24px 0;
+      text-align: center;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+    }
+
+    .form-group{
+      margin-bottom: 20px;
+    }
+
+    .form-label{
+      display: block;
+      color: #ccc;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+    }
+
+    .form-input{
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      font-size: 16px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus{
+      outline: none;
+      border-color: #0d6efd;
+    }
+
+    .btn{
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+    }
+
+    .btn-primary{
+      background: #0d6efd;
+      color: #fff;
+    }
+    .btn-primary:hover{ background: #0b5ed7; }
+    .btn-primary:disabled{
+      background: #6c757d;
+      cursor: not-allowed;
+    }
+
+    .realm-cards{
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .realm-card{
+      padding: 20px;
+      border-radius: 8px;
+      border: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .realm-card:hover{
+      transform: translateX(8px);
+      border-color: currentColor;
+    }
+
+    .realm-card.syrtis{
+      background: rgba(34,197,94,0.15);
+      color: #22c55e;
+    }
+    .realm-card.alsius{
+      background: rgba(59,130,246,0.15);
+      color: #3b82f6;
+    }
+    .realm-card.ignis{
+      background: rgba(239,68,68,0.15);
+      color: #ef4444;
+    }
+
+    .realm-icon{
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      font-weight: 700;
+      background: rgba(0,0,0,0.3);
+    }
+
+    .realm-info h3{
+      margin: 0 0 4px 0;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .realm-info p{
+      margin: 0;
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .error-message{
+      background: rgba(239,68,68,0.2);
+      color: #ef4444;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      border: 1px solid rgba(239,68,68,0.4);
+    }
+    .error-message.hidden{ display: none; }
+
+    .loading-spinner{
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin{
+      to{ transform: rotate(360deg); }
+    }
+
+    /* Player Info Panel */
+    #player-info{
+      position: absolute;
+      left: 12px;
+      top: 80px;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+      padding: 16px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 1000;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+      min-width: 220px;
+      display: none;
+    }
+    #player-info.visible{ display: block; }
+
+    .player-name{
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .realm-badge{
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .realm-badge.syrtis{ background: #22c55e; }
+    .realm-badge.alsius{ background: #3b82f6; }
+    .realm-badge.ignis{ background: #ef4444; }
+
+    .player-coords{
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 12px;
+    }
+
+    .btn-logout{
+      padding: 8px 16px;
+      background: rgba(220,38,38,0.8);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      width: 100%;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto;
+      transition: background 0.2s;
+    }
+    .btn-logout:hover{ background: rgba(220,38,38,1); }
   </style>
 </head>
 <body>
+  <!-- Login/Realm Selection Modal -->
+  <div id="modal-overlay">
+    <div class="modal-content">
+      <!-- Step 1: Login -->
+      <div id="step-login" class="modal-step active">
+        <h2 class="modal-title">Welcome to Regnum Online</h2>
+        <div id="login-error" class="error-message hidden"></div>
+        <form id="login-form">
+          <div class="form-group">
+            <label class="form-label" for="username">Username</label>
+            <input type="text" id="username" class="form-input" placeholder="Enter your username" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+          </div>
+          <button type="submit" id="login-btn" class="btn btn-primary">
+            <span id="login-text">Login</span>
+            <span id="login-spinner" class="loading-spinner" style="display:none;"></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Step 2: Realm Selection -->
+      <div id="step-realm" class="modal-step">
+        <h2 class="modal-title">Choose Your Realm</h2>
+        <p style="color:#aaa;text-align:center;margin-bottom:8px;font-size:14px;">This choice is permanent</p>
+        <div id="realm-error" class="error-message hidden"></div>
+        <div class="realm-cards">
+          <div class="realm-card syrtis" data-realm="syrtis">
+            <div class="realm-icon" style="color:#22c55e;">🌳</div>
+            <div class="realm-info">
+              <h3>Syrtis</h3>
+              <p>The Elven Kingdom</p>
+            </div>
+          </div>
+          <div class="realm-card alsius" data-realm="alsius">
+            <div class="realm-icon" style="color:#3b82f6;">❄️</div>
+            <div class="realm-info">
+              <h3>Alsius</h3>
+              <p>The Dwarven Realm</p>
+            </div>
+          </div>
+          <div class="realm-card ignis" data-realm="ignis">
+            <div class="realm-icon" style="color:#ef4444;">🔥</div>
+            <div class="realm-info">
+              <h3>Ignis</h3>
+              <p>The Human Empire</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Player Info Panel -->
+  <div id="player-info">
+    <div class="player-name">
+      <span class="realm-badge"></span>
+      <span id="player-username"></span>
+    </div>
+    <div class="player-coords" id="player-coords">Position: 0, 0</div>
+    <button class="btn-logout" id="logout-btn">Logout</button>
+  </div>
+
   <div id="map"></div>
   <div id="coords" aria-hidden="true"></div>
   <div id="side-maps" aria-label="Other in-game maps">
@@ -172,13 +464,13 @@
       const scale = 2;
 
       // Scaled world size used by Leaflet (map coordinate units)
-      const totalW = origTotalW * scale;
-      const totalH = origTotalH * scale;
+      totalW = origTotalW * scale;
+      totalH = origTotalH * scale;
 
       // Use CRS.Simple so coordinates map directly to pixels
       // Disable the default zoomControl (placed top-left) so we can
       // re-add it on the right side.
-      const map = L.map('map', {
+      map = L.map('map', {
         crs: L.CRS.Simple,
         minZoom: -3,
         maxZoom: 0,
@@ -292,6 +584,311 @@
       console.error('Failed to load probe tile:', probe.src);
       document.getElementById('map').innerText = 'Failed to load tiles. Check tiles/ filenames.';
     };
+
+    // ============================================================
+    // GAME CLIENT CODE
+    // ============================================================
+
+    const API_BASE = '/api';
+    
+    // Global map variables (set by probe.onload)
+    let map = null;
+    let totalH = 0;
+    let totalW = 0;
+    
+    let gameState = {
+      sessionToken: localStorage.getItem('sessionToken'),
+      userId: null,
+      username: null,
+      realm: null,
+      position: { x: 0, y: 0 },
+      playerMarker: null,
+      otherPlayers: new Map(),
+      pollInterval: null
+    };
+
+    // API Helper functions
+    async function apiCall(endpoint, options = {}) {
+      const headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        ...options.headers
+      };
+
+      if (gameState.sessionToken && !options.skipAuth) {
+        headers['X-Session-Token'] = gameState.sessionToken;
+      }
+
+      const response = await fetch(API_BASE + endpoint, {
+        ...options,
+        headers
+      });
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'API call failed');
+      }
+      return data;
+    }
+
+    // Login handler
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('login-btn');
+      const loginText = document.getElementById('login-text');
+      const loginSpinner = document.getElementById('login-spinner');
+      const errorEl = document.getElementById('login-error');
+
+      loginBtn.disabled = true;
+      loginText.style.display = 'none';
+      loginSpinner.style.display = 'inline-block';
+      errorEl.classList.add('hidden');
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+
+        const data = await apiCall('/login', {
+          method: 'POST',
+          body: formData,
+          skipAuth: true
+        });
+
+        gameState.sessionToken = data.sessionToken;
+        gameState.userId = data.userId;
+        gameState.username = data.username;
+        gameState.realm = data.realm;
+
+        localStorage.setItem('sessionToken', data.sessionToken);
+
+        if (data.needsRealmSelection) {
+          showRealmSelection();
+        } else {
+          await initGame();
+        }
+      } catch (error) {
+        errorEl.textContent = error.message;
+        errorEl.classList.remove('hidden');
+        loginBtn.disabled = false;
+        loginText.style.display = 'inline';
+        loginSpinner.style.display = 'none';
+      }
+    });
+
+    // Realm selection handler
+    document.querySelectorAll('.realm-card').forEach(card => {
+      card.addEventListener('click', async () => {
+        const realm = card.dataset.realm;
+        const errorEl = document.getElementById('realm-error');
+        errorEl.classList.add('hidden');
+
+        try {
+          const formData = new URLSearchParams();
+          formData.append('realm', realm);
+
+          const data = await apiCall('/realm/select', {
+            method: 'POST',
+            body: formData
+          });
+
+          gameState.realm = data.realm;
+          gameState.position = data.position;
+
+          await initGame();
+        } catch (error) {
+          errorEl.textContent = error.message;
+          errorEl.classList.remove('hidden');
+        }
+      });
+    });
+
+    // Logout handler
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      localStorage.removeItem('sessionToken');
+      gameState.sessionToken = null;
+      if (gameState.pollInterval) {
+        clearInterval(gameState.pollInterval);
+      }
+      location.reload();
+    });
+
+    function showRealmSelection() {
+      document.getElementById('step-login').classList.remove('active');
+      document.getElementById('step-realm').classList.add('active');
+    }
+
+    function hideModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    function showPlayerInfo() {
+      const panel = document.getElementById('player-info');
+      const usernameEl = document.getElementById('player-username');
+      const realmBadge = panel.querySelector('.realm-badge');
+
+      usernameEl.textContent = gameState.username;
+      realmBadge.className = `realm-badge ${gameState.realm}`;
+      panel.classList.add('visible');
+    }
+
+    function updatePlayerCoords(x, y) {
+      document.getElementById('player-coords').textContent = `Position: ${x}, ${y}`;
+    }
+
+    // Initialize game after login/realm selection
+    async function initGame() {
+      try {
+        // Get current position
+        const data = await apiCall('/player/position');
+        gameState.position = data.position;
+        gameState.realm = data.realm;
+
+        hideModal();
+        showPlayerInfo();
+
+        // Create player marker
+        createPlayerMarker(gameState.position.x, gameState.position.y);
+
+        // Enable click-to-move
+        enableClickToMove();
+
+        // Start polling for other players
+        startPlayerPolling();
+
+        updatePlayerCoords(gameState.position.x, gameState.position.y);
+      } catch (error) {
+        console.error('Failed to initialize game:', error);
+        alert('Failed to initialize game: ' + error.message);
+        localStorage.removeItem('sessionToken');
+        location.reload();
+      }
+    }
+
+    function createPlayerMarker(x, y) {
+      if (gameState.playerMarker) {
+        map.removeLayer(gameState.playerMarker);
+      }
+
+      const realmColors = {
+        syrtis: '#22c55e',
+        alsius: '#3b82f6',
+        ignis: '#ef4444'
+      };
+
+      const latLng = [totalH - y, x];
+      gameState.playerMarker = L.circleMarker(latLng, {
+        radius: 8,
+        fillColor: realmColors[gameState.realm],
+        color: '#fff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.9
+      }).addTo(map);
+
+      gameState.playerMarker.bindPopup(`<b>${gameState.username}</b><br>Realm: ${gameState.realm}`);
+      map.setView(latLng, map.getZoom());
+    }
+
+    function enableClickToMove() {
+      map.on('click', async (e) => {
+        const x = Math.round(e.latlng.lng);
+        const y = Math.round(totalH - e.latlng.lat);
+
+        // Validate bounds
+        if (x < 0 || x > 6144 || y < 0 || y > 6144) return;
+
+        try {
+          const formData = new URLSearchParams();
+          formData.append('x', x);
+          formData.append('y', y);
+
+          await apiCall('/player/position', {
+            method: 'POST',
+            body: formData
+          });
+
+          gameState.position = { x, y };
+          gameState.playerMarker.setLatLng([totalH - y, x]);
+          updatePlayerCoords(x, y);
+        } catch (error) {
+          console.error('Failed to update position:', error);
+        }
+      });
+    }
+
+    function startPlayerPolling() {
+      // Poll every 1 second
+      gameState.pollInterval = setInterval(async () => {
+        try {
+          const data = await apiCall('/players/online');
+          updateOtherPlayers(data.players);
+        } catch (error) {
+          console.error('Failed to fetch online players:', error);
+        }
+      }, 1000);
+
+      // Initial fetch
+      apiCall('/players/online').then(data => {
+        updateOtherPlayers(data.players);
+      });
+    }
+
+    function updateOtherPlayers(players) {
+      const realmColors = {
+        syrtis: '#22c55e',
+        alsius: '#3b82f6',
+        ignis: '#ef4444'
+      };
+
+      const currentPlayerIds = new Set();
+
+      players.forEach(player => {
+        // Skip own player
+        if (player.userId === gameState.userId) return;
+
+        currentPlayerIds.add(player.userId);
+
+        const latLng = [totalH - player.y, player.x];
+
+        if (gameState.otherPlayers.has(player.userId)) {
+          // Update existing marker
+          const marker = gameState.otherPlayers.get(player.userId);
+          marker.setLatLng(latLng);
+        } else {
+          // Create new marker
+          const marker = L.circleMarker(latLng, {
+            radius: 6,
+            fillColor: realmColors[player.realm],
+            color: '#fff',
+            weight: 1,
+            opacity: 0.8,
+            fillOpacity: 0.7
+          }).addTo(map);
+
+          marker.bindPopup(`<b>${player.username}</b><br>Realm: ${player.realm}`);
+          gameState.otherPlayers.set(player.userId, marker);
+        }
+      });
+
+      // Remove markers for players no longer online
+      for (const [userId, marker] of gameState.otherPlayers.entries()) {
+        if (!currentPlayerIds.has(userId)) {
+          map.removeLayer(marker);
+          gameState.otherPlayers.delete(userId);
+        }
+      }
+    }
+
+    // Auto-login if session token exists
+    if (gameState.sessionToken) {
+      initGame().catch(() => {
+        // Session invalid, show login
+        localStorage.removeItem('sessionToken');
+        gameState.sessionToken = null;
+      });
+    }
   </script>
   
 </body>
