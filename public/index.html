@@ -696,6 +696,7 @@
           </p>
         </div>
       </div>
+      
 
       <!-- Step 2: Realm Selection -->
       <div id="step-realm" class="modal-step">
@@ -774,6 +775,8 @@
       </div>
     </div>
   </div>
+  
+  <!-- Build Path panel moved to public/build-path.js -->
 
   <!-- Player Info Panel -->
   <div id="player-info">
@@ -1000,6 +1003,8 @@
       territories: new Map(),
       superbosses: new Map(),
       pathsLayer: null,
+      buildPathPoints: [],
+      buildPathPolyline: null,
       pollInterval: null,
       territoriesPollInterval: null,
       superbossesPollInterval: null
@@ -1160,6 +1165,8 @@
         el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
       }
     })();
+
+    // Build Path behavior moved to public/build-path.js
 
     // Logout handler
     document.getElementById('logout-btn').addEventListener('click', () => {
@@ -1466,8 +1473,29 @@
     }
 
     function hideModal() {
-      document.getElementById('modal-overlay').classList.add('hidden');
+      const overlay = document.getElementById('modal-overlay');
+      overlay.classList.add('hidden');
+      // restore overlay pointer behavior
+      try { overlay.style.pointerEvents = 'auto'; } catch (e) {}
+      // leave build mode off when modal hidden
+      try { gameState.buildPathMode = false; } catch (e) {}
+      // clear any inline styles applied to build modal step
+      try {
+        const step = document.getElementById('step-build-path');
+        if (step) {
+          step.style.position = '';
+          step.style.left = '';
+          step.style.top = '';
+          step.style.zIndex = '';
+          step.style.pointerEvents = '';
+          step.style.maxWidth = '';
+        }
+      } catch (e) {}
     }
+
+    // Build Path UI moved to public/build-path.js
+
+    // Build panel wiring moved to public/build-path.js
 
     function showPlayerInfo() {
       const panel = document.getElementById('player-info');
@@ -1604,7 +1632,7 @@
       __mapContextMenuEl = document.createElement('div');
       __mapContextMenuEl.id = 'map-contextmenu';
       __mapContextMenuEl.className = 'map-contextmenu';
-      __mapContextMenuEl.innerHTML = '<div class="map-contextmenu-item" id="map-go-here">Go here</div><div class="map-contextmenu-item" id="map-walk-here">Walk here</div>';
+      __mapContextMenuEl.innerHTML = '<div class="map-contextmenu-item" id="map-go-here">Go here</div><div class="map-contextmenu-item" id="map-walk-here">Walk here</div><div class="map-contextmenu-item" id="map-copy-coords">Copy Coords</div>';
       document.body.appendChild(__mapContextMenuEl);
 
       __mapContextMenuEl.querySelector('#map-go-here').addEventListener('click', async (ev) => {
@@ -1617,8 +1645,60 @@
       __mapContextMenuEl.querySelector('#map-walk-here').addEventListener('click', async (ev) => {
         ev.stopPropagation();
         if (!__lastContextLatLng) return hideMapContextMenu();
-        await performWalkAtLatLng(__lastContextLatLng);
+        try {
+          console.debug('ContextMenu: Walk here clicked', __lastContextLatLng);
+          // Defensive copy of latlng
+          const ll = (typeof L !== 'undefined' && L && L.latLng) ? L.latLng(__lastContextLatLng.lat, __lastContextLatLng.lng) : __lastContextLatLng;
+          await performWalkAtLatLng(ll);
+        } catch (err) {
+          console.error('performWalkAtLatLng failed', err);
+        }
         hideMapContextMenu();
+      });
+
+      __mapContextMenuEl.querySelector('#map-copy-coords').addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        if (!__lastContextLatLng) return hideMapContextMenu();
+        const x = Math.round(__lastContextLatLng.lng);
+        const y = Math.round(totalH - __lastContextLatLng.lat);
+        const text = `[${x}, ${y}]`;
+        // try navigator.clipboard, fallback to textarea + execCommand
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text);
+          } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          }
+          // small visual feedback: briefly show copied text in the menu without replacing innerHTML
+          const temp = document.createElement('div');
+          temp.className = 'map-contextmenu-temp';
+          temp.style.padding = '8px';
+          temp.style.color = '#fff';
+          temp.style.pointerEvents = 'none';
+          temp.textContent = 'Copied ' + text;
+          __mapContextMenuEl.appendChild(temp);
+          setTimeout(() => { if (temp.parentNode) temp.parentNode.removeChild(temp); hideMapContextMenu(); }, 700);
+        } catch (e) {
+          console.error('Copy failed', e);
+          hideMapContextMenu();
+        }
+      });
+
+      // Add Build Path menu item without touching innerHTML to preserve other listeners
+      const buildItem = document.createElement('div');
+      buildItem.className = 'map-contextmenu-item';
+      buildItem.id = 'map-build-path';
+      buildItem.textContent = 'Build Path';
+      __mapContextMenuEl.appendChild(buildItem);
+      buildItem.addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        hideMapContextMenu();
+        try { if (window.buildPath && typeof window.buildPath.showPanel === 'function') window.buildPath.showPanel(); } catch (e) { console.error(e); }
       });
 
       // Hide menu when clicking elsewhere or pressing Escape
@@ -1783,7 +1863,13 @@
 
       // Hide menu when map viewport changes
       map.on('movestart zoomstart', () => hideMapContextMenu());
-      map.on('click', () => hideMapContextMenu());
+      map.on('click', (e) => {
+        if (gameState.buildPathMode && window.buildPath && typeof window.buildPath.onMapClick === 'function') {
+          try { window.buildPath.onMapClick(e); } catch (err) { console.error(err); }
+          return;
+        }
+        hideMapContextMenu();
+      });
     }
 
     function startPlayerPolling() {
@@ -1806,6 +1892,8 @@
             if (gameState.playerMarker) {
               try { gameState.playerMarker.setLatLng([totalH - py, px]); } catch (e) {}
             }
+
+                // Build path rendering moved to public/build-path.js
             updatePlayerCoords(px, py);
             // Show or update server-provided destination marker
             if (posData.walker) {
@@ -1844,6 +1932,13 @@
               drawWalkPath(null);
             }
           }
+
+          // also redraw build path polyline if user is authoring
+          try {
+            if (gameState.buildPathPoints && gameState.buildPathPoints.length > 0) {
+              try { if (window.buildPath && typeof window.buildPath.updateBuildPathPolyline === 'function') window.buildPath.updateBuildPathPolyline(); } catch(e){}
+            }
+          } catch (e) {}
 
           // Fetch other players
           const data = await apiCall('/players/online');
@@ -2164,6 +2259,7 @@
       });
     }
   </script>
+  <script src="build-path.js"></script>
   
 </body>
 </html>
