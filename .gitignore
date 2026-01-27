@@ -1,4 +1,4 @@
 .DS_Store
-database.sqlite
+database.sqlite*
 cor-forum-api-reference.*
 .env
