@@ -944,13 +944,19 @@
             
             const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
             const statusText = isContested ? '<br><span style="color:#ef4444">⚔️ Contested!</span>' : '';
-            marker.bindPopup(`<b>${territory.name}</b><br>Type: ${territory.type}<br>Owner: ${territory.ownerRealm}<br>Health: ${health.toLocaleString()}/${maxHealth.toLocaleString()}${statusText}`);
+            marker.bindTooltip(`<b>${territory.name}</b><br>Health: ${health.toLocaleString()}/${maxHealth.toLocaleString()}${statusText}`, {
+              permanent: false,
+              direction: 'top'
+            });
             gameState.territories.set(territory.territoryId, marker);
           } else {
             // Create new marker with custom icon
             const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
             const statusText = isContested ? '<br><span style="color:#ef4444">⚔️ Contested!</span>' : '';
-            marker.bindPopup(`<b>${territory.name}</b><br>Type: ${territory.type}<br>Owner: ${territory.ownerRealm}<br>Health: ${health.toLocaleString()}/${maxHealth.toLocaleString()}${statusText}`);
+            marker.bindTooltip(`<b>${territory.name}</b><br>Health: ${health.toLocaleString()}/${maxHealth.toLocaleString()}${statusText}`, {
+              permanent: false,
+              direction: 'top'
+            });
             gameState.territories.set(territory.territoryId, marker);
           }
         }
