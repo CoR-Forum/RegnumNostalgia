@@ -69,6 +69,14 @@ function now() {
     return time();
 }
 
+// Compute a simple session fingerprint from IP and User-Agent
+function computeSessionFingerprint() {
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    // If behind a trusted proxy, you may prefer HTTP_X_FORWARDED_FOR
+    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    return hash('sha256', $ip . '|' . $ua);
+}
+
 // Validate session and return user data
 function validateSession() {
     $sessionToken = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? '';
@@ -77,7 +85,8 @@ function validateSession() {
     }
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT user_id, username, realm FROM sessions WHERE session_id = ? AND expires_at > ?');
+    // Require fingerprint column to be present in sessions table
+    $stmt = $db->prepare('SELECT user_id, username, realm, fingerprint FROM sessions WHERE session_id = ? AND expires_at > ?');
     $stmt->execute([$sessionToken, now()]);
     $session = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -93,6 +102,14 @@ function validateSession() {
     // Update player last_active
     $stmt = $db->prepare('UPDATE players SET last_active = ? WHERE user_id = ?');
     $stmt->execute([now(), $session['user_id']]);
+
+    // Validate fingerprint if the session row stores one
+    $currentFp = computeSessionFingerprint();
+    if (isset($session['fingerprint']) && $session['fingerprint'] !== null && $session['fingerprint'] !== '' ) {
+        if ($session['fingerprint'] !== $currentFp) {
+            respondError('Invalid or expired session', 401);
+        }
+    }
 
     return $session;
 }
@@ -179,6 +196,7 @@ function handleLogin() {
     $db = getDB();
     $sessionToken = generateSessionToken();
     $expiresAt = now() + SESSION_DURATION;
+    $fingerprint = computeSessionFingerprint();
 
     // Check if user exists
     $stmt = $db->prepare('SELECT user_id, realm FROM players WHERE user_id = ?');
@@ -191,9 +209,9 @@ function handleLogin() {
     $stmt = $db->prepare('DELETE FROM sessions WHERE user_id = ?');
     $stmt->execute([$userId]);
 
-    // Create new session
-    $stmt = $db->prepare('INSERT INTO sessions (session_id, user_id, username, realm, created_at, expires_at, last_activity) VALUES (?, ?, ?, ?, ?, ?, ?)');
-    $stmt->execute([$sessionToken, $userId, $username, $realm, now(), $expiresAt, now()]);
+    // Create new session with fingerprint (fingerprint column is required)
+    $stmt = $db->prepare('INSERT INTO sessions (session_id, user_id, username, realm, created_at, expires_at, last_activity, fingerprint) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+    $stmt->execute([$sessionToken, $userId, $username, $realm, now(), $expiresAt, now(), $fingerprint]);
 
     respondSuccess([
         'sessionToken' => $sessionToken,

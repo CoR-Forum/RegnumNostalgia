@@ -19,7 +19,8 @@ try {
             realm TEXT,
             created_at INTEGER NOT NULL,
             expires_at INTEGER NOT NULL,
-            last_activity INTEGER NOT NULL
+            last_activity INTEGER NOT NULL,
+            fingerprint TEXT
         )
     ');
 
@@ -291,7 +292,7 @@ try {
     echo "Database initialized successfully!\n";
     echo "Database location: " . DB_PATH . "\n";
     echo "\nTables created:\n";
-    echo "  - sessions (session_id, user_id, username, realm, created_at, expires_at, last_activity)\n";
+    echo "  - sessions (session_id, user_id, username, realm, created_at, expires_at, last_activity, fingerprint)\n";
     echo "  - players (user_id, username, realm, x, y, health, max_health, mana, max_mana, last_active)\n";
     echo "  - territories (territory_id, realm, name, type, health, x, y, owner_realm, owner_players, contested, contested_since)\n";
     echo "  - superbosses (boss_id, name, health, max_health, x, y, last_attacked, respawn_time)\n";
