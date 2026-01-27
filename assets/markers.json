@@ -1,0 +1,23 @@
+{
+  "scaleBase": 3072,
+  "rasterSize": [6144, 6144],
+  "icons": {
+    "fort-alsius": { "url": "assets/icons/fort-alsius.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-alsius-contested": { "url": "assets/icons/fort-alsius-contested.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-ignis": { "url": "assets/icons/fort-ignis.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-ignis-contested": { "url": "assets/icons/fort-ignis-contested.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-syrtis": { "url": "assets/icons/fort-syrtis.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-syrtis-contested": { "url": "assets/icons/fort-syrtis-contested.png", "size": [32, 32], "anchor": [16, 32] }
+  },
+  "features": [
+    {
+      "id": "algaros-fort",
+      "type": "marker",
+      "name": "Algaros Fort",
+      "x": 1742,
+      "y": 3200,
+      "icon": "fort-syrtis",
+      "popup": "Algaros Fort"
+    }
+  ]
+}

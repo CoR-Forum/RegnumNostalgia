@@ -29,6 +29,20 @@
     html,body,#map{height:100%;margin:0;padding:0}
     /* Background image shown behind tiles when panning outside bounds */
     #map{width:100vw;height:100vh; background: url('assets/background.jpg') center center / cover no-repeat}
+      #coords {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        background: rgba(0,0,0,0.65);
+        color: #fff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        z-index: 1100;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+        pointer-events: none;
+        display: none;
+      }
 
     /* Bottom-right author notice */
     #attribution{
@@ -125,6 +139,7 @@
 </head>
 <body>
   <div id="map"></div>
+  <div id="coords" aria-hidden="true"></div>
   <div id="side-maps" aria-label="Other in-game maps">
     <img class="side-map" src="assets/ingame-maps/map-alsius-ini.png" alt="Alsuis map" title="Alsuis" tabindex="0">
     <img class="side-map" src="assets/ingame-maps/map-ignis-ini.png" alt="Ignis map" title="Ignis" tabindex="0">
@@ -147,16 +162,26 @@
     probe.onload = () => {
       const tileW = probe.width;
       const tileH = probe.height;
-      const totalW = cols * tileW;
-      const totalH = rows * tileH;
+
+      // Original stitched image pixel size (e.g. 3 * 1024 = 3072)
+      const origTotalW = cols * tileW;
+      const origTotalH = rows * tileH;
+
+      // Desired raster coordinates size. The world should behave as 6144x6144
+      // while the actual stitched image is 3072x3072. scale = 6144/3072 = 2
+      const scale = 2;
+
+      // Scaled world size used by Leaflet (map coordinate units)
+      const totalW = origTotalW * scale;
+      const totalH = origTotalH * scale;
 
       // Use CRS.Simple so coordinates map directly to pixels
       // Disable the default zoomControl (placed top-left) so we can
       // re-add it on the right side.
       const map = L.map('map', {
         crs: L.CRS.Simple,
-        minZoom: -2,
-        maxZoom: 5,
+        minZoom: -3,
+        maxZoom: 0,
         maxBoundsViscosity: 0.5,
         zoomControl: false
       });
@@ -167,19 +192,27 @@
       // Snap back to bounds, but allow a padding buffer so users can pan slightly
       // outside before the map bounces back. Adjust `pad` (pixels) and
       // `maxBoundsViscosity` above to tune feel.
-      const pad = 200; // pixels of padding outside the image
+      const pad = 200 * scale; // pixels of padding outside the image (scaled)
       const paddedBounds = [[-pad, -pad], [totalH + pad, totalW + pad]];
       map.setMaxBounds(paddedBounds);
 
-      // Add each tile as an ImageOverlay positioned by pixel bounds
+      // Helper: add markers using raster coordinates (6144x6144 space)
+      // Example: addRasterMarker(x, y) where x/y are in the 6144x6144 space.
+      // Y-axis: user coords have origin at top-left, Leaflet has origin at bottom-left
+      function addRasterMarker(x, y, opts){
+        // Leaflet expects [lat, lng] -> [y, x], and invert Y
+        return L.marker([totalH - y, x], opts).addTo(map);
+      }
+
+      // Add each tile as an ImageOverlay positioned by scaled pixel bounds
       // Note: flip vertical ordering so rows 1 and 3 are swapped
       for(let r=1; r<=rows; r++){
         for(let c=1; c<=cols; c++){
           const rowPos = rows - r; // invert row index
-          const y1 = rowPos * tileH;
-          const x1 = (c-1) * tileW;
-          const y2 = (rowPos + 1) * tileH;
-          const x2 = c * tileW;
+          const y1 = rowPos * tileH * scale;
+          const x1 = (c-1) * tileW * scale;
+          const y2 = (rowPos + 1) * tileH * scale;
+          const x2 = c * tileW * scale;
           L.imageOverlay(tileUrl(r,c), [[y1,x1],[y2,x2]]).addTo(map);
         }
       }
@@ -187,6 +220,72 @@
       L.control.scale({metric: false, imperial: false}).addTo(map);
       // Add zoom control on the right side
       L.control.zoom({ position: 'topright' }).addTo(map);
+
+      // Load markers/shapes/icons from JSON and render them
+      fetch('assets/markers.json').then(r => r.json()).then(data => {
+        const icons = {};
+        // Create Leaflet icons (scale sizes by `scale` so they fit raster coords)
+        for(const [key, def] of Object.entries(data.icons||{})){
+          const size = def.size || [24,24];
+          const anchor = def.anchor || [Math.floor(size[0]/2), size[1]];
+          icons[key] = L.icon({
+            iconUrl: def.url,
+            iconSize: [size[0], size[1]],
+            iconAnchor: [anchor[0], anchor[1]]
+          });
+        }
+
+        const layerIndex = {};
+        const overlays = {};
+
+        function toLatLng(p){ return [totalH - p[1], p[0]]; }
+
+        for(const f of (data.features||[])){
+          let layer = null;
+          if(f.type === 'marker'){
+            const icon = f.icon && icons[f.icon] ? icons[f.icon] : undefined;
+            layer = addRasterMarker(f.x, f.y, icon ? {icon} : undefined);
+          } else if(f.type === 'circle'){
+            const c = toLatLng(f.center);
+            layer = L.circle(c, { radius: (f.radius||50), color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
+          } else if(f.type === 'polygon'){
+            const pts = (f.points||[]).map(toLatLng);
+            layer = L.polygon(pts, { color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
+          } else if(f.type === 'polyline'){
+            const pts = (f.points||[]).map(toLatLng);
+            layer = L.polyline(pts, { color: f.color || '#3388ff', weight: f.weight || 3 }).addTo(map);
+          } else if(f.type === 'group'){
+            const members = (f.members||[]).map(id => layerIndex[id]).filter(Boolean);
+            layer = L.layerGroup(members).addTo(map);
+            // register group as an overlay so it can be toggled in the layer control
+            overlays[f.name || f.id || ('group-' + Object.keys(overlays).length)] = layer;
+          }
+
+          if(layer){
+            if(f.popup) layer.bindPopup(f.popup);
+            if(f.id) layerIndex[f.id] = layer;
+          }
+        }
+          // If any overlays (groups) were registered, add a layer control
+          if(Object.keys(overlays).length > 0){
+            L.control.layers(null, overlays, { collapsed: false, position: 'bottomleft' }).addTo(map);
+          }
+        // Coordinate readout: show raster coords (original pixel space) while hovering
+        const coordsEl = document.getElementById('coords');
+        if(coordsEl){
+          map.on('mousemove', (e) => {
+            const mapX = e.latlng.lng; // scaled x in 0..totalW
+            const mapY = e.latlng.lat; // scaled y in 0..totalH (origin at bottom)
+            // X: 1-based left-to-right using scaled coords
+            const displayX = Math.max(1, Math.min(totalW, Math.floor(mapX) + 1));
+            // Y: invert because mapY origin is bottom; top should be 1
+            const displayY = Math.max(1, Math.min(totalH, Math.floor(totalH - mapY) + 1));
+            coordsEl.style.display = 'block';
+            coordsEl.textContent = `${displayX}x${displayY}`;
+          });
+          map.on('mouseout', () => { coordsEl.style.display = 'none'; });
+        }
+      }).catch(err => console.error('Failed to load markers.json', err));
     };
 
     probe.onerror = () => {
