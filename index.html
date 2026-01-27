@@ -31,12 +31,19 @@
       const map = L.map('map', {
         crs: L.CRS.Simple,
         minZoom: -5,
-        maxZoom: 5
+        maxZoom: 5,
+        maxBoundsViscosity: 0.5
       });
 
       const fullBounds = [[0,0],[totalH,totalW]]; // [[y1,x1],[y2,x2]]
       map.fitBounds(fullBounds);
-      map.setMaxBounds(fullBounds);
+
+      // Snap back to bounds, but allow a padding buffer so users can pan slightly
+      // outside before the map bounces back. Adjust `pad` (pixels) and
+      // `maxBoundsViscosity` above to tune feel.
+      const pad = 200; // pixels of padding outside the image
+      const paddedBounds = [[-pad, -pad], [totalH + pad, totalW + pad]];
+      map.setMaxBounds(paddedBounds);
 
       // Add each tile as an ImageOverlay positioned by pixel bounds
       // Note: flip vertical ordering so rows 1 and 3 are swapped
