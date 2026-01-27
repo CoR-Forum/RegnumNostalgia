@@ -15,6 +15,15 @@ else
     echo "Database already exists, skipping initialization"
 fi
 
+# Ensure the application directory and sqlite file are writable by PHP-FPM
+# (PHP-FPM typically runs as www-data inside the official images)
+if [ -f /var/www/api/database.sqlite ]; then
+    chown www-data:www-data /var/www/api/database.sqlite || true
+    chmod 660 /var/www/api/database.sqlite || true
+fi
+chown -R www-data:www-data /var/www/api || true
+find /var/www/api -type d -exec chmod 750 {} + || true
+
 # Set up health regeneration loop (every 5 seconds)
 echo "Starting health regeneration background service..."
 
