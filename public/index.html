@@ -71,6 +71,21 @@
       pointer-events: none;
     }
 
+    /* Header action buttons (top-right) */
+    #header-actions{
+      position: absolute;
+      right: 12px;
+      top: 8px;
+      z-index: 1100;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      pointer-events: auto;
+    }
+    #header-actions .btn-logout{
+      pointer-events: auto;
+    }
+
     /* Login/Realm Modal Styles */
     #modal-overlay{
       position: fixed;
@@ -103,6 +118,26 @@
 
     .modal-step{ display: none; }
     .modal-step.active{ display: block; }
+    /* Map context menu (right-click) */
+    .map-contextmenu{
+      position: absolute;
+      background: #1f2937;
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 6px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      font-size: 13px;
+      z-index: 20000;
+      display: none;
+      min-width: 96px;
+      pointer-events: auto;
+    }
+    .map-contextmenu .map-contextmenu-item{
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .map-contextmenu .map-contextmenu-item:hover{ background: rgba(255,255,255,0.04) }
 
     .modal-title{
       font-size: 11px;
@@ -764,14 +799,15 @@
         </div>
       </div>
       <div class="player-coords" id="player-coords">Position: 0, 0</div>
-      <button class="btn-logout" id="inventory-btn" style="margin-bottom: 4px;">Inventory</button>
-      <button class="btn-logout" id="logout-btn">Logout</button>
     </div>
   </div>
 
   <div id="map"></div>
   <div id="coords" aria-hidden="true"></div>
-  <img id="logo" src="assets/regnum-logo.png" alt="Regnum logo">
+  <div id="header-actions">
+    <button class="btn-logout" id="inventory-btn">Inventory</button>
+    <button class="btn-logout" id="logout-btn">Logout</button>
+  </div>
   <div id="attribution" aria-label="Map author and source">
     <a href="https://github.com/CoR-Forum/RegnumMap-Nostalgia" target="_blank" rel="noopener noreferrer">GitHub</a>
   </div>
@@ -808,7 +844,12 @@
         minZoom: -3,
         maxZoom: 0,
         maxBoundsViscosity: 0.5,
-        zoomControl: false
+        zoomControl: false,
+        scrollWheelZoom: true,
+        doubleClickZoom: false,
+        boxZoom: false,
+        touchZoom: true,
+        keyboard: false
       });
 
       const fullBounds = [[0,0],[totalH,totalW]]; // [[y1,x1],[y2,x2]]
@@ -844,7 +885,7 @@
 
       L.control.scale({metric: false, imperial: false}).addTo(map);
       // Add zoom control on the right side
-      L.control.zoom({ position: 'topright' }).addTo(map);
+      // Zoom control removed to disable zoom UI (interactions disabled above)
 
       // Load markers/shapes/icons from JSON and render them
       fetch('assets/markers.json').then(r => r.json()).then(data => {
@@ -1522,31 +1563,79 @@
       map.setView(latLng, map.getZoom());
     }
 
-    function enableClickToMove() {
-      map.on('click', async (e) => {
-        const x = Math.round(e.latlng.lng);
-        const y = Math.round(totalH - e.latlng.lat);
+    // Context menu + right-click move support
+    let __lastContextLatLng = null;
+    let __mapContextMenuEl = null;
 
-        // Validate bounds
-        if (x < 0 || x > 6144 || y < 0 || y > 6144) return;
+    function createMapContextMenu() {
+      __mapContextMenuEl = document.createElement('div');
+      __mapContextMenuEl.id = 'map-contextmenu';
+      __mapContextMenuEl.className = 'map-contextmenu';
+      __mapContextMenuEl.innerHTML = '<div class="map-contextmenu-item" id="map-go-here">Go here</div>';
+      document.body.appendChild(__mapContextMenuEl);
 
-        try {
-          const formData = new URLSearchParams();
-          formData.append('x', x);
-          formData.append('y', y);
-
-          await apiCall('/player/position', {
-            method: 'POST',
-            body: formData
-          });
-
-          gameState.position = { x, y };
-          gameState.playerMarker.setLatLng([totalH - y, x]);
-          updatePlayerCoords(x, y);
-        } catch (error) {
-          console.error('Failed to update position:', error);
-        }
+      __mapContextMenuEl.querySelector('#map-go-here').addEventListener('click', async (ev) => {
+        ev.stopPropagation();
+        if (!__lastContextLatLng) return hideMapContextMenu();
+        await performMoveAtLatLng(__lastContextLatLng);
+        hideMapContextMenu();
       });
+
+      // Hide menu when clicking elsewhere or pressing Escape
+      document.addEventListener('click', (ev) => { if (__mapContextMenuEl && !__mapContextMenuEl.contains(ev.target)) hideMapContextMenu(); });
+      document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') hideMapContextMenu(); });
+    }
+
+    function showMapContextMenuAt(containerPoint, latlng) {
+      if (!__mapContextMenuEl) createMapContextMenu();
+      __lastContextLatLng = latlng;
+      const rect = map.getContainer().getBoundingClientRect();
+      __mapContextMenuEl.style.left = (rect.left + containerPoint.x) + 'px';
+      __mapContextMenuEl.style.top = (rect.top + containerPoint.y) + 'px';
+      __mapContextMenuEl.style.display = 'block';
+    }
+
+    function hideMapContextMenu() {
+      if (!__mapContextMenuEl) return;
+      __mapContextMenuEl.style.display = 'none';
+      __lastContextLatLng = null;
+    }
+
+    async function performMoveAtLatLng(latlng) {
+      const x = Math.round(latlng.lng);
+      const y = Math.round(totalH - latlng.lat);
+
+      if (x < 0 || x > 6144 || y < 0 || y > 6144) return;
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('x', x);
+        formData.append('y', y);
+
+        await apiCall('/player/position', {
+          method: 'POST',
+          body: formData
+        });
+
+        gameState.position = { x, y };
+        if (gameState.playerMarker) gameState.playerMarker.setLatLng([totalH - y, x]);
+        updatePlayerCoords(x, y);
+      } catch (error) {
+        console.error('Failed to update position:', error);
+      }
+    }
+
+    function enableClickToMove() {
+      // Use right-click (contextmenu) to open a small menu with actions
+      map.on('contextmenu', (e) => {
+        // Prevent the browser default context menu
+        if (e.originalEvent && typeof e.originalEvent.preventDefault === 'function') e.originalEvent.preventDefault();
+        showMapContextMenuAt(e.containerPoint, e.latlng);
+      });
+
+      // Hide menu when map viewport changes
+      map.on('movestart zoomstart', () => hideMapContextMenu());
+      map.on('click', () => hideMapContextMenu());
     }
 
     function startPlayerPolling() {
