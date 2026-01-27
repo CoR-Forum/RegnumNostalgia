@@ -296,6 +296,37 @@
       transition: background 0.2s;
     }
     .btn-logout:hover{ background: rgba(220,38,38,1); }
+
+    /* Territory Health Bar Styles */
+    .territory-marker{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .territory-icon{
+      width: 32px;
+      height: 32px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    .territory-health-bar{
+      width: 40px;
+      height: 4px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    .territory-health-fill{
+      height: 100%;
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
+    .health-high{ background: #22c55e; }
+    .health-medium{ background: #eab308; }
+    .health-low{ background: #ef4444; }
   </style>
 </head>
 <body>
@@ -866,25 +897,60 @@
           iconKey = isContested ? 'door-vulnerable' : 'door-safe';
         }
 
-        const icon = territoryIcons[iconKey];
+        const iconData = territoryIcons[iconKey];
 
-        if (gameState.territories.has(territory.territoryId)) {
-          // Update existing marker - remove and recreate if icon changed
-          const oldMarker = gameState.territories.get(territory.territoryId);
-          map.removeLayer(oldMarker);
-          
-          if (icon) {
-            const marker = L.marker(latLng, { icon: icon }).addTo(map);
-            const statusText = isContested ? '<br><span style="color:#ef4444">⚔️ Contested!</span>' : '';
-            marker.bindPopup(`<b>${territory.name}</b><br>Type: ${territory.type}<br>Owner: ${territory.ownerRealm}<br>Health: ${territory.health}%${statusText}`);
-            gameState.territories.set(territory.territoryId, marker);
+        if (iconData) {
+          // Determine health bar color and calculate percentage
+          const health = territory.health;
+          // Calculate max health based on type
+          let maxHealth = 100000; // forts
+          if (territory.type === 'castle') {
+            maxHealth = 250000;
+          } else if (territory.type === 'wall') {
+            maxHealth = 500000;
           }
-        } else {
-          // Create new marker with icon
-          if (icon) {
-            const marker = L.marker(latLng, { icon: icon }).addTo(map);
+          
+          const healthPercent = Math.round((health / maxHealth) * 100);
+          
+          let healthClass = 'health-high';
+          if (healthPercent < 30) {
+            healthClass = 'health-low';
+          } else if (healthPercent < 70) {
+            healthClass = 'health-medium';
+          }
+
+          // Get icon URL from the icon object
+          const iconUrl = iconData.options.iconUrl;
+
+          // Create custom HTML marker with health bar
+          const customIcon = L.divIcon({
+            className: 'custom-territory-marker',
+            html: `
+              <div class="territory-marker">
+                <div class="territory-icon" style="background-image: url('${iconUrl}');"></div>
+                <div class="territory-health-bar">
+                  <div class="territory-health-fill ${healthClass}" style="width: ${healthPercent}%;"></div>
+                </div>
+              </div>
+            `,
+            iconSize: [40, 44],
+            iconAnchor: [20, 38]
+          });
+
+          if (gameState.territories.has(territory.territoryId)) {
+            // Update existing marker - remove and recreate
+            const oldMarker = gameState.territories.get(territory.territoryId);
+            map.removeLayer(oldMarker);
+            
+            const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
             const statusText = isContested ? '<br><span style="color:#ef4444">⚔️ Contested!</span>' : '';
-            marker.bindPopup(`<b>${territory.name}</b><br>Type: ${territory.type}<br>Owner: ${territory.ownerRealm}<br>Health: ${territory.health}%${statusText}`);
+            marker.bindPopup(`<b>${territory.name}</b><br>Type: ${territory.type}<br>Owner: ${territory.ownerRealm}<br>Health: ${health.toLocaleString()}/${maxHealth.toLocaleString()}${statusText}`);
+            gameState.territories.set(territory.territoryId, marker);
+          } else {
+            // Create new marker with custom icon
+            const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+            const statusText = isContested ? '<br><span style="color:#ef4444">⚔️ Contested!</span>' : '';
+            marker.bindPopup(`<b>${territory.name}</b><br>Type: ${territory.type}<br>Owner: ${territory.ownerRealm}<br>Health: ${health.toLocaleString()}/${maxHealth.toLocaleString()}${statusText}`);
             gameState.territories.set(territory.territoryId, marker);
           }
         }

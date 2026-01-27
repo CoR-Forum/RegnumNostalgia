@@ -64,20 +64,20 @@ try {
     // Seed territories with forts, castles, and walls
     $territories = [
         // Syrtis
-        ['syrtis', 'Algaros Fort', 'fort', 1742, 3200, 'syrtis'],
-        ['syrtis', 'Herbret Fort', 'fort', 2896, 3237, 'syrtis'],
-        ['syrtis', 'Eferias Castle', 'castle', 3757, 4717, 'syrtis'],
-        ['syrtis', 'Syrtis Realm Wall', 'wall', 2357, 4037, 'syrtis'],
+        ['syrtis', 'Algaros Fort', 'fort', 1742, 3200, 'syrtis', 100000],
+        ['syrtis', 'Herbret Fort', 'fort', 2896, 3237, 'syrtis', 100000],
+        ['syrtis', 'Eferias Castle', 'castle', 3757, 4717, 'syrtis', 250000],
+        ['syrtis', 'Syrtis Realm Wall', 'wall', 2357, 4037, 'syrtis', 500000],
         // Ignis
-        ['ignis', 'Menirah Fort', 'fort', 3379, 1689, 'ignis'],
-        ['ignis', 'Samal Fort', 'fort', 3684, 2432, 'ignis'],
-        ['ignis', 'Shaanarid Castle', 'castle', 4608, 2974, 'ignis'],
-        ['ignis', 'Ignis Realm Wall', 'wall', 4148, 1966, 'ignis'],
+        ['ignis', 'Menirah Fort', 'fort', 3379, 1689, 'ignis', 100000],
+        ['ignis', 'Samal Fort', 'fort', 3684, 2432, 'ignis', 100000],
+        ['ignis', 'Shaanarid Castle', 'castle', 4608, 2974, 'ignis', 250000],
+        ['ignis', 'Ignis Realm Wall', 'wall', 4148, 1966, 'ignis', 500000],
         // Alsius
-        ['alsius', 'Trelleborg Fort', 'fort', 1640, 2441, 'alsius'],
-        ['alsius', 'Aggersborg Fort', 'fort', 2729, 2415, 'alsius'],
-        ['alsius', 'Imperia Castle', 'castle', 2802, 1103, 'alsius'],
-        ['alsius', 'Alsius Realm Wall', 'wall', 1755, 2106, 'alsius']
+        ['alsius', 'Trelleborg Fort', 'fort', 1640, 2441, 'alsius', 100000],
+        ['alsius', 'Aggersborg Fort', 'fort', 2729, 2415, 'alsius', 100000],
+        ['alsius', 'Imperia Castle', 'castle', 2802, 1103, 'alsius', 250000],
+        ['alsius', 'Alsius Realm Wall', 'wall', 1755, 2106, 'alsius', 500000],
     ];
 
     $stmt = $db->prepare('SELECT COUNT(*) FROM territories');
@@ -85,7 +85,7 @@ try {
     $count = $stmt->fetchColumn();
 
     if ($count == 0) {
-        $stmt = $db->prepare('INSERT INTO territories (realm, name, type, x, y, owner_realm) VALUES (?, ?, ?, ?, ?, ?)');
+        $stmt = $db->prepare('INSERT INTO territories (realm, name, type, x, y, owner_realm, health) VALUES (?, ?, ?, ?, ?, ?, ?)');
         foreach ($territories as $territory) {
             $stmt->execute($territory);
         }
@@ -97,7 +97,7 @@ try {
     echo "\nTables created:\n";
     echo "  - sessions (session_id, user_id, username, realm, created_at, expires_at, last_activity)\n";
     echo "  - players (user_id, username, realm, x, y, last_active)\n";
-
+    echo "  - territories (territory_id, realm, name, type, health, x, y, owner_realm, owner_players, contested, contested_since)\n";
 } catch (PDOException $e) {
     echo "Error initializing database: " . $e->getMessage() . "\n";
     exit(1);
