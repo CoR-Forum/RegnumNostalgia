@@ -132,6 +132,51 @@ function normalizePoints($coords) {
     return $norm;
 }
 
+// Get current server in-game time. Computes from `server_time` row if present.
+function getServerTime() {
+    $db = getDB();
+    try {
+        $stmt = $db->prepare('SELECT started_at, ingame_hour, ingame_minute, tick_seconds FROM server_time WHERE id = 1 LIMIT 1');
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) return ['hour' => 0, 'minute' => 0];
+
+        $startedAt = (int)($row['started_at'] ?? 0);
+        $tickSeconds = (int)($row['tick_seconds'] ?? 150);
+        if ($tickSeconds <= 0) $tickSeconds = 150;
+
+        $now = time();
+        $elapsed = max(0, $now - $startedAt);
+
+        $ingameHoursPassed = floor($elapsed / $tickSeconds);
+        $hour = (int)($ingameHoursPassed % 24);
+        $withinTick = $elapsed % $tickSeconds;
+        $minute = (int)floor(($withinTick / $tickSeconds) * 60);
+
+        return ['hour' => $hour, 'minute' => $minute];
+    } catch (Exception $e) {
+        return ['hour' => 0, 'minute' => 0];
+    }
+}
+
+// Map an in-game hour (0-23) to a daytime icon filename available in public/assets/ui-v1
+function getDaytimeIcon($hour) {
+    $h = (int)$hour;
+    if ($h < 0 || $h > 23) $h = 0;
+
+    // Ranges mapped to available icons: dawn, morning, day, afternoon, sunset, dusk, nightfall, night
+    if ($h === 5) return '/assets/ui-v1/time/ui-icon-time-dawn.png';
+    if ($h >= 6 && $h <= 8) return '/assets/ui-v1/time/ui-icon-time-morning.png';
+    if ($h >= 9 && $h <= 11) return '/assets/ui-v1/time/ui-icon-time-day.png';
+    if ($h >= 12 && $h <= 16) return '/assets/ui-v1/time/ui-icon-time-afternoon.png';
+    if ($h === 17) return '/assets/ui-v1/time/ui-icon-time-sunset.png';
+    if ($h === 18) return '/assets/ui-v1/time/ui-icon-time-dusk.png';
+    if ($h >= 19 && $h <= 20) return '/assets/ui-v1/time/ui-icon-time-nightfall.png';
+    if ($h >= 21 || $h <= 4) return '/assets/ui-v1/time/ui-icon-time-night.png';
+    // fallback
+    return '/assets/ui-v1/time/ui-icon-time-day.png';
+}
+
 // Validate session and return user data
 function validateSession() {
     $sessionToken = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? '';
@@ -454,6 +499,11 @@ function handleGetPosition() {
     ];
 
     if ($walker) $resp['walker'] = $walker;
+
+    // Add current server in-game time and a daytime icon for the client
+    $st = getServerTime();
+    $resp['serverTime'] = ['hour' => (int)$st['hour'], 'minute' => (int)$st['minute']];
+    $resp['daytimeIcon'] = getDaytimeIcon((int)$st['hour']);
 
     respondSuccess($resp);
 }

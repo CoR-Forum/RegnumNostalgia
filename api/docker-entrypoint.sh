@@ -48,6 +48,16 @@ done) &
 
 echo "Health regeneration service started (runs every 5 seconds)"
 
+# Start server-time cron (every 10 seconds)
+chmod +x /var/www/api/cron/process-server-time.php || true
+touch /var/log/server-time.log || true
+echo "Starting server-time cron (every 10 seconds)..."
+(while true; do
+    /usr/local/bin/php /var/www/api/cron/process-server-time.php >> /var/log/server-time.log 2>&1
+    sleep 10
+done) &
+echo "Server-time cron started; logs: /var/log/server-time.log"
+
 # Ensure walker worker exists and start it
 chmod +x /var/www/api/cron/process-walking.php || true
 touch /var/log/walker.log || true
@@ -64,3 +74,4 @@ echo "Level cron started; logs: /var/log/level-cron.log"
 
 # Start PHP-FPM
 exec php-fpm
+

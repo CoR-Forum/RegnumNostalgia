@@ -173,6 +173,29 @@ try {
     $db->exec('CREATE INDEX IF NOT EXISTS idx_walkers_user_id ON walkers(user_id)');
 
     // Seed territories with forts, castles, and walls
+
+    // Create server_time table to track in-game time (1 real hour == 24 in-game hours)
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS server_time (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            started_at INTEGER NOT NULL,
+            last_updated INTEGER NOT NULL,
+            ingame_hour INTEGER NOT NULL DEFAULT 0,
+            ingame_minute INTEGER NOT NULL DEFAULT 0,
+            tick_seconds INTEGER NOT NULL DEFAULT 150
+        )
+    ');
+
+    $stmt = $db->prepare('SELECT COUNT(*) FROM server_time');
+    $stmt->execute();
+    $count = $stmt->fetchColumn();
+
+    if ($count == 0) {
+        $now = time();
+        $stmt = $db->prepare('INSERT INTO server_time (id, started_at, last_updated, ingame_hour, ingame_minute, tick_seconds) VALUES (1, ?, ?, 0, 0, 150)');
+        $stmt->execute([$now, $now]);
+        echo "  - Initialized server_time (1 real hour = 24 in-game hours)\n";
+    }
     $territories = [
         // Syrtis
         ['syrtis', 'Algaros Fort', 'fort', 1742, 3200, 'syrtis', 100000, 100000],
@@ -325,6 +348,7 @@ try {
     echo "  - items (item_id, name, type, description, stats, rarity, stackable, equipment_slot)\n";
     echo "  - inventory (inventory_id, user_id, item_id, quantity, acquired_at)\n";
     echo "  - equipment (equipment_id, user_id, head, body, hands, shoulders, legs, weapon_right, weapon_left, ring_right, ring_left, amulet, created_at, updated_at)\n";
+    echo "  - server_time (started_at, last_updated, ingame_hour, ingame_minute, tick_seconds)\n";
 } catch (PDOException $e) {
     echo "Error initializing database: " . $e->getMessage() . "\n";
     exit(1);
