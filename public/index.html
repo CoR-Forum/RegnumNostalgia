@@ -1962,10 +1962,18 @@
 
         updatePlayerCoords(gameState.position.x, gameState.position.y);
       } catch (error) {
-        console.error('Failed to initialize game:', error);
-        alert('Failed to initialize game: ' + error.message);
-        localStorage.removeItem('sessionToken');
-        location.reload();
+        // Initialization failed (likely invalid/expired session).
+        // Don't show a blocking alert — clear session and return to login screen.
+        console.debug('initGame failed, returning to login:', error && error.message ? error.message : error);
+        try { localStorage.removeItem('sessionToken'); } catch (e) {}
+        try { gameState.sessionToken = null; } catch (e) {}
+        try {
+          // Hide authenticated UI and show login modal
+          document.body.classList.remove('authenticated');
+          const overlay = document.getElementById('modal-overlay'); if (overlay) overlay.classList.remove('hidden');
+          // Ensure login step is active
+          try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
+        } catch (e) {}
       }
     }
 
