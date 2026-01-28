@@ -42,12 +42,9 @@ echo "Starting health regeneration background service..."
 # Make sure regeneration script is executable
 chmod +x /var/www/api/cron/regenerate-health.php
 
-# Create log file
-touch /var/log/regenerate.log
-
-# Start regeneration loop in background
+# Start regeneration loop in background (logs -> stdout/stderr)
 (while true; do
-    /usr/local/bin/php /var/www/api/cron/regenerate-health.php >> /var/log/regenerate.log 2>&1
+    /usr/local/bin/php /var/www/api/cron/regenerate-health.php 2>&1
     sleep 5
 done) &
 
@@ -55,37 +52,33 @@ echo "Health regeneration service started (runs every 5 seconds)"
 
 # Start server-time cron (every 10 seconds)
 chmod +x /var/www/api/cron/process-server-time.php || true
-touch /var/log/server-time.log || true
 echo "Starting server-time cron (every 10 seconds)..."
 (while true; do
-    /usr/local/bin/php /var/www/api/cron/process-server-time.php >> /var/log/server-time.log 2>&1
+    /usr/local/bin/php /var/www/api/cron/process-server-time.php 2>&1
     sleep 10
 done) &
-echo "Server-time cron started; logs: /var/log/server-time.log"
+echo "Server-time cron started (logs -> stdout)"
 
 # Start territory update cron (every 15 seconds)
 chmod +x /var/www/api/cron/update-territories.php || true
-touch /var/log/territory.log || true
 echo "Starting territory update cron (every 15 seconds)..."
 (while true; do
-    /usr/local/bin/php /var/www/api/cron/update-territories.php >> /var/log/territory.log 2>&1
+    /usr/local/bin/php /var/www/api/cron/update-territories.php 2>&1
     sleep 60
 done) &
-echo "Territory update cron started; logs: /var/log/territory.log"
+echo "Territory update cron started (logs -> stdout)"
 
 # Ensure walker worker exists and start it
 chmod +x /var/www/api/cron/process-walking.php || true
-touch /var/log/walker.log || true
 echo "Starting walker worker (daemon mode)..."
-/usr/local/bin/php /var/www/api/cron/process-walking.php --daemon >> /var/log/walker.log 2>&1 &
-echo "Walker worker started; logs: /var/log/walker.log"
+/usr/local/bin/php /var/www/api/cron/process-walking.php --daemon 2>&1 &
+echo "Walker worker started (logs -> stdout)"
 
 # Start level calculation cron (updates player.level every 10s)
 chmod +x /var/www/api/cron.php || true
-touch /var/log/level-cron.log || true
 echo "Starting level cron (background)..."
-/usr/local/bin/php /var/www/api/cron.php >> /var/log/level-cron.log 2>&1 &
-echo "Level cron started; logs: /var/log/level-cron.log"
+/usr/local/bin/php /var/www/api/cron.php 2>&1 &
+echo "Level cron started (logs -> stdout)"
 
 # Start PHP-FPM
 exec php-fpm
