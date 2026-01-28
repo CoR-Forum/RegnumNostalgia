@@ -889,6 +889,7 @@
         <button id="spellbook-hud-btn" class="ui-hud-btn" data-action="spellbook" aria-label="Spellbook"></button>
       </div>
     </div>
+    <div class="ui-bar-repeat ui-bar-repeat-right"></div>
   </div>
   <!-- Top-right compass (non-interactive) -->
   <div id="ui-compass" aria-hidden="true">
@@ -2769,8 +2770,35 @@
       background-position: left top;
       background-size: auto 100%;
     }
-    #ui-image-overlay .ui-bar-right{ flex: 0 0 auto; }
+    #ui-image-overlay .ui-bar-repeat-right{
+      flex: 1 1 auto;
+      height: 73px;
+      background-image: url('assets/v1/ui/ui-bottom-bar-left.png');
+      background-repeat: repeat-x;
+      background-position: right top;
+      background-size: auto 100%;
+      transform: scaleX(-1);
+      pointer-events: none;
+    }
+    #ui-image-overlay .ui-bar-right{ flex: 0 0 auto; position: relative; }
     #ui-image-overlay .ui-bar-right img{ height: 73px; display:block; pointer-events: none; }
+    /* Anchor HUD buttons to the right image container so they follow it on resize */
+    #ui-image-overlay .ui-hud-group{
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+    }
+    /* Place each HUD button absolutely so existing per-button `right:` rules apply */
+    #ui-image-overlay .ui-hud-group .ui-hud-btn{
+      position: absolute;
+      bottom: 4px;
+      width: 38px;
+      height: 38px;
+      pointer-events: auto;
+    }
     /* Top-right compass image */
     #ui-compass{ position: fixed; top: 0; right: 0; z-index: 20001; pointer-events: none; }
     #ui-compass img{ height: 166px; display:block; }
