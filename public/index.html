@@ -437,11 +437,49 @@
     /* Equipment Slot Styles */
     .equipment-area{ padding: 8px; border: 2px solid #1a2538; border-radius: 3px; margin-bottom: 8px; background: transparent;}    
     .equipment-row{ display:flex; gap:6px; justify-content: flex-start; margin-bottom:6px; }
-    .equipment-slot{ width:44px; height:44px; background: transparent; border: 2px solid #2a3f5f; border-radius: 4px; display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer; }
+    .equipment-slot{ width:44px; height:44px; background: transparent; border: 2px solid #2a3f5f; border-radius: 4px; display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer; background-size: contain; background-position: center; background-repeat: no-repeat; }
     .equipment-slot.empty{ opacity:0.45; }
     .equipment-slot .slot-icon{ font-size:22px; }
     .equipment-slot .slot-rarity-border{ inset: -2px; border-radius:4px; }
     .equipment-slot.drag-over{ outline: 2px dashed #0d6efd; }
+    
+    /* Equipment slot background icons */
+    .equipment-slot[data-slot="head"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-head.png'); }
+    .equipment-slot[data-slot="body"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-torso.png'); }
+    .equipment-slot[data-slot="hands"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-arms.png'); }
+    .equipment-slot[data-slot="shoulders"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-pauldron.png'); }
+    .equipment-slot[data-slot="legs"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-legs.png'); }
+    .equipment-slot[data-slot="weapon_right"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-hand-right.png'); }
+    .equipment-slot[data-slot="weapon_left"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-hand-left.png'); }
+    .equipment-slot[data-slot="ring_right"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-rings.png'); }
+    .equipment-slot[data-slot="ring_left"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-rings.png'); }
+    .equipment-slot[data-slot="amulet"].empty{ background-image: url('assets/ui-v1/ui-equip-slot-amulet.png'); }
+
+    /* Character window (classic layout) */
+    .char-section{ border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); }
+    .char-section + .char-section{ margin-top: 4px; }
+    .char-section-title{
+      padding: 4px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      color: #e0e0e0;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.35);
+    }
+    .char-section-body{ padding: 6px; font-size: 12px; color: #e0e0e0; }
+    .char-line{ margin: 2px 0; }
+    .char-xp-bar{ height: 8px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4); margin: 6px 0; }
+    #char-xp-fill{ height: 100%; width: 0%; background: linear-gradient(90deg,#2dd4bf,#60a5fa); }
+    .char-attr-row{ display:flex; justify-content:space-between; gap: 8px; margin: 2px 0; }
+    .char-attr-name{ flex: 1; color: #ffffff; }
+    .char-attr-name.char-attr-good,
+    .char-attr-name.char-attr-bad{ color: #ffffff; }
+    .char-attr-value{ min-width: 40px; text-align: right; }
+    .char-attr-good{ color: #22c55e; }
+    .char-attr-bad{ color: #ef4444; }
+    .char-stat-row{ display:flex; justify-content:space-between; gap: 8px; margin: 2px 0; }
+    .char-status{ display:flex; justify-content:space-between; color: #ef4444; font-weight: 700; }
 
     /* Visual for items that cannot be equipped into any slot */
     .not-equippable{ opacity: 0.6; filter: grayscale(80%); }
@@ -741,7 +779,24 @@
       <button id="inventory-close-btn" class="ui-window-close-btn"></button>
     </div>
 
-    <!-- equipment moved to Character window -->
+    <div class="ui-window-body" style="padding: 10px 10px 0 10px;">
+      <div class="equipment-area">
+        <div class="equipment-row" id="equipment-row-top">
+          <div class="equipment-slot empty" data-slot="head" title="Head"></div>
+          <div class="equipment-slot empty" data-slot="body" title="Body"></div>
+          <div class="equipment-slot empty" data-slot="hands" title="Hands"></div>
+          <div class="equipment-slot empty" data-slot="shoulders" title="Shoulders"></div>
+          <div class="equipment-slot empty" data-slot="legs" title="Legs"></div>
+        </div>
+        <div class="equipment-row" id="equipment-row-bottom">
+          <div class="equipment-slot empty" data-slot="weapon_right" title="Weapon R"></div>
+          <div class="equipment-slot empty" data-slot="weapon_left" title="Weapon L"></div>
+          <div class="equipment-slot empty" data-slot="ring_right" title="Ring R"></div>
+          <div class="equipment-slot empty" data-slot="ring_left" title="Ring L"></div>
+          <div class="equipment-slot empty" data-slot="amulet" title="Amulet"></div>
+        </div>
+      </div>
+    </div>
 
     <div id="inventory-list" class="ui-window-body" style="padding: 20px;">
       <div id="inventory-loading" style="text-align: center; color: #e0e0e0; padding: 40px;">
@@ -807,53 +862,52 @@
       <button id="character-close-btn" class="ui-window-close-btn"></button>
     </div>
 
-    <div id="character-body" class="ui-window-body" style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">
-      <div>
-        <div class="equipment-area">
-          <div class="equipment-row" id="equipment-row-top">
-            <div class="equipment-slot empty" data-slot="head" title="Head"><div class="slot-icon">👑</div></div>
-            <div class="equipment-slot empty" data-slot="body" title="Body"><div class="slot-icon">🛡️</div></div>
-            <div class="equipment-slot empty" data-slot="hands" title="Hands"><div class="slot-icon">🧤</div></div>
-            <div class="equipment-slot empty" data-slot="shoulders" title="Shoulders"><div class="slot-icon">🧥</div></div>
-            <div class="equipment-slot empty" data-slot="legs" title="Legs"><div class="slot-icon">👖</div></div>
-          </div>
-          <div class="equipment-row" id="equipment-row-bottom">
-            <div class="equipment-slot empty" data-slot="weapon_right" title="Weapon R"><div class="slot-icon">⚔️</div></div>
-            <div class="equipment-slot empty" data-slot="weapon_left" title="Weapon L"><div class="slot-icon">🪓</div></div>
-            <div class="equipment-slot empty" data-slot="ring_right" title="Ring R"><div class="slot-icon">💍</div></div>
-            <div class="equipment-slot empty" data-slot="ring_left" title="Ring L"><div class="slot-icon">💍</div></div>
-            <div class="equipment-slot empty" data-slot="amulet" title="Amulet"><div class="slot-icon">📿</div></div>
-          </div>
+    <div id="character-body" class="ui-window-body" style="padding: 8px; display: flex; flex-direction: column; gap: 6px;">
+      <div class="char-section">
+        <div class="char-section-title">Name</div>
+        <div class="char-section-body">
+          <div id="char-name" class="char-line">-</div>
+          <div id="char-realm" class="char-line">-</div>
+          <div id="char-class" class="char-line">-</div>
+          <div class="char-line">Level <span id="char-level">1</span></div>
         </div>
       </div>
-      <div style="font-size: 12px; color: #e0e0e0;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <div>
-            <div style="margin-bottom:4px; font-weight:700;">Level</div>
-            <div id="char-level" style="font-size:18px; font-weight:700; color:#ffd700;">1</div>
+
+      <div class="char-section">
+        <div class="char-section-title">Experience</div>
+        <div class="char-section-body">
+          <div id="char-xp-text" class="char-line">0 / 0</div>
+          <div class="char-xp-bar">
+            <div id="char-xp-fill"></div>
           </div>
-          <div style="text-align:right;">
-            <div style="margin-top:6px;">
-              <div class="territory-health-bar" style="position:relative; height:18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.04); width:160px;">
-                <div id="char-xp-fill" style="height:100%; width:0%; background: linear-gradient(90deg,#8b5cf6,#06b6d4); transition:width 220ms linear; display:block;"></div>
-                <div id="char-xp-bar-overlay" style="position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; pointer-events:none; color:#fff; font-size:12px; font-weight:600; text-shadow:0 1px 0 rgba(0,0,0,0.7);"></div>
-              </div>
-            </div>
-          </div>
+          <div id="char-rp" class="char-line">0 Regnum Points</div>
         </div>
-        <div style="margin-top:8px; font-weight:700;">Stats</div>
-        <div id="char-stats-container" style="display:flex; justify-content:space-between; gap:12px; margin-top:4px;">
-          <div id="char-stats" style="font-size:12px; display:flex; flex-direction:column; gap:4px;">
-            <div id="stat-int">Int: 20</div>
-            <div id="stat-dex">Dex: 20</div>
-            <div id="stat-con">Con: 20</div>
-            <div id="stat-str">Str: 20</div>
-            <div id="stat-const">Constitution: 20</div>
-          </div>
-          <div id="char-armor-damage" style="font-size:12px; display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:80px;">
-            <div id="stat-damage">Damage: 0</div>
-            <div id="stat-armor">Armor: 0</div>
-          </div>
+      </div>
+
+      <div class="char-section">
+        <div class="char-section-title">Attributes</div>
+        <div class="char-section-body">
+          <div class="char-attr-row"><span class="char-attr-name char-attr-good">Intelligence</span><span id="stat-int" class="char-attr-value char-attr-good">20</span></div>
+          <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Dexterity</span><span id="stat-dex" class="char-attr-value char-attr-bad">20</span></div>
+          <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Concentration</span><span id="stat-con" class="char-attr-value char-attr-bad">20</span></div>
+          <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Strength</span><span id="stat-str" class="char-attr-value char-attr-bad">20</span></div>
+          <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Constitution</span><span id="stat-const" class="char-attr-value char-attr-bad">20</span></div>
+        </div>
+      </div>
+
+      <div class="char-section">
+        <div class="char-section-body">
+          <div class="char-stat-row"><span>Attack:</span><span id="stat-attack">0</span></div>
+          <div class="char-stat-row"><span>Armor:</span><span id="stat-armor">0</span></div>
+          <div class="char-stat-row"><span>Hit Chance:</span><span id="stat-hit">0</span></div>
+          <div class="char-stat-row"><span>Evasion:</span><span id="stat-evasion">0</span></div>
+          <div class="char-stat-row"><span>Block Chance:</span><span id="stat-block">0</span></div>
+        </div>
+      </div>
+
+      <div class="char-section">
+        <div class="char-section-body char-status">
+          <span>Weakness of the Dead</span><span id="stat-weakness">0%</span>
         </div>
       </div>
     </div>
@@ -1332,12 +1386,11 @@
       document.getElementById('inventory-loading').style.display = 'block';
       document.getElementById('inventory-items').style.display = 'none';
       document.getElementById('inventory-empty').style.display = 'none';
-      // equipment is shown in Character window now
 
       try {
-        // Fetch inventory (equipment will be fetched separately by character window when opened)
-        const invData = await apiCall('/inventory');
-        displayInventory(invData.items);
+        const [equipData, invData] = await Promise.all([apiCall('/equipment'), apiCall('/inventory')]);
+        if (equipData) displayEquipment(equipData.equipment);
+        if (invData) displayInventory(invData.items);
       } catch (error) {
         console.error('Failed to fetch inventory:', error);
         alert('Failed to load inventory: ' + error.message);
@@ -1355,9 +1408,20 @@
       if (!win) return;
       win.style.display = 'flex';
       try{
-        const data = await apiCall('/equipment');
-        displayEquipment(data.equipment);
-      }catch(err){ console.error('Failed to load equipment:', err); }
+        const posData = await apiCall('/player/position');
+        if (posData) {
+          gameState.xp = typeof posData.xp !== 'undefined' ? posData.xp : gameState.xp;
+          gameState.level = typeof posData.level !== 'undefined' ? posData.level : gameState.level;
+          gameState.xpToNext = typeof posData.xpToNext !== 'undefined' ? posData.xpToNext : gameState.xpToNext;
+          gameState.stats = posData.stats || gameState.stats;
+          gameState.damage = typeof posData.damage !== 'undefined' ? posData.damage : (gameState.damage || 0);
+          gameState.armor = typeof posData.armor !== 'undefined' ? posData.armor : (gameState.armor || 0);
+          gameState.username = typeof posData.username !== 'undefined' ? posData.username : gameState.username;
+          gameState.realm = typeof posData.realm !== 'undefined' ? posData.realm : gameState.realm;
+          // prefer explicit className, fall back to class
+          gameState.className = typeof posData.className !== 'undefined' ? posData.className : (typeof posData.class !== 'undefined' ? posData.class : gameState.className);
+        }
+      }catch(err){ console.error('Failed to load character data:', err); }
       updateCharacterStats();
     }
 
@@ -1368,30 +1432,47 @@
     function updateCharacterStats(){
       try{
         const lvlEl = document.getElementById('char-level'); if (lvlEl) lvlEl.textContent = gameState.level || 1;
+        const nameEl = document.getElementById('char-name'); if (nameEl) nameEl.textContent = gameState.username || '-';
+        const realmEl = document.getElementById('char-realm');
+        if (realmEl) {
+          const realm = gameState.realm ? (String(gameState.realm).charAt(0).toUpperCase() + String(gameState.realm).slice(1)) : '-';
+          realmEl.textContent = realm;
+        }
+        const classEl = document.getElementById('char-class');
+        if (classEl) classEl.textContent = gameState.className || gameState.class || 'Unknown';
         try {
           const fill = document.getElementById('char-xp-fill');
           const xp = Number(gameState.xp || 0);
           const xpToNextVal = Number(gameState.xpToNext || 0);
           const pct = (xpToNextVal > 0) ? Math.round((xp / (xp + xpToNextVal)) * 100) : 100;
           if (fill) fill.style.width = pct + '%';
-          try {
-            const overlay = document.getElementById('char-xp-bar-overlay');
-            if (overlay) overlay.textContent = `XP ${xp} / ${xp + xpToNextVal}`;
-          } catch (e) {}
+          const xpText = document.getElementById('char-xp-text');
+          if (xpText) xpText.textContent = `${xp} / ${xp + xpToNextVal}`;
+          const rpEl = document.getElementById('char-rp');
+          const rpVal = Number(gameState.regnumPoints || 0);
+          if (rpEl) rpEl.textContent = `${rpVal} Regnum Points`;
         } catch (e) {}
         const s = gameState.stats || { intelligence:20, dexterity:20, concentration:20, strength:20, constitution:20 };
-        document.getElementById('stat-int').textContent = `Int: ${s.intelligence || 20}`;
-        document.getElementById('stat-dex').textContent = `Dex: ${s.dexterity || 20}`;
-        document.getElementById('stat-con').textContent = `Con: ${s.concentration || 20}`;
-        document.getElementById('stat-str').textContent = `Str: ${s.strength || 20}`;
-        document.getElementById('stat-const').textContent = `Constitution: ${s.constitution || 20}`;
+        document.getElementById('stat-int').textContent = `${s.intelligence || 20}`;
+        document.getElementById('stat-dex').textContent = `${s.dexterity || 20}`;
+        document.getElementById('stat-con').textContent = `${s.concentration || 20}`;
+        document.getElementById('stat-str').textContent = `${s.strength || 20}`;
+        document.getElementById('stat-const').textContent = `${s.constitution || 20}`;
         try {
           const dmg = Number(gameState.damage || 0);
           const arm = Number(gameState.armor || 0);
-          const dmgEl = document.getElementById('stat-damage');
+          const dmgEl = document.getElementById('stat-attack');
           const armEl = document.getElementById('stat-armor');
-          if (dmgEl) dmgEl.textContent = `Damage: ${dmg}`;
-          if (armEl) armEl.textContent = `Armor: ${arm}`;
+          if (dmgEl) dmgEl.textContent = `${dmg}`;
+          if (armEl) armEl.textContent = `${arm}`;
+          const hitEl = document.getElementById('stat-hit');
+          const evasionEl = document.getElementById('stat-evasion');
+          const blockEl = document.getElementById('stat-block');
+          if (hitEl) hitEl.textContent = `${Number(gameState.hitChance || 0)}`;
+          if (evasionEl) evasionEl.textContent = `${Number(gameState.evasion || 0)}`;
+          if (blockEl) blockEl.textContent = `${Number(gameState.blockChance || 0)}`;
+          const weaknessEl = document.getElementById('stat-weakness');
+          if (weaknessEl) weaknessEl.textContent = `${Number(gameState.weakness || 0)}%`;
         } catch (e) {}
       }catch(e){}
     }
@@ -1705,8 +1786,8 @@
               } catch (e) { console.error('equipment right-click unequip failed', e); }
             });
           } else {
-            // empty fallback content: keep the icon already present
-            target.innerHTML = target.innerHTML || `<div class="slot-icon">🔸</div>`;
+            // empty slot: clear inner content — background image handles the icon
+            target.innerHTML = '';
             target.removeAttribute('data-inventory-id');
             target.draggable = false;
             target.addEventListener('mouseenter', ()=>{});
@@ -1845,6 +1926,8 @@
         gameState.maxHealth = data.maxHealth;
         gameState.mana = data.mana;
         gameState.maxMana = data.maxMana;
+        gameState.damage = typeof data.damage !== 'undefined' ? data.damage : 0;
+        gameState.armor = typeof data.armor !== 'undefined' ? data.armor : 0;
         // XP / level / stats
         gameState.xp = typeof data.xp !== 'undefined' ? data.xp : 0;
         gameState.level = typeof data.level !== 'undefined' ? data.level : 1;
@@ -2199,6 +2282,8 @@
           gameState.maxHealth = posData.maxHealth;
           gameState.mana = posData.mana;
           gameState.maxMana = posData.maxMana;
+          gameState.damage = typeof posData.damage !== 'undefined' ? posData.damage : (gameState.damage || 0);
+          gameState.armor = typeof posData.armor !== 'undefined' ? posData.armor : (gameState.armor || 0);
           // xp/level/stats
           gameState.xp = typeof posData.xp !== 'undefined' ? posData.xp : (gameState.xp || 0);
           gameState.level = typeof posData.level !== 'undefined' ? posData.level : (gameState.level || 1);

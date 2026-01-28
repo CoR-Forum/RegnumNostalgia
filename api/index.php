@@ -362,7 +362,7 @@ function handleGetPosition() {
     }
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT x, y, realm, health, max_health, mana, max_mana, xp, level, intelligence, dexterity, concentration, strength, constitution FROM players WHERE user_id = ?');
+    $stmt = $db->prepare('SELECT username, x, y, realm, health, max_health, mana, max_mana, xp, level, intelligence, dexterity, concentration, strength, constitution FROM players WHERE user_id = ?');
     $stmt->execute([$session['user_id']]);
     $player = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -432,6 +432,7 @@ function handleGetPosition() {
     $computedArmor = $baseArmor + $itemArmor;
 
     $resp = [
+        'username' => isset($player['username']) ? $player['username'] : null,
         'position' => [ 'x' => (int)$player['x'], 'y' => (int)$player['y'] ],
         'realm' => $player['realm'],
         'health' => (int)$player['health'],
