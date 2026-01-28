@@ -77,6 +77,29 @@ function computeSessionFingerprint() {
     return hash('sha256', $ip . '|' . $ua);
 }
 
+// Load a JSON file from disk and return decoded array or null
+function jsonLoadFile($path) {
+    if (!is_readable($path)) return null;
+    $json = file_get_contents($path);
+    $data = json_decode($json, true);
+    return is_array($data) ? $data : null;
+}
+
+// Normalize coordinates array to [[x,y], ...]
+function normalizePoints($coords) {
+    $norm = [];
+    foreach ($coords as $pt) {
+        if (is_array($pt) && array_values($pt) === $pt) {
+            $x = (int)$pt[0]; $y = (int)$pt[1];
+        } else {
+            $x = isset($pt['x']) ? (int)$pt['x'] : (int)($pt[0] ?? 0);
+            $y = isset($pt['y']) ? (int)$pt['y'] : (int)($pt[1] ?? 0);
+        }
+        $norm[] = [$x, $y];
+    }
+    return $norm;
+}
+
 // Validate session and return user data
 function validateSession() {
     $sessionToken = $_SERVER['HTTP_X_SESSION_TOKEN'] ?? '';
@@ -503,11 +526,7 @@ function handleGetPath() {
     $session = validateSession();
     $name = $_GET['name'] ?? ($_GET['id'] ?? '');
     if ($name === '') respondError('name is required');
-
-    $pathsFile = __DIR__ . '/paths.json';
-    if (!is_readable($pathsFile)) respondError('Path not found', 404);
-    $json = file_get_contents($pathsFile);
-    $data = json_decode($json, true);
+    $data = jsonLoadFile(__DIR__ . '/paths.json');
     if (!is_array($data)) respondError('Path not found', 404);
 
     foreach ($data as $p) {
@@ -532,29 +551,12 @@ function handleGetPath() {
 ================================================================ */
 function handleGetRegions() {
     $session = validateSession();
-
-    $regionsFile = __DIR__ . '/regions.json';
-    if (!is_readable($regionsFile)) {
-        respondSuccess(['regions' => []]);
-    }
-
-    $json = file_get_contents($regionsFile);
-    $data = json_decode($json, true);
-    if (!is_array($data)) $data = [];
+    $rdata = jsonLoadFile(__DIR__ . '/regions.json') ?: [];
 
     $result = [];
-    foreach ($data as $r) {
+    foreach ($rdata as $r) {
         $coords = $r['coordinates'] ?? $r['positions'] ?? $r['points'] ?? [];
-        $norm = [];
-        foreach ($coords as $pt) {
-            if (is_array($pt) && array_values($pt) === $pt) {
-                $x = (int)$pt[0]; $y = (int)$pt[1];
-            } else {
-                $x = isset($pt['x']) ? (int)$pt['x'] : (int)($pt[0] ?? 0);
-                $y = isset($pt['y']) ? (int)$pt['y'] : (int)($pt[1] ?? 0);
-            }
-            $norm[] = [$x, $y];
-        }
+        $norm = normalizePoints($coords);
 
         $result[] = [
             'regionId' => $r['id'] ?? $r['regionId'] ?? null,
@@ -583,56 +585,36 @@ function handleStartMove() {
 
     // Server-side: enforce region walk permissions (prevent clients from bypassing)
     try {
-        $regionsFile = __DIR__ . '/regions.json';
-        $regionsExist = false;
+        $rdata = jsonLoadFile(__DIR__ . '/regions.json');
+        $regionsExist = is_array($rdata) && count($rdata) > 0;
         $matched = false;
-        if (is_readable($regionsFile)) {
-            $rjson = file_get_contents($regionsFile);
-            $rdata = json_decode($rjson, true);
-            if (is_array($rdata) && count($rdata) > 0) {
-                $regionsExist = true;
-                foreach ($rdata as $r) {
-                    $coords = $r['coordinates'] ?? $r['positions'] ?? $r['points'] ?? [];
-                    $poly = [];
-                    foreach ($coords as $pt) {
-                        if (is_array($pt) && array_values($pt) === $pt) {
-                            $px = (int)$pt[0]; $py = (int)$pt[1];
-                        } else {
-                            $px = isset($pt['x']) ? (int)$pt['x'] : (int)($pt[0] ?? 0);
-                            $py = isset($pt['y']) ? (int)$pt['y'] : (int)($pt[1] ?? 0);
-                        }
-                        $poly[] = [$px, $py];
-                    }
-                    if (count($poly) === 0) continue;
-                    if (pointInPolygonPHP($targetX, $targetY, $poly)) {
-                        $matched = true;
-                        $rtype = $r['type'] ?? null;
-                        $rowner = $r['owner'] ?? $r['ownerRealm'] ?? null;
-                        $rwalkable = isset($r['walkable']) ? (bool)$r['walkable'] : (isset($r['properties']['walkable']) ? (bool)$r['properties']['walkable'] : true);
-                        $ownerMatches = ($rowner === null) ? true : ((string)$rowner === (string)$session['realm']);
-                        if ($rtype === 'warzone') {
-                            // allowed
-                            break;
-                        }
-                        if (!($rwalkable && $ownerMatches)) {
-                            respondError('Cannot walk to that region.', 403);
-                        }
+        if ($regionsExist) {
+            foreach ($rdata as $r) {
+                $poly = normalizePoints($r['coordinates'] ?? $r['positions'] ?? $r['points'] ?? []);
+                if (count($poly) === 0) continue;
+                if (pointInPolygonPHP($targetX, $targetY, $poly)) {
+                    $matched = true;
+                    $rtype = $r['type'] ?? null;
+                    $rowner = $r['owner'] ?? $r['ownerRealm'] ?? null;
+                    $rwalkable = isset($r['walkable']) ? (bool)$r['walkable'] : (isset($r['properties']['walkable']) ? (bool)$r['properties']['walkable'] : true);
+                    $ownerMatches = ($rowner === null) ? true : ((string)$rowner === (string)$session['realm']);
+                    if ($rtype === 'warzone') {
                         break;
                     }
+                    if (!($rwalkable && $ownerMatches)) {
+                        respondError('Cannot walk to that region.', 403);
+                    }
+                    break;
                 }
             }
         }
-        // If regions exist and the target didn't match any region, disallow walking outside regions
         if ($regionsExist && !$matched) {
             respondError('You cannot swim.', 403);
         }
     } catch (Exception $e) { /* ignore and continue defensively */ }
 
     // load paths
-    $pathsFile = __DIR__ . '/paths.json';
-    if (!is_readable($pathsFile)) respondError('No paths available', 500);
-    $json = file_get_contents($pathsFile);
-    $data = json_decode($json, true);
+    $data = jsonLoadFile(__DIR__ . '/paths.json');
     if (!is_array($data)) respondError('Invalid paths data', 500);
 
     // Build graph of nodes (each point in paths)
@@ -641,14 +623,9 @@ function handleStartMove() {
     $nextId = 0;
     foreach ($data as $pi => $p) {
         $pts = $p['positions'] ?? [];
-        foreach ($pts as $pj => $pt) {
-            // support [x,y] or {x,y}
-            if (is_array($pt) && array_values($pt) === $pt) {
-                $x = (int)$pt[0]; $y = (int)$pt[1];
-            } else {
-                $x = isset($pt['x']) ? (int)$pt['x'] : (int)($pt[0] ?? 0);
-                $y = isset($pt['y']) ? (int)$pt['y'] : (int)($pt[1] ?? 0);
-            }
+        $norm = normalizePoints($pts);
+        foreach ($norm as $pj => $pt) {
+            $x = $pt[0]; $y = $pt[1];
             $nodes[$nextId] = ['x'=>$x,'y'=>$y,'path'=>$p['id'] ?? ($p['name'] ?? $pi),'pathIndex'=>$pi,'pointIndex'=>$pj];
             $nodeIndex[$pi][$pj] = $nextId;
             $nextId++;
@@ -1018,6 +995,24 @@ function getEquipmentSlots() {
     return ['head','body','hands','shoulders','legs','weapon_right','weapon_left','ring_right','ring_left','amulet'];
 }
 
+// Update equipment row helper (builds SQL and executes)
+function updateEquipmentDB($db, $equip) {
+    $slots = getEquipmentSlots();
+    $setParts = [];
+    $params = [];
+    foreach ($slots as $s) {
+        $setParts[] = "$s = ?";
+        $params[] = $equip[$s] !== null ? $equip[$s] : null;
+    }
+    $setParts[] = "updated_at = ?";
+    $params[] = $equip['updated_at'];
+    $params[] = $equip['equipment_id'];
+
+    $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
+    $stmt = $db->prepare($sql);
+    $stmt->execute(array_values($params));
+}
+
 function ensureEquipmentRow($db, $userId) {
     $stmt = $db->prepare('SELECT * FROM equipment WHERE user_id = ?');
     $stmt->execute([$userId]);
@@ -1139,21 +1134,7 @@ function handleEquipItem() {
         $equip[$targetSlot] = $inventoryId;
         $equip['updated_at'] = now();
 
-        // build update statement
-        $setParts = [];
-        $params = [];
-        foreach ($slots as $s) {
-            $setParts[] = "$s = ?";
-            $params[] = $equip[$s] !== null ? $equip[$s] : null;
-        }
-        $setParts[] = "updated_at = ?";
-        $params[] = $equip['updated_at'];
-        $params[] = $equip['equipment_id'];
-
-        $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
-        // prepare and execute
-        $stmt = $db->prepare($sql);
-        $stmt->execute(array_merge(array_values($params)));
+        updateEquipmentDB($db, $equip);
 
         $db->commit();
 
@@ -1188,19 +1169,7 @@ function handleUnequipItem() {
         $equip[$slot] = null;
         $equip['updated_at'] = now();
 
-        $setParts = [];
-        $params = [];
-        foreach ($slots as $s) {
-            $setParts[] = "$s = ?";
-            $params[] = $equip[$s] !== null ? $equip[$s] : null;
-        }
-        $setParts[] = "updated_at = ?";
-        $params[] = $equip['updated_at'];
-        $params[] = $equip['equipment_id'];
-
-        $sql = 'UPDATE equipment SET ' . implode(', ', $setParts) . ' WHERE equipment_id = ?';
-        $stmt = $db->prepare($sql);
-        $stmt->execute(array_merge(array_values($params)));
+        updateEquipmentDB($db, $equip);
 
         $db->commit();
 
