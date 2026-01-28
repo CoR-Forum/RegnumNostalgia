@@ -25,7 +25,7 @@
     `;
     const style = document.createElement('style'); style.appendChild(document.createTextNode(css)); document.head.appendChild(style);
     const el = document.createElement('div'); el.id = 'walk-indicator'; el.className = 'walk-indicator';
-    const img = document.createElement('img'); img.src = 'assets/icons/walk.gif';
+    const img = document.createElement('img'); img.src = 'assets/markers/walk.gif';
     img.alt = 'walk';
     img.onerror = function(){ el.textContent = '🚶'; };
     img.onload = function(){};

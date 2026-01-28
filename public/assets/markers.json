@@ -2,16 +2,16 @@
   "scaleBase": 3072,
   "rasterSize": [6144, 6144],
   "icons": {
-    "fort-alsius": { "url": "assets/icons/fort-alsius.png", "size": [32, 32], "anchor": [16, 32] },
-    "fort-alsius-contested": { "url": "assets/icons/fort-alsius-contested.png", "size": [32, 32], "anchor": [16, 32] },
-    "fort-ignis": { "url": "assets/icons/fort-ignis.png", "size": [32, 32], "anchor": [16, 32] },
-    "fort-ignis-contested": { "url": "assets/icons/fort-ignis-contested.png", "size": [32, 32], "anchor": [16, 32] },
-    "fort-syrtis": { "url": "assets/icons/fort-syrtis.png", "size": [32, 32], "anchor": [16, 32] },
-    "fort-syrtis-contested": { "url": "assets/icons/fort-syrtis-contested.png", "size": [32, 32], "anchor": [16, 32] },
-    "door-opened": { "url": "assets/icons/door-opened.png", "size": [24, 24], "anchor": [12, 24] },
-    "door-vulnerable": { "url": "assets/icons/door-vulnerable.png", "size": [24, 24], "anchor": [12, 24] },
-    "door-safe": { "url": "assets/icons/door-safe.png", "size": [24, 24], "anchor": [12, 24] },
-    "door-warning": { "url": "assets/icons/door-warning.png", "size": [24, 24], "anchor": [12, 24] }
+    "fort-alsius": { "url": "assets/markers/fort-alsius.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-alsius-contested": { "url": "assets/markers/fort-alsius-contested.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-ignis": { "url": "assets/markers/fort-ignis.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-ignis-contested": { "url": "assets/markers/fort-ignis-contested.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-syrtis": { "url": "assets/markers/fort-syrtis.png", "size": [32, 32], "anchor": [16, 32] },
+    "fort-syrtis-contested": { "url": "assets/markers/fort-syrtis-contested.png", "size": [32, 32], "anchor": [16, 32] },
+    "door-opened": { "url": "assets/markers/door-opened.png", "size": [24, 24], "anchor": [12, 24] },
+    "door-vulnerable": { "url": "assets/markers/door-vulnerable.png", "size": [24, 24], "anchor": [12, 24] },
+    "door-safe": { "url": "assets/markers/door-safe.png", "size": [24, 24], "anchor": [12, 24] },
+    "door-warning": { "url": "assets/markers/door-warning.png", "size": [24, 24], "anchor": [12, 24] }
 
   },
   "features": [
