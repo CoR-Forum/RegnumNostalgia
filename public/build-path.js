@@ -4,7 +4,8 @@
   <div id="build-path-panel" style="position: absolute; right: 12px; bottom: 140px; width: 560px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
     <div id="build-path-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
       <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Build Path</h2>
-      <div style="display:flex;gap:6px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-paths" type="checkbox" style="transform:scale(1.1)" /> <span>Show paths</span></label>
         <button id="build-path-clear" class="btn" style="width:auto;padding:4px 8px;">Clear</button>
         <button id="build-path-copy" class="btn" style="width:auto;padding:4px 8px;">Copy</button>
         <button id="build-path-close" class="btn" style="width:auto;padding:4px 8px;">Close</button>
@@ -62,6 +63,42 @@
       try { gameState.buildPathPolyline.bringToFront(); } catch(e){}
     } catch (e) { console.error('build-path:updateBuildPathPolyline', e); }
   }
+
+  // Load and render paths (moved here from index.html)
+  async function loadAndRenderPaths(){
+    try {
+      // remove existing paths layer
+      if (gameState.pathsLayer) {
+        try { map.removeLayer(gameState.pathsLayer); } catch(e){}
+        gameState.pathsLayer = null;
+      }
+
+      const data = await apiCall('/paths');
+      const paths = data.paths || [];
+
+      const layers = [];
+      for (const p of paths) {
+        const pos = p.positions || [];
+        console.debug('loadAndRenderPaths: path', p.name, 'raw positions', pos);
+        const latlngs = positionsToLatLngs(pos);
+        console.debug('loadAndRenderPaths: latlngs', latlngs);
+        if (!latlngs || latlngs.length === 0) continue;
+        const poly = L.polyline(latlngs, { color: p.loop ? '#ff00ff' : '#3388ff', weight: 4, opacity: 0.95 }).addTo(map);
+        try { poly.bringToFront(); } catch (e) {}
+        poly.bindPopup(`<b>${p.name}</b><br>Points: ${latlngs.length}`);
+        layers.push(poly);
+      }
+
+      if (layers.length > 0) {
+        gameState.pathsLayer = L.layerGroup(layers).addTo(map);
+      }
+    } catch (err) {
+      console.error('Failed to load paths:', err);
+    }
+  }
+
+  // expose as global for backward compatibility
+  window.loadAndRenderPaths = loadAndRenderPaths;
 
   function onMapClick(e) {
     try {
@@ -128,6 +165,7 @@
     const clearBtn = document.getElementById('build-path-clear');
     const closeBtn = document.getElementById('build-path-close');
     const copyBtn = document.getElementById('build-path-copy');
+    const togglePaths = document.getElementById('build-path-toggle-paths');
     const ta = document.getElementById('build-path-textarea');
 
     wireDrag(header, panel);
@@ -147,6 +185,23 @@
         else { const tmp = document.createElement('textarea'); tmp.value = ta.value; document.body.appendChild(tmp); tmp.select(); document.execCommand('copy'); document.body.removeChild(tmp); }
       } catch (e) { console.error('build-path:copy', e); }
     });
+
+    // wire show/hide paths toggle
+    if (togglePaths) {
+      // initialize toggle from gameState
+      try { togglePaths.checked = !!(gameState && gameState.showPaths); } catch (e) {}
+      togglePaths.addEventListener('change', async () => {
+        try {
+          gameState.showPaths = !!togglePaths.checked;
+          if (gameState.showPaths) {
+            if (typeof loadAndRenderPaths === 'function') await loadAndRenderPaths();
+          } else {
+            // remove paths layer if present
+            if (gameState.pathsLayer) { try { map.removeLayer(gameState.pathsLayer); } catch (e) {} gameState.pathsLayer = null; }
+          }
+        } catch (e) { console.error('build-path:togglePaths', e); }
+      });
+    }
 
     // expose public API
     window.buildPath = {

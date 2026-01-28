@@ -1003,6 +1003,7 @@
       territories: new Map(),
       superbosses: new Map(),
       pathsLayer: null,
+      showPaths: false,
       buildPathPoints: [],
       buildPathPolyline: null,
       pollInterval: null,
@@ -1568,8 +1569,8 @@
         // Create player marker
         createPlayerMarker(gameState.position.x, gameState.position.y);
 
-        // Load and render paths from server
-        await loadAndRenderPaths();
+        // Load and render paths from server only if enabled
+        if (gameState.showPaths) await loadAndRenderPaths();
 
         // Enable click-to-move
         enableClickToMove();
@@ -1821,37 +1822,7 @@
       }
     }
 
-    async function loadAndRenderPaths(){
-      try {
-        // remove existing paths layer
-        if (gameState.pathsLayer) {
-          map.removeLayer(gameState.pathsLayer);
-          gameState.pathsLayer = null;
-        }
-
-        const data = await apiCall('/paths');
-        const paths = data.paths || [];
-
-        const layers = [];
-        for (const p of paths) {
-          const pos = p.positions || [];
-          console.debug('loadAndRenderPaths: path', p.name, 'raw positions', pos);
-          const latlngs = positionsToLatLngs(pos);
-          console.debug('loadAndRenderPaths: latlngs', latlngs);
-          if (!latlngs || latlngs.length === 0) continue;
-          const poly = L.polyline(latlngs, { color: p.loop ? '#ff00ff' : '#3388ff', weight: 4, opacity: 0.95 }).addTo(map);
-          try { poly.bringToFront(); } catch (e) {}
-          poly.bindPopup(`<b>${p.name}</b><br>Points: ${latlngs.length}`);
-          layers.push(poly);
-        }
-
-        if (layers.length > 0) {
-          gameState.pathsLayer = L.layerGroup(layers).addTo(map);
-        }
-      } catch (err) {
-        console.error('Failed to load paths:', err);
-      }
-    }
+    // loadAndRenderPaths moved into public/build-path.js
 
     function enableClickToMove() {
       // Use right-click (contextmenu) to open a small menu with actions
