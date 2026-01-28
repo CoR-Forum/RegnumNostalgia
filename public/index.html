@@ -1245,12 +1245,16 @@
           skipAuth: true
         });
 
+        if (!data || !data.sessionToken) {
+          throw new Error((data && data.error) ? data.error : 'Login failed: missing session token');
+        }
+
         gameState.sessionToken = data.sessionToken;
         gameState.userId = data.userId;
         gameState.username = data.username;
         gameState.realm = data.realm;
 
-        localStorage.setItem('sessionToken', data.sessionToken);
+        try { localStorage.setItem('sessionToken', data.sessionToken); } catch (e) {}
 
         if (data.needsRealmSelection) {
           showRealmSelection();
