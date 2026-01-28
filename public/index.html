@@ -960,6 +960,13 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="regions.js"></script>
   <script>
+    /**
+     * @typedef {{x:number,y:number}} Coords
+     * @typedef {{inventoryId?:number,item?:Object}} EquipmentSlotInfo
+     * @typedef {{itemName:string,iconName?:string,icon_name?:string,rarity?:string,level?:number,quantity?:number,equipmentSlot?:string,equipment_slot?:string,stats?:Object,description?:string,itemType?:string}} Item
+     * @typedef {{success?:boolean,position?:Coords,realm?:string,username?:string,health?:number,maxHealth?:number,mana?:number,maxMana?:number,damage?:number,armor?:number,xp?:number,xpToNext?:number,level?:number,stats?:Object,className?:string,class?:string}} PlayerPositionResponse
+     */
+
     // Configuration: 3 rows, 3 columns, tiles named `tiles/{row}-{col}.png`
     const rows = 3, cols = 3;
     const tileUrl = (r, c) => `assets/tiles/${r}-${c}.png`;
@@ -1137,6 +1144,16 @@
     // ============================================================
 
     const API_BASE = '/api';
+    const REALM_COLORS = { syrtis: '#22c55e', alsius: '#3b82f6', ignis: '#ef4444' };
+    const BOSS_ICONS = {
+      Thorkul: 'assets/icons/boss-thorkul.png',
+      'Daen Rha': 'assets/icons/boss-daen-rha.png',
+      Evendim: 'assets/icons/boss-evendim.png',
+      Vesper: 'assets/icons/boss-vesper.png',
+      Alasthor: 'assets/icons/boss-alasthor.png',
+      Tenax: 'assets/icons/boss-tenax.png',
+      default: 'assets/icons/boss-default.png'
+    };
     
     // Global map variables (set by probe.onload)
     let map = null;
@@ -1168,6 +1185,20 @@
       territoriesPollInterval: null,
       superbossesPollInterval: null
     };
+
+    const getRealmColor = (realm) => {
+      const key = (realm || '').toString().toLowerCase();
+      return REALM_COLORS[key] || REALM_COLORS.syrtis;
+    };
+
+    const getBossIcon = (name) => BOSS_ICONS[name] || BOSS_ICONS.default;
+
+    const buildGoHereIcon = () => L.divIcon({
+      className: 'custom-go-here-marker',
+      html: `<div style="width:14px;height:14px;background:#ffd700;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(255,215,0,0.8);"></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
 
     // API Helper functions
     async function apiCall(endpoint, options = {}) {
@@ -1991,15 +2022,8 @@
         map.removeLayer(gameState.playerMarker);
       }
 
-      const realmColors = {
-        syrtis: '#22c55e',
-        alsius: '#3b82f6',
-        ignis: '#ef4444'
-      };
-
       const latLng = [totalH - y, x];
-      const myRealmKey = (gameState.realm || '').toString().toLowerCase();
-      const myColor = realmColors[myRealmKey] || '#22c55e';
+      const myColor = getRealmColor(gameState.realm);
       gameState.playerMarker = L.circleMarker(latLng, {
         radius: 8,
         fillColor: myColor,
@@ -2212,24 +2236,12 @@
           const dx = parseInt(dest[0], 10);
           const dy = parseInt(dest[1], 10);
           if (gameState.walkDestinationMarker) map.removeLayer(gameState.walkDestinationMarker);
-          const goHereIcon = L.divIcon({
-            className: 'custom-go-here-marker',
-            html: `<div style="width:14px;height:14px;background:#ffd700;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(255,215,0,0.8);"></div>`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
-          gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: goHereIcon, riseOnHover: true }).addTo(map);
+          gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
           gameState.walkingTarget = { x: dx, y: dy };
         } else {
           // fallback: use clicked coord
           if (gameState.walkDestinationMarker) map.removeLayer(gameState.walkDestinationMarker);
-          const goHereIcon = L.divIcon({
-            className: 'custom-go-here-marker',
-            html: `<div style="width:14px;height:14px;background:#ffd700;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(255,215,0,0.8);"></div>`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
-          gameState.walkDestinationMarker = L.marker([totalH - y, x], { icon: goHereIcon, riseOnHover: true }).addTo(map);
+          gameState.walkDestinationMarker = L.marker([totalH - y, x], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
           gameState.walkingTarget = { x, y };
         }
 
@@ -2337,13 +2349,7 @@
                 const dx = parseInt(dest[0], 10);
                 const dy = parseInt(dest[1], 10);
                 if (!gameState.walkDestinationMarker) {
-                  const goHereIcon = L.divIcon({
-                    className: 'custom-go-here-marker',
-                    html: `<div style="width:14px;height:14px;background:#ffd700;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(255,215,0,0.8);"></div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                  });
-                  gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: goHereIcon, riseOnHover: true }).addTo(map).bindPopup('Walking to destination');
+                  gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map).bindPopup('Walking to destination');
                 } else {
                   try { gameState.walkDestinationMarker.setLatLng([totalH - dy, dx]); } catch (e) {}
                 }
@@ -2389,12 +2395,6 @@
     }
 
     function updateOtherPlayers(players) {
-      const realmColors = {
-        syrtis: '#22c55e',
-        alsius: '#3b82f6',
-        ignis: '#ef4444'
-      };
-
       // Ensure we don't have an "other player" marker for the current user
       try {
         for (const [uid, marker] of gameState.otherPlayers.entries()) {
@@ -2417,9 +2417,6 @@
         const healthPercent = Math.max(0, Math.min(100, Math.round(((Number(player.health) || 0) / (Number(player.maxHealth) || 1)) * 100)));
         // Determine ally vs enemy (same realm = ally). Use case-insensitive compare and treat missing realm as enemy.
         const playerRealm = (player.realm || '').toString().toLowerCase();
-        const myRealm = (gameState.realm || '').toString().toLowerCase();
-        const isAlly = (playerRealm !== '' && myRealm !== '' && playerRealm === myRealm);
-        const healthClass = isAlly ? 'health-ally' : 'health-enemy';
 
         if (gameState.otherPlayers.has(player.userId)) {
           // Update existing marker - remove and recreate with new health
@@ -2430,7 +2427,7 @@
             className: 'custom-player-marker',
             html: `
               <div style="text-align: center;">
-                <div style="width: 12px; height: 12px; background: ${realmColors[playerRealm] || (isAlly ? '#22c55e' : '#ef4444')}; border: 2px solid #fff; border-radius: 50%; margin: 0 auto;"></div>
+                <div style="width: 12px; height: 12px; background: ${getRealmColor(playerRealm)}; border: 2px solid #fff; border-radius: 50%; margin: 0 auto;"></div>
                 <div class="territory-health-bar" style="margin-top: 2px;">
                   <div class="territory-health-fill" style="width: ${healthPercent}%; background-color: #ef4444; ${healthPercent > 0 ? 'min-width:2px;' : ''}"></div>
                 </div>
@@ -2449,7 +2446,7 @@
             className: 'custom-player-marker',
             html: `
               <div style="text-align: center;">
-                <div style="width: 12px; height: 12px; background: ${realmColors[playerRealm] || (isAlly ? '#22c55e' : '#ef4444')}; border: 2px solid #fff; border-radius: 50%; margin: 0 auto;"></div>
+                <div style="width: 12px; height: 12px; background: ${getRealmColor(playerRealm)}; border: 2px solid #fff; border-radius: 50%; margin: 0 auto;"></div>
                 <div class="territory-health-bar" style="margin-top: 2px;">
                   <div class="territory-health-fill" style="width: ${healthPercent}%; background-color: #ef4444; ${healthPercent > 0 ? 'min-width:2px;' : ''}"></div>
                 </div>
@@ -2618,28 +2615,7 @@
         const latLng = [totalH - boss.y, boss.x];
         const healthPercent = Math.max(0, Math.min(100, Math.round(((Number(boss.health) || 0) / (Number(boss.maxHealth) || 1)) * 100)));
         
-        let healthClass = 'health-high';
-        if (healthPercent < 30) {
-          healthClass = 'health-low';
-        } else if (healthPercent < 70) {
-          healthClass = 'health-medium';
-        }
-
-        // Determine icon based on boss name
-        let iconUrl = 'assets/icons/boss-default.png';
-        if (boss.name === 'Thorkul') {
-          iconUrl = 'assets/icons/boss-thorkul.png';
-        } else if (boss.name === 'Daen Rha') {
-          iconUrl = 'assets/icons/boss-daen-rha.png';
-        } else if (boss.name === 'Evendim') {
-          iconUrl = 'assets/icons/boss-evendim.png';
-        } else if (boss.name === 'Vesper') {
-          iconUrl = 'assets/icons/boss-vesper.png';
-        } else if (boss.name === 'Alasthor') {
-          iconUrl = 'assets/icons/boss-alasthor.png';
-        } else if (boss.name === 'Tenax') {
-          iconUrl = 'assets/icons/boss-tenax.png';
-        }
+        const iconUrl = getBossIcon(boss.name);
 
         // Create custom HTML marker with health bar
         const customIcon = L.divIcon({
