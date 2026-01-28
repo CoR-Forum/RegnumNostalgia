@@ -2000,10 +2000,10 @@
       __mapContextMenuEl = document.createElement('div');
       __mapContextMenuEl.id = 'map-contextmenu';
       __mapContextMenuEl.className = 'map-contextmenu';
-      __mapContextMenuEl.innerHTML = '<div class="map-contextmenu-item" id="map-go-here">Go here</div><div class="map-contextmenu-item" id="map-walk-here">Walk here</div><div class="map-contextmenu-item" id="map-copy-coords">Copy Coords</div>';
+      __mapContextMenuEl.innerHTML = '<div class="map-contextmenu-item" id="map-walk-here">Walk here</div><div class="map-contextmenu-item" id="map-teleport">Teleport</div><div class="map-contextmenu-item" id="map-copy-coords">Copy Coords</div>';
       document.body.appendChild(__mapContextMenuEl);
 
-      __mapContextMenuEl.querySelector('#map-go-here').addEventListener('click', async (ev) => {
+      __mapContextMenuEl.querySelector('#map-teleport').addEventListener('click', async (ev) => {
         ev.stopPropagation();
         if (!__lastContextLatLng) return hideMapContextMenu();
         await performMoveAtLatLng(__lastContextLatLng);
