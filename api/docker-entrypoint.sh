@@ -64,7 +64,7 @@ chmod +x /var/www/api/cron/update-territories.php || true
 echo "Starting territory update cron (every 15 seconds)..."
 (while true; do
     /usr/local/bin/php /var/www/api/cron/update-territories.php 2>&1
-    sleep 60
+    sleep 5
 done) &
 echo "Territory update cron started (logs -> stdout)"
 

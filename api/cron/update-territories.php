@@ -49,11 +49,15 @@ try {
         $owner = trim($fort['owner']);
 
         // Extract territory_id from the name's trailing parentheses e.g. "Imperia Castle (1)"
+        // Prefer a trailing numeric parenthesis, otherwise pick the last numeric parenthesis found.
         $tid = null;
         if (preg_match('/\((\d+)\)\s*$/', $name, $m)) {
             $tid = (int)$m[1];
-        } elseif (preg_match('/\((\d+)\)/', $name, $m)) {
-            $tid = (int)$m[1];
+        } else {
+            if (preg_match_all('/\((\d+)\)/', $name, $matches)) {
+                $last = end($matches[1]);
+                $tid = (int)$last;
+            }
         }
 
         if (!$tid) {
@@ -63,10 +67,15 @@ try {
         // API owner should be written into the `realm` column (lowercased)
         $realm = strtolower($owner);
 
+        // Ignore empty owners
+        if ($realm === '') {
+            continue;
+        }
+
         // Fetch previous realm for this territory
         $selectStmt->execute([$tid]);
         $prev = $selectStmt->fetchColumn();
-        $prevRealm = $prev === false ? null : strtolower($prev);
+        $prevRealm = ($prev === false || $prev === '') ? null : strtolower($prev);
 
         // If owner changed, record capture event
         if ($prevRealm !== null && $prevRealm !== $realm) {
