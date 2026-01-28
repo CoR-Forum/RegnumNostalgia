@@ -13,7 +13,7 @@ if (!empty($allowedOrigins)) {
     header('Access-Control-Allow-Origin: *');
 }
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, X-Session-Token');
+header('Access-Control-Allow-Headers: Content-Type, X-Session-Token, X-API-KEY');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
@@ -24,6 +24,13 @@ define('DB_PATH', __DIR__ . '/database.sqlite');
 define('FORUM_API_URL', 'https://cor-forum.de/api.php');
 define('FORUM_API_KEY', getenv('COR_FORUM_API_KEY') ?: '');
 define('SESSION_DURATION', 86400); // 24 hours
+
+// Forum MySQL connection (used for shoutbox read/write)
+define('FORUM_DB_HOST', getenv('COR_FORUM_DB_HOST') ?: 'localhost');
+define('FORUM_DB_PORT', getenv('COR_FORUM_DB_PORT') ?: 3306);
+define('FORUM_DB_NAME', getenv('COR_FORUM_DB_NAME') ?: 'corforum_database');
+define('FORUM_DB_USER', getenv('COR_FORUM_DB_USER') ?: 'corforum_user');
+define('FORUM_DB_PASS', getenv('COR_FORUM_DB_PASS') ?: 'corforum_password');
 
 // Spawn coordinates for each realm
 define('SPAWN_COORDS', [
@@ -259,6 +266,10 @@ if ($path === '/login' && $requestMethod === 'POST') {
     handleGetRegions();
 } elseif ($path === '/player/move' && $requestMethod === 'POST') {
     handleStartMove();
+} elseif ($path === '/shoutbox' && $requestMethod === 'GET') {
+    handleGetShoutbox();
+} elseif ($path === '/shoutbox' && $requestMethod === 'POST') {
+    handlePostShoutbox();
 } else {
     respondError('Endpoint not found', 404);
 }
@@ -1323,5 +1334,102 @@ function handleUnequipItem() {
         if ($db->inTransaction()) $db->rollBack();
         error_log('Unequip transaction failed: ' . $e->getMessage());
         respondError('Server error', 500);
+    }
+}
+
+/* ================================================================
+    SHOUTBOX: Read and write directly to forum MySQL
+    GET  /shoutbox -> last 50 messages (oldest first)
+    POST /shoutbox -> insert message
+================================================================ */
+
+function getForumDbConnection() {
+    $mysqli = new mysqli(FORUM_DB_HOST, FORUM_DB_USER, FORUM_DB_PASS, FORUM_DB_NAME, FORUM_DB_PORT);
+    if ($mysqli->connect_errno) {
+        error_log('Forum DB connect failed: ' . $mysqli->connect_error);
+        respondError('Forum database connection failed', 500);
+    }
+    $mysqli->set_charset('utf8mb4');
+    return $mysqli;
+}
+
+function handleGetShoutbox() {
+    $db = getForumDbConnection();
+    $stmt = $db->prepare("SELECT entryID, userID, shoutboxID, username, `time`, message FROM wcf1_shoutbox_entry ORDER BY `time` DESC LIMIT 50");
+    if (!$stmt) { $err = $db->error; $db->close(); respondError('Query prepare failed: ' . $err, 500); }
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $rows = [];
+    while ($row = $res->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+    $db->close();
+
+    // return chronological order (oldest first)
+    $rows = array_reverse($rows);
+    respondSuccess(['messages' => $rows]);
+}
+
+function handlePostShoutbox() {
+    $session = validateSession();
+    $userID = (int)$session['user_id'];
+    $shoutboxID = isset($_POST['shoutboxID']) && is_numeric($_POST['shoutboxID']) ? intval($_POST['shoutboxID']) : 1;
+    $message = $_POST['message'] ?? '';
+    $time = $_POST['time'] ?? null; // optional
+
+    // message is required
+    if ($message === '') {
+        respondError('message is required.', 400);
+    }
+
+    // normalize time: prefer Unix timestamp (seconds). If provided as string, try parsing; fallback to now.
+    if ($time === null || $time === '') {
+        $time = time();
+    } else {
+        $time = trim((string)$time);
+        if (is_numeric($time)) {
+            $time = (int)$time;
+        } else {
+            $ts = strtotime($time);
+            $time = ($ts === false) ? time() : (int)$ts;
+        }
+    }
+
+    // Lookup username from the game's `players` table (SQLite). Reject if not found.
+    $username = '';
+    try {
+        $gdb = getDB();
+        $s = $gdb->prepare('SELECT username FROM players WHERE user_id = ? LIMIT 1');
+        $s->execute([$session['user_id']]);
+        $row = $s->fetch(PDO::FETCH_ASSOC);
+        if ($row && !empty($row['username'])) {
+            $username = trim($row['username']);
+        }
+    } catch (Exception $e) {
+        // lookup failed
+    }
+    
+    if ($username === '') {
+        respondError('Username not found. Cannot post message.', 404);
+    }
+
+    $db = getForumDbConnection();
+
+    $stmt = $db->prepare("INSERT INTO wcf1_shoutbox_entry (userID, shoutboxID, username, `time`, message) VALUES (?, ?, ?, ?, ?)");
+    if (!$stmt) { $err = $db->error; $db->close(); respondError('Query prepare failed: ' . $err, 500); }
+    // Bind parameters: userID (int), shoutboxID (int), username (string), time (int), message (string)
+    $stmt->bind_param('iisis', $userID, $shoutboxID, $username, $time, $message);
+    $ok = $stmt->execute();
+    if ($ok) {
+        $insertId = $stmt->insert_id;
+        $stmt->close();
+        $db->close();
+        respondSuccess(['entryID' => $insertId]);
+    } else {
+        $err = $stmt->error;
+        $stmt->close();
+        $db->close();
+        respondError('Insert failed: ' . $err, 500);
     }
 }

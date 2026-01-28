@@ -7,6 +7,11 @@ apk add --no-cache sqlite-dev
 # Install PDO SQLite extension
 docker-php-ext-install pdo pdo_sqlite
 
+# Install MySQL/MariaDB dev libraries and enable mysqli/pdo_mysql extensions
+# so PHP can use the remote forum MySQL server via `mysqli`.
+apk add --no-cache mariadb-dev
+docker-php-ext-install mysqli pdo_mysql
+
 # Ensure application directory exists and is writable before initializing DB
 mkdir -p /var/www/api
 chown -R www-data:www-data /var/www/api || true

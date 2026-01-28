@@ -2810,5 +2810,96 @@
     }
   </style>
   
+  <!-- Shoutbox (Regnum window style) -->
+  <div id="shoutbox-window" class="ui-window" style="position: absolute; left: 12px; bottom: 72px; width: 300px; z-index: 1500; display: flex; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+    <div id="shoutbox-header" class="ui-window-titlebar" style="display:flex; justify-content: space-between; align-items: center; user-select: none;">
+      <h2 style="margin:0; flex:1; font-size:11px; font-weight:700; color:#ffffff;">Shoutbox</h2>
+      <button id="shoutbox-close-btn" class="ui-window-close-btn" title="Close"></button>
+    </div>
+
+    <div class="ui-window-body" style="padding:8px; display:flex; flex-direction:column; gap:8px;">
+      <div id="sbMessages" style="height:180px; overflow:auto; padding:6px; background: transparent; color: #e6e6e6; font-size:13px;"></div>
+
+      <div style="display:flex; gap:6px; align-items:flex-end;">
+        <input id="sbMessage" type="text" placeholder="Message" style="flex:1; background:#171717; border:1px solid #333; color:#e6e6e6; padding:6px; font-size:13px; border-radius:4px" />
+        <button id="sbSend" class="btn" style="flex:0 0 auto; width:64px">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (async function(){
+      const sbMessages = document.getElementById('sbMessages');
+      const sbSend = document.getElementById('sbSend');
+      const sbMessage = document.getElementById('sbMessage');
+      const sbClose = document.getElementById('shoutbox-close-btn');
+      const sbWin = document.getElementById('shoutbox-window');
+      let currentUsername = null;
+
+      // Try server-provided username from /player/position (requires session). Fallback to stored username.
+      try{
+        const res = await fetch('/api/player/position', { method: 'GET', credentials: 'same-origin' });
+        if (res.ok) {
+          const pd = await res.json();
+          if (pd && pd.success && pd.username) currentUsername = pd.username;
+        }
+      }catch(e){}
+
+      try{ const u = localStorage.getItem('shoutbox.username'); if(!currentUsername && u) currentUsername = u; }catch(e){}
+
+      sbClose.addEventListener('click', ()=>{ sbWin.style.display = 'none'; });
+
+      function renderMessages(messages){
+        sbMessages.innerHTML = '';
+        messages.forEach(m=>{
+          const el = document.createElement('div');
+          el.style.marginBottom = '8px';
+          const user = document.createElement('span'); user.style.fontWeight='700'; user.style.color='#ffd27a'; user.textContent = m.username || 'anon';
+          const time = document.createElement('span'); time.style.opacity='0.7'; time.style.fontSize='11px'; time.style.marginLeft='6px';
+          if(m.time) try{ time.textContent = new Date(m.time).toLocaleTimeString(); }catch(e){}
+          const body = document.createElement('div'); body.style.marginTop='4px'; body.innerHTML = m.message || '';
+          el.appendChild(user); el.appendChild(time); el.appendChild(body);
+          sbMessages.appendChild(el);
+        });
+        sbMessages.scrollTop = sbMessages.scrollHeight;
+      }
+
+      async function fetchMessages(){
+        try{
+          const res = await fetch('/api/shoutbox', { method: 'GET', credentials: 'same-origin' });
+          const data = await res.json();
+          if(data && data.success && Array.isArray(data.messages)){
+            renderMessages(data.messages);
+          }
+        }catch(e){ console.warn('shoutbox fetch failed', e); }
+      }
+
+      async function postMessage(){
+        const message = (sbMessage.value || '').trim();
+        const username = (currentUsername && currentUsername.trim()) ? currentUsername.trim() : 'anon';
+        if(!message) return alert('Please enter a message');
+
+        const form = new URLSearchParams(); form.append('message', message);
+        try{
+          sbSend.disabled = true;
+          const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+          if(gameState.sessionToken){ headers['X-Session-Token'] = gameState.sessionToken; }
+          const res = await fetch('/api/shoutbox', { method: 'POST', body: form, headers, credentials: 'same-origin' });
+          const data = await res.json();
+          if(data && data.success){ sbMessage.value = ''; fetchMessages(); }
+          else alert(data.error || 'Failed to post');
+        }catch(e){ alert('Failed to post message'); }
+        finally{ sbSend.disabled = false; }
+      }
+
+      sbSend.addEventListener('click', postMessage);
+      sbMessage.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); postMessage(); } });
+
+      fetchMessages();
+      const poll = setInterval(fetchMessages, 5000);
+      window.addEventListener('beforeunload', ()=>clearInterval(poll));
+    })();
+  </script>
+
 </body>
 </html>
