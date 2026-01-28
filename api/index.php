@@ -1354,6 +1354,8 @@ function getForumDbConnection() {
 }
 
 function handleGetShoutbox() {
+    // Require an authenticated session to read shoutbox messages
+    $session = validateSession();
     $db = getForumDbConnection();
     $stmt = $db->prepare("SELECT entryID, userID, shoutboxID, username, `time`, message FROM wcf1_shoutbox_entry ORDER BY `time` DESC LIMIT 50");
     if (!$stmt) { $err = $db->error; $db->close(); respondError('Query prepare failed: ' . $err, 500); }
