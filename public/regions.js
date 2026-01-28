@@ -199,39 +199,50 @@
     // wire map mouseout
     try { mapRef.on('mouseout', () => { const indicator = document.getElementById('walk-indicator'); if (indicator) indicator.classList.remove('show'); }); } catch(e){}
 
-    // zoomend overview rendering
+    // zoomend overview rendering - show regions on min zoom after user interaction
     try {
+      // Track if user has zoomed (to differentiate initial load from user zoom)
+      let userHasZoomed = false;
+      mapRef.on('zoomstart', () => { userHasZoomed = true; });
+      
       mapRef.on('zoomend', async () => {
         try {
           const currentZoom = mapRef.getZoom();
-          if (typeof mapRef.getMinZoom === 'function' && currentZoom === mapRef.getMinZoom()) {
-            if (!gameStateRef.regionsLayer) {
-              try {
-                const data = await apiCallRef('/regions');
-                const regions = data.regions || [];
-                gameStateRef.regionsData = regions;
-                const layers = [];
-                for (const r of regions) {
-                  const pos = r.coordinates || r.positions || [];
-                  const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
-                  if (!latlngs || latlngs.length === 0) continue;
-                  const fill = (r.properties && r.properties.fillColor) ? r.properties.fillColor : (r.type === 'danger' ? '#ff5555' : '#55ff55');
-                  const stroke = (r.properties && r.properties.color) ? r.properties.color : '#228822';
-                  const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
-                  layers.push(poly);
-                }
-                if (layers.length > 0) {
-                  gameStateRef.regionsLayer = L.layerGroup(layers).addTo(mapRef);
-                }
-              } catch (err) { /* ignore */ }
+          const isMinZoom = typeof mapRef.getMinZoom === 'function' && currentZoom === mapRef.getMinZoom();
+          
+          // After user zooms, only show regions at min zoom level
+          if (userHasZoomed) {
+            if (isMinZoom) {
+              if (!gameStateRef.regionsLayer) {
+                try {
+                  const data = await apiCallRef('/regions');
+                  const regions = data.regions || [];
+                  gameStateRef.regionsData = regions;
+                  const layers = [];
+                  for (const r of regions) {
+                    const pos = r.coordinates || r.positions || [];
+                    const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
+                    if (!latlngs || latlngs.length === 0) continue;
+                    const fill = (r.properties && r.properties.fillColor) ? r.properties.fillColor : (r.type === 'danger' ? '#ff5555' : '#55ff55');
+                    const stroke = (r.properties && r.properties.color) ? r.properties.color : '#228822';
+                    const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
+                    layers.push(poly);
+                  }
+                  if (layers.length > 0) {
+                    gameStateRef.regionsLayer = L.layerGroup(layers).addTo(mapRef);
+                  }
+                } catch (err) { /* ignore */ }
+              }
+            } else {
+              // Remove regions when not at min zoom (after user has zoomed)
+              if (gameStateRef.regionsLayer) { 
+                try { mapRef.removeLayer(gameStateRef.regionsLayer); } catch(e){} 
+                gameStateRef.regionsLayer = null; 
+              }
             }
-          } else {
-            if (gameStateRef.regionsLayer) { try { mapRef.removeLayer(gameStateRef.regionsLayer); } catch(e){} gameStateRef.regionsLayer = null; }
           }
         } catch (err) { console.debug('zoomend regions error', err); }
       });
-      // fire once
-      try { mapRef.fire('zoomend'); } catch(e){}
     } catch(e){}
 
     // expose loadAndRenderRegions globally
