@@ -1321,64 +1321,74 @@
       } catch (err) { console.error('HUD button action failed', err); }
     });
 
-    // Close inventory handler
-    document.getElementById('inventory-close-btn').addEventListener('click', () => {
-      closeInventory();
-    });
-
-    // Character button and close handler (header button may be absent)
+    // Character button (header button may be absent)
     const _characterBtn = document.getElementById('character-btn');
     if (_characterBtn) _characterBtn.addEventListener('click', () => { openCharacter(); });
-    document.getElementById('character-close-btn').addEventListener('click', () => {
-      closeCharacter();
-    });
 
-    // Make inventory window draggable
-    // Global helper to translate windows
+    // Window helpers
     function setTranslate(xPos, yPos, el) {
       if (!el) return;
       el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
     }
 
-    (function() {
-      const inventoryWindow = document.getElementById('inventory-window');
-      const header = document.getElementById('inventory-header');
+    function makeDraggable(winEl, handleEl) {
+      if (!winEl || !handleEl) return;
       let isDragging = false;
-      let currentX;
-      let currentY;
-      let initialX;
-      let initialY;
+      let currentX = 0;
+      let currentY = 0;
+      let initialX = 0;
+      let initialY = 0;
       let xOffset = 0;
       let yOffset = 0;
 
-      header.addEventListener('mousedown', dragStart);
-      document.addEventListener('mousemove', drag);
-      document.addEventListener('mouseup', dragEnd);
-
-      function dragStart(e) {
+      const dragStart = (e) => {
         initialX = e.clientX - xOffset;
         initialY = e.clientY - yOffset;
         isDragging = true;
-      }
+      };
 
-      function drag(e) {
-        if (isDragging) {
-          e.preventDefault();
-          currentX = e.clientX - initialX;
-          currentY = e.clientY - initialY;
-          xOffset = currentX;
-          yOffset = currentY;
-          setTranslate(currentX, currentY, inventoryWindow);
-        }
-      }
+      const drag = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+        xOffset = currentX;
+        yOffset = currentY;
+        setTranslate(currentX, currentY, winEl);
+      };
 
-      function dragEnd(e) {
+      const dragEnd = () => {
         initialX = currentX;
         initialY = currentY;
         isDragging = false;
+      };
+
+      handleEl.addEventListener('mousedown', dragStart);
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', dragEnd);
+    }
+
+    function initWindow({ id, headerId, closeId, onClose, draggable = true }) {
+      const win = document.getElementById(id);
+      if (!win) return;
+      const header = headerId ? document.getElementById(headerId) : null;
+      const closeBtn = closeId ? document.getElementById(closeId) : null;
+      if (draggable && header) makeDraggable(win, header);
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          if (typeof onClose === 'function') onClose();
+          else win.style.display = 'none';
+        });
       }
-    
-    })();
+      return win;
+    }
+
+    function initWindows() {
+      initWindow({ id: 'inventory-window', headerId: 'inventory-header', closeId: 'inventory-close-btn', onClose: closeInventory });
+      initWindow({ id: 'character-window', headerId: 'character-header', closeId: 'character-close-btn', onClose: closeCharacter });
+      initWindow({ id: 'shoutbox-window', headerId: 'shoutbox-header', closeId: 'shoutbox-close-btn' });
+      initWindow({ id: 'mini-info-window', headerId: null, closeId: 'mini-info-close-btn', draggable: false });
+    }
 
     // Build Path behavior moved to public/build-path.js
 
@@ -1517,46 +1527,6 @@
       footer.style.display = 'flex';
 
       const defaultItemIcon = 'item-default.png';
-
-      // Make character window draggable
-      (function() {
-        const characterWindow = document.getElementById('character-window');
-        const header = document.getElementById('character-header');
-        let isDragging = false;
-        let currentX;
-        let currentY;
-        let initialX;
-        let initialY;
-        let xOffset = 0;
-        let yOffset = 0;
-
-        header.addEventListener('mousedown', dragStartChar);
-        document.addEventListener('mousemove', dragChar);
-        document.addEventListener('mouseup', dragEndChar);
-
-        function dragStartChar(e) {
-          initialX = e.clientX - xOffset;
-          initialY = e.clientY - yOffset;
-          isDragging = true;
-        }
-
-        function dragChar(e) {
-          if (isDragging) {
-            e.preventDefault();
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
-            xOffset = currentX;
-            yOffset = currentY;
-            setTranslate(currentX, currentY, characterWindow);
-          }
-        }
-
-        function dragEndChar(e) {
-          initialX = currentX;
-          initialY = currentY;
-          isDragging = false;
-        }
-      })();
 
       // Calculate total gold
       let totalGold = 0;
@@ -2731,6 +2701,9 @@
       }
     }
 
+    // Initialize reusable window wiring (drag + close)
+    initWindows();
+
     // Auto-login if session token exists
     if (gameState.sessionToken) {
       initGame().catch(() => {
@@ -2739,14 +2712,6 @@
         gameState.sessionToken = null;
       });
     }
-    // Mini info window close handler
-    (function(){
-      const btn = document.getElementById('mini-info-close-btn');
-      if(!btn) return;
-      btn.addEventListener('click', (e) => {
-        try { document.getElementById('mini-info-window').style.display = 'none'; } catch (err) {}
-      });
-    })();
   </script>
   <script src="build-path.js"></script>
   <style>
@@ -2953,7 +2918,6 @@
       const sbMessages = document.getElementById('sbMessages');
       const sbSend = document.getElementById('sbSend');
       const sbMessage = document.getElementById('sbMessage');
-      const sbClose = document.getElementById('shoutbox-close-btn');
       const sbWin = document.getElementById('shoutbox-window');
       let currentUsername = null;
       let lastMessageId = 0;
@@ -2969,8 +2933,6 @@
       }catch(e){}
 
       try{ const u = localStorage.getItem('shoutbox.username'); if(!currentUsername && u) currentUsername = u; }catch(e){}
-
-      sbClose.addEventListener('click', ()=>{ sbWin.style.display = 'none'; });
 
       function renderMessages(messages){
         sbMessages.innerHTML = '';
