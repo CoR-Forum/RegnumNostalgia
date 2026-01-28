@@ -108,8 +108,8 @@
     }
     #modal-overlay.hidden{ display: none; }
 
-    /* Hide all UI elements until the user is authenticated. Keep the modal overlay and background map visible. */
-    body:not(.authenticated) > :not(#modal-overlay):not(#map):not(script):not(style) {
+    /* Hide all UI elements until the user is authenticated. Keep the modal overlay, background map, and mini info window visible. */
+    body:not(.authenticated) > :not(#modal-overlay):not(#map):not(#mini-info-window):not(script):not(style) {
       display: none !important;
     }
 
@@ -702,9 +702,6 @@
           <div style="color:#e0e0e0;margin-bottom:12px;font-size:11px;text-align:center;padding-top:12px;">
         Login with your cor-forum.de account
           </div>
-          <div style="color:#ff6b6b;margin-bottom:12px;font-size:11px;text-align:center;">
-            This game is in a very early stage and does not have much functionality, but feel free to browse around.
-          </div>
           <div id="login-error" class="error-message hidden"></div>
           <form id="login-form">
         <div class="form-group">
@@ -921,8 +918,36 @@
       <div id="player-coords" style="font-size:11px; color:#e0e0e0; margin-top:4px;">Position: 0, 0</div>
     </div>
   </div>
+    <!-- Small info window under the character overlay -->
+    <div id="mini-info-window" class="ui-window" style="position: fixed; top: 100px; left: 8px; width: 220px; z-index: 20002; display: flex; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif; pointer-events: none;">
+      <div class="ui-window-titlebar" style="display:flex; justify-content: center; align-items: center; user-select: none;">
+        <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Info</h2>
+      </div>
+      <div class="ui-window-body" style="display:block;padding:8px; color:#ffffff; font-size:12px; background: transparent;">
+        <div id="mini-info-text" style="margin-bottom:6px;margin-top:15px">Welcome to Regnum Nostalgia!</div>
+        <div style="font-size:11px; color:#ffffff; margin-bottom:6px;">This game is in a very early stage and does not have much functionality, but feel free to browse around.</div>
+        <div id="mini-info-subtext" style="font-size:11px; color:#c0c0c0; margin-top:4px;margin-bottom:10px">
+          <strong>What works so far:</strong>
+          <ul style="margin:6px 0 8px 18px;padding:0;">
+            <li>Right-click → "Walk here" (Pathfinding)</li>
+            <li>Health/Mana Stats and Regeneration</li>
+            <li>Character Attributes and Stats</li>
+            <li>Inventory and Equipment</li>
+            <li>Map with Regions, walkable terrain</li>
+            <li>Territories synced with live server status</li>
+          </ul>
+          <strong>What doesn't work yet:</strong>
+          <ul style="margin:6px 0 0 18px;padding:0;">
+            <li>Combat and Spells</li>
+            <li>Quests and NPCs</li>
+            <li>Crafting and Gathering</li>
+            <li>Social Features (Party, Guilds, Chat)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
   <div id="attribution" aria-label="Map author and source">
-    <a href="https://github.com/CoR-Forum/RegnumMap-Nostalgia" target="_blank" rel="noopener noreferrer">GitHub</a>
+    <a href="https://github.com/CoR-Forum/RegnumNostalgia" target="_blank" rel="noopener noreferrer">GitHub</a>
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="regions.js"></script>
