@@ -90,6 +90,20 @@ try {
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_superbosses_health ON superbosses(health)');
 
+    // Create territory captures table to track ownership changes
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS territory_captures (
+            capture_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            territory_id INTEGER NOT NULL,
+            previous_realm TEXT,
+            new_realm TEXT NOT NULL,
+            captured_at INTEGER NOT NULL,
+            FOREIGN KEY (territory_id) REFERENCES territories(territory_id)
+        )
+    ');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_territory_captures_territory_id ON territory_captures(territory_id)');
+    $db->exec('CREATE INDEX IF NOT EXISTS idx_territory_captures_captured_at ON territory_captures(captured_at)');
+
     // Create items table (item templates)
     $db->exec("
         CREATE TABLE IF NOT EXISTS items (
@@ -197,21 +211,21 @@ try {
         echo "  - Initialized server_time (1 real hour = 24 in-game hours)\n";
     }
     $territories = [
-        // Syrtis
-        ['syrtis', 'Algaros Fort', 'fort', 1742, 3200, 'syrtis', 100000, 100000],
-        ['syrtis', 'Herbret Fort', 'fort', 2896, 3237, 'syrtis', 100000, 100000],
-        ['syrtis', 'Eferias Castle', 'castle', 3757, 4717, 'syrtis', 250000, 250000],
-        ['syrtis', 'Syrtis Realm Wall', 'wall', 2357, 4037, 'syrtis', 500000, 500000],
+        // Alsius
+        ['alsius', 'Imperia Castle', 'castle', 2802, 1103, 'alsius', 250000, 250000],
+        ['alsius', 'Aggersborg Fort', 'fort', 2729, 2415, 'alsius', 100000, 100000],
+        ['alsius', 'Trelleborg Fort', 'fort', 1640, 2441, 'alsius', 100000, 100000],
+        ['alsius', 'Alsius Realm Wall', 'wall', 1755, 2106, 'alsius', 500000, 500000],
         // Ignis
         ['ignis', 'Menirah Fort', 'fort', 3379, 1689, 'ignis', 100000, 100000],
         ['ignis', 'Samal Fort', 'fort', 3684, 2432, 'ignis', 100000, 100000],
         ['ignis', 'Shaanarid Castle', 'castle', 4608, 2974, 'ignis', 250000, 250000],
         ['ignis', 'Ignis Realm Wall', 'wall', 4148, 1966, 'ignis', 500000, 500000],
-        // Alsius
-        ['alsius', 'Trelleborg Fort', 'fort', 1640, 2441, 'alsius', 100000, 100000],
-        ['alsius', 'Aggersborg Fort', 'fort', 2729, 2415, 'alsius', 100000, 100000],
-        ['alsius', 'Imperia Castle', 'castle', 2802, 1103, 'alsius', 250000, 250000],
-        ['alsius', 'Alsius Realm Wall', 'wall', 1755, 2106, 'alsius', 500000, 500000],
+        // Syrtis
+        ['syrtis', 'Algaros Fort', 'fort', 1742, 3200, 'syrtis', 100000, 100000],
+        ['syrtis', 'Herbret Fort', 'fort', 2896, 3237, 'syrtis', 100000, 100000],
+        ['syrtis', 'Eferias Castle', 'castle', 3757, 4717, 'syrtis', 250000, 250000],
+        ['syrtis', 'Syrtis Realm Wall', 'wall', 2357, 4037, 'syrtis', 500000, 500000],
     ];
 
     $stmt = $db->prepare('SELECT COUNT(*) FROM territories');

@@ -1,0 +1,85 @@
+#!/usr/bin/env php
+<?php
+// Update territories from external warstatus JSON
+date_default_timezone_set('UTC');
+
+$apiUrl = 'https://cort.thebus.top/api/var/warstatus.json';
+$dbPath = __DIR__ . '/../database.sqlite';
+
+try {
+    $db = new PDO('sqlite:' . $dbPath);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    // Fetch JSON via cURL
+    $ch = curl_init($apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    $resp = curl_exec($ch);
+    $errno = curl_errno($ch);
+    $err = curl_error($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($errno || $http_code !== 200 || !$resp) {
+        fwrite(STDERR, "Failed fetching warstatus: http={$http_code} curl_err={$err}\n");
+        exit(1);
+    }
+
+    $data = json_decode($resp, true);
+    if (!is_array($data) || !isset($data['forts'])) {
+        fwrite(STDERR, "Invalid warstatus response\n");
+        exit(1);
+    }
+
+    $selectStmt = $db->prepare('SELECT realm FROM territories WHERE territory_id = ?');
+    $updateStmt = $db->prepare('UPDATE territories SET realm = ? WHERE territory_id = ?');
+    $insertCapture = $db->prepare('INSERT INTO territory_captures (territory_id, previous_realm, new_realm, captured_at) VALUES (?, ?, ?, ?)');
+
+    $updated = 0;
+    foreach ($data['forts'] as $fort) {
+        if (!isset($fort['name']) || !isset($fort['owner'])) {
+            continue;
+        }
+        $name = $fort['name'];
+        $owner = trim($fort['owner']);
+
+        // Extract territory_id from the name's trailing parentheses e.g. "Imperia Castle (1)"
+        $tid = null;
+        if (preg_match('/\((\d+)\)\s*$/', $name, $m)) {
+            $tid = (int)$m[1];
+        } elseif (preg_match('/\((\d+)\)/', $name, $m)) {
+            $tid = (int)$m[1];
+        }
+
+        if (!$tid) {
+            continue;
+        }
+
+        // API owner should be written into the `realm` column (lowercased)
+        $realm = strtolower($owner);
+
+        // Fetch previous realm for this territory
+        $selectStmt->execute([$tid]);
+        $prev = $selectStmt->fetchColumn();
+        $prevRealm = $prev === false ? null : strtolower($prev);
+
+        // If owner changed, record capture event
+        if ($prevRealm !== null && $prevRealm !== $realm) {
+            $insertCapture->execute([$tid, $prevRealm, $realm, time()]);
+        }
+
+        $updateStmt->execute([$realm, $tid]);
+        $updated += $updateStmt->rowCount();
+    }
+
+    fwrite(STDOUT, "Updated territories: {$updated}\n");
+
+} catch (PDOException $e) {
+    fwrite(STDERR, "DB error: " . $e->getMessage() . "\n");
+    exit(1);
+} catch (Exception $e) {
+    fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
+    exit(1);
+}
