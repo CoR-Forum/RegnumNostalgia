@@ -1,7 +1,7 @@
 (function(){
   // Build Path module - creates panel, handles clicks and polyline drawing
   const tpl = `
-  <div id="build-path-panel" style="position: absolute; right: 12px; bottom: 140px; width: 360px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+  <div id="build-path-panel" style="position: absolute; right: 12px; bottom: 140px; width: 560px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
     <div id="build-path-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
       <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Build Path</h2>
       <div style="display:flex;gap:6px;align-items:center">
@@ -12,7 +12,7 @@
     </div>
     <div style="padding:8px">
       <p style="color:#e0e0e0;font-size:11px;margin-bottom:8px;">Click on the map to append coordinates to the textarea below.</p>
-      <textarea id="build-path-textarea" rows="10" style="width:100%;background:#111;border:1px solid #222;color:#e0e0e0;padding:8px;font-family: monospace;"></textarea>
+      <textarea id="build-path-textarea" rows="10" style="width:100%;background:#111;border:1px solid #222;color:#e0e0e0;padding:8px;font-family: monospace; font-size:12px;"></textarea>
     </div>
   </div>
   `;
@@ -28,12 +28,24 @@
   function parseTextareaToPoints(ta) {
     const pts = [];
     if (!ta || !ta.value) return pts;
-    const lines = ta.value.split('\n');
-    for (const ln of lines) {
-      const m = ln.match(/\[\s*(\d+)\s*,\s*(\d+)\s*\]/);
-      if (m) pts.push([parseInt(m[1],10), parseInt(m[2],10)]);
+    const re = /\[\s*(\d+)\s*,\s*(\d+)\s*\]/g;
+    let m;
+    while ((m = re.exec(ta.value)) !== null) {
+      pts.push([parseInt(m[1],10), parseInt(m[2],10)]);
     }
     return pts;
+  }
+
+  function formatPointsToTextarea(points) {
+    // group 4 positions per line
+    const perLine = 4;
+    let out = '';
+    for (let i = 0; i < points.length; i += perLine) {
+      const slice = points.slice(i, i + perLine);
+      const line = slice.map(p => `[${p[0]}, ${p[1]}]`).join(', ');
+      out += '  ' + line + ',\n';
+    }
+    return out;
   }
 
   function updateBuildPathPolyline() {
@@ -58,13 +70,13 @@
       const x = Math.round(e.latlng.lng);
       const y = Math.round(totalH - e.latlng.lat);
       const ta = document.getElementById('build-path-textarea');
-      if (ta) {
-        if (ta.value && ta.value.trim().length > 0 && !ta.value.endsWith('\n')) ta.value += '\n';
-        ta.value += `  [${x}, ${y}],\n`;
-        ta.scrollTop = ta.scrollHeight;
-      }
       gameState.buildPathPoints = gameState.buildPathPoints || [];
       gameState.buildPathPoints.push([x,y]);
+      // rebuild formatted textarea with 4 positions per row
+      if (ta) {
+        ta.value = formatPointsToTextarea(gameState.buildPathPoints);
+        ta.scrollTop = ta.scrollHeight;
+      }
       updateBuildPathPolyline();
     } catch (err) { console.error('build-path:onMapClick', err); }
   }
