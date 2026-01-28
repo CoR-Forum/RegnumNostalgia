@@ -1926,6 +1926,18 @@
           }, 100);
         } catch(e) {}
 
+        // Ensure regions are rendered after the map has been resized/recentered
+        // This prevents a case where regions only appear after a manual zoom.
+        try {
+          setTimeout(() => {
+            try {
+              if (window.loadAndRenderRegions && typeof window.loadAndRenderRegions === 'function') {
+                window.loadAndRenderRegions();
+              }
+            } catch (e) { console.debug('loadAndRenderRegions failed', e); }
+          }, 250);
+        } catch (e) {}
+
         hideModal();
         showPlayerInfo();
         updatePlayerStats();
