@@ -971,7 +971,9 @@ function handleGetInventory() {
             items.stats,
             items.rarity,
             items.stackable,
-            items.equipment_slot
+            items.level,
+            items.equipment_slot,
+            items.icon_name
         FROM inventory inv
         JOIN items ON inv.item_id = items.item_id
         WHERE inv.user_id = ? AND inv.inventory_id NOT IN (' . $placeholders . ')
@@ -995,7 +997,8 @@ function handleGetInventory() {
             items.rarity,
             items.stackable,
             items.level,
-            items.equipment_slot
+            items.equipment_slot,
+            items.icon_name
         FROM inventory inv
         JOIN items ON inv.item_id = items.item_id
         WHERE inv.user_id = ? 
@@ -1020,6 +1023,7 @@ function handleGetInventory() {
             'stackable' => (bool)$item['stackable'],
             'level' => isset($item['level']) ? (int)$item['level'] : 1,
             'equipmentSlot' => $item['equipment_slot'] !== null ? $item['equipment_slot'] : null,
+            'iconName' => $item['icon_name'] ?? null,
             'acquiredAt' => (int)$item['acquired_at']
         ];
     }
@@ -1157,7 +1161,7 @@ function handleGetItems() {
     $session = validateSession();
 
     $db = getDB();
-    $stmt = $db->prepare('SELECT item_id, name, type, description, stats, rarity, stackable, level, equipment_slot FROM items ORDER BY type, name');
+    $stmt = $db->prepare('SELECT item_id, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name FROM items ORDER BY type, name');
     $stmt->execute();
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -1172,7 +1176,8 @@ function handleGetItems() {
             'rarity' => $item['rarity'],
             'stackable' => (bool)$item['stackable'],
             'level' => isset($item['level']) ? (int)$item['level'] : 1,
-            'equipmentSlot' => $item['equipment_slot'] !== null ? $item['equipment_slot'] : null
+            'equipmentSlot' => $item['equipment_slot'] !== null ? $item['equipment_slot'] : null,
+            'iconName' => $item['icon_name'] ?? null
         ];
     }
 
@@ -1222,7 +1227,7 @@ function ensureEquipmentRow($db, $userId) {
 function fetchEquippedItemDetails($db, $inventoryId) {
     if (!$inventoryId) return null;
     $stmt = $db->prepare('
-        SELECT inv.inventory_id, inv.item_id, inv.quantity, items.name, items.type, items.description, items.stats, items.rarity, items.stackable, items.equipment_slot
+        SELECT inv.inventory_id, inv.item_id, inv.quantity, items.name, items.type, items.description, items.stats, items.rarity, items.stackable, items.level, items.equipment_slot, items.icon_name
         FROM inventory inv
         JOIN items ON inv.item_id = items.item_id
         WHERE inv.inventory_id = ?
@@ -1241,7 +1246,8 @@ function fetchEquippedItemDetails($db, $inventoryId) {
         'rarity' => $it['rarity'],
         'stackable' => (bool)$it['stackable'],
         'level' => isset($it['level']) ? (int)$it['level'] : 1,
-        'equipmentSlot' => isset($it['equipment_slot']) ? $it['equipment_slot'] : null
+        'equipmentSlot' => isset($it['equipment_slot']) ? $it['equipment_slot'] : null,
+        'iconName' => $it['icon_name'] ?? null
     ];
 }
 

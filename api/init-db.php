@@ -105,7 +105,7 @@ try {
     $db->exec('CREATE INDEX IF NOT EXISTS idx_territory_captures_captured_at ON territory_captures(captured_at)');
 
     // Create items table (item templates)
-    $db->exec("
+    $db->exec(" 
         CREATE TABLE IF NOT EXISTS items (
             item_id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -115,7 +115,8 @@ try {
             rarity TEXT DEFAULT 'common',
             stackable INTEGER DEFAULT 1,
             level INTEGER DEFAULT 1,
-            equipment_slot TEXT DEFAULT NULL
+            equipment_slot TEXT DEFAULT NULL,
+            icon_name TEXT DEFAULT NULL
         )
     ");
 
@@ -265,51 +266,51 @@ try {
     // Seed items (item templates)
     $items = [
         // Consumables & currency
-        ['Health Potion', 'consumable', 'Restores 100 health', '{"heal": 100}', 'common', 1, 1, NULL],
-        ['Mana Potion', 'consumable', 'Restores 50 mana', '{"mana": 50}', 'common', 1, 1, NULL],
-        ['Health Elixir', 'consumable', 'Fully restores health', '{"heal": 9999}', 'rare', 1, 5, NULL],
-        ['Teleport Scroll', 'consumable', 'Teleports to spawn point', '{}', 'uncommon', 1, 1, NULL],
-        ['Gold Coin', 'currency', 'A shiny gold coin', '{"value": 1}', 'common', 1, 0, NULL],
+        ['Health Potion', 'consumable', 'Restores 100 health', '{"heal": 100}', 'common', 1, 1, NULL, 'item-health-potion.png'],
+        ['Mana Potion', 'consumable', 'Restores 50 mana', '{"mana": 50}', 'common', 1, 1, NULL, 'item-mana-potion.png'],
+        ['Health Elixir', 'consumable', 'Fully restores health', '{"heal": 9999}', 'rare', 1, 5, NULL, 'item-health-elixir.png'],
+        ['Teleport Scroll', 'consumable', 'Teleports to spawn point', '{}', 'uncommon', 1, 1, NULL, 'item-teleport-scroll.png'],
+        ['Gold Coin', 'currency', 'A shiny gold coin', '{"value": 1}', 'common', 1, 0, NULL, 'item-gold-coin.png'],
 
         // Weapons (right hand)
-        ['Iron Sword', 'weapon', 'A basic iron sword', '{"damage": 15, "speed": 1.2}', 'common', 0, 1, 'weapon_right'],
-        ['Steel Sword', 'weapon', 'A sturdy steel sword', '{"damage": 25, "speed": 1.3}', 'uncommon', 0, 3, 'weapon_right'],
-        ['Magic Staff', 'weapon', 'A staff imbued with magic', '{"damage": 20, "mana_boost": 30}', 'rare', 0, 5, 'weapon_right'],
-        ['Battle Axe', 'weapon', 'A heavy two-handed axe', '{"damage": 35, "speed": 0.9}', 'rare', 0, 6, 'weapon_right'],
-        ['Dagger', 'weapon', 'A small quick blade', '{"damage": 8, "speed": 1.8}', 'common', 0, 1, 'weapon_right'],
+        ['Iron Sword', 'weapon', 'A basic iron sword', '{"damage": 15, "speed": 1.2}', 'common', 0, 1, 'weapon_right', 'item-iron-sword.png'],
+        ['Steel Sword', 'weapon', 'A sturdy steel sword', '{"damage": 25, "speed": 1.3}', 'uncommon', 0, 3, 'weapon_right', 'item-steel-sword.png'],
+        ['Magic Staff', 'weapon', 'A staff imbued with magic', '{"damage": 20, "mana_boost": 30}', 'rare', 0, 5, 'weapon_right', 'item-magic-staff.png'],
+        ['Battle Axe', 'weapon', 'A heavy two-handed axe', '{"damage": 35, "speed": 0.9}', 'rare', 0, 6, 'weapon_right', 'item-battle-axe.png'],
+        ['Dagger', 'weapon', 'A small quick blade', '{"damage": 8, "speed": 1.8}', 'common', 0, 1, 'weapon_right', 'item-dagger.png'],
 
         // Off-hand (left hand) - shields / secondary weapons
-        ['Wooden Shield', 'armor', 'A simple wooden shield', '{"defense": 10}', 'common', 0, 1, 'weapon_left'],
-        ['Tower Shield', 'armor', 'Large shield offering excellent protection', '{"defense": 22}', 'uncommon', 0, 4, 'weapon_left'],
+        ['Wooden Shield', 'armor', 'A simple wooden shield', '{"defense": 10}', 'common', 0, 1, 'weapon_left', 'item-wooden-shield.png'],
+        ['Tower Shield', 'armor', 'Large shield offering excellent protection', '{"defense": 22}', 'uncommon', 0, 4, 'weapon_left', 'item-tower-shield.png'],
 
         // Head
-        ['Leather Cap', 'armor', 'A light leather cap', '{"defense": 5}', 'common', 0, 1, 'head'],
-        ['Iron Helmet', 'armor', 'A sturdy iron helmet', '{"defense": 12}', 'uncommon', 0, 3, 'head'],
+        ['Leather Cap', 'armor', 'A light leather cap', '{"defense": 5}', 'common', 0, 1, 'head', 'item-leather-cap.png'],
+        ['Iron Helmet', 'armor', 'A sturdy iron helmet', '{"defense": 12}', 'uncommon', 0, 3, 'head', 'item-iron-helmet.png'],
 
         // Body
-        ['Leather Tunic', 'armor', 'Light leather armor for torso', '{"defense": 8}', 'common', 0, 1, 'body'],
-        ['Iron Armor', 'armor', 'Basic iron chest armor', '{"defense": 20, "health": 50}', 'common', 0, 4, 'body'],
-        ['Plate Armor', 'armor', 'Heavy plate armor', '{"defense": 40, "health": 150}', 'epic', 0, 8, 'body'],
+        ['Leather Tunic', 'armor', 'Light leather armor for torso', '{"defense": 8}', 'common', 0, 1, 'body', 'item-leather-tunic.png'],
+        ['Iron Armor', 'armor', 'Basic iron chest armor', '{"defense": 20, "health": 50}', 'common', 0, 4, 'body', 'item-iron-armor.png'],
+        ['Plate Armor', 'armor', 'Heavy plate armor', '{"defense": 40, "health": 150}', 'epic', 0, 8, 'body', 'item-plate-armor.png'],
 
         // Hands
-        ['Leather Gloves', 'armor', 'Simple leather gloves', '{"defense": 3}', 'common', 0, 1, 'hands'],
-        ['Iron Gauntlets', 'armor', 'Sturdy iron gauntlets', '{"defense": 8}', 'uncommon', 0, 3, 'hands'],
+        ['Leather Gloves', 'armor', 'Simple leather gloves', '{"defense": 3}', 'common', 0, 1, 'hands', 'item-leather-gloves.png'],
+        ['Iron Gauntlets', 'armor', 'Sturdy iron gauntlets', '{"defense": 8}', 'uncommon', 0, 3, 'hands', 'item-iron-gauntlets.png'],
 
         // Shoulders
-        ['Leather Pauldrons', 'armor', 'Small shoulder guards', '{"defense": 4}', 'common', 0, 1, 'shoulders'],
-        ['Steel Pauldrons', 'armor', 'Reinforced shoulder armor', '{"defense": 10}', 'rare', 0, 4, 'shoulders'],
+        ['Leather Pauldrons', 'armor', 'Small shoulder guards', '{"defense": 4}', 'common', 0, 1, 'shoulders', 'item-leather-pauldrons.png'],
+        ['Steel Pauldrons', 'armor', 'Reinforced shoulder armor', '{"defense": 10}', 'rare', 0, 4, 'shoulders', 'item-steel-pauldrons.png'],
 
         // Legs
-        ['Leather Leggings', 'armor', 'Light leg protection', '{"defense": 6}', 'common', 0, 1, 'legs'],
-        ['Iron Leggings', 'armor', 'Reinforced leg armor', '{"defense": 14}', 'uncommon', 0, 3, 'legs'],
+        ['Leather Leggings', 'armor', 'Light leg protection', '{"defense": 6}', 'common', 0, 1, 'legs', 'item-leather-leggings.png'],
+        ['Iron Leggings', 'armor', 'Reinforced leg armor', '{"defense": 14}', 'uncommon', 0, 3, 'legs', 'item-iron-leggings.png'],
 
         // Rings (right/left)
-        ['Silver Ring', 'misc', 'A simple silver ring', '{"defense": 1}', 'common', 0, 1, 'ring_right'],
-        ['Gold Ring', 'misc', 'A ring of fine gold', '{"defense": 2}', 'uncommon', 0, 2, 'ring_left'],
+        ['Silver Ring', 'misc', 'A simple silver ring', '{"defense": 1}', 'common', 0, 1, 'ring_right', 'item-silver-ring.png'],
+        ['Gold Ring', 'misc', 'A ring of fine gold', '{"defense": 2}', 'uncommon', 0, 2, 'ring_left', 'item-gold-ring.png'],
 
         // Amulets
-        ['Silver Amulet', 'misc', 'A charm worn around the neck', '{"mana_boost": 5}', 'common', 0, 1, 'amulet'],
-        ['Amulet of Strength', 'misc', 'Increases strength significantly', '{"damage": 10, "strength": 5}', 'rare', 0, 6, 'amulet'],
+        ['Silver Amulet', 'misc', 'A charm worn around the neck', '{"mana_boost": 5}', 'common', 0, 1, 'amulet', 'item-silver-amulet.png'],
+        ['Amulet of Strength', 'misc', 'Increases strength significantly', '{"damage": 10, "strength": 5}', 'rare', 0, 6, 'amulet', 'item-amulet-strength.png'],
     ];
 
     $stmt = $db->prepare('SELECT COUNT(*) FROM items');
@@ -317,7 +318,7 @@ try {
     $count = $stmt->fetchColumn();
 
     if ($count == 0) {
-        $stmt = $db->prepare('INSERT INTO items (name, type, description, stats, rarity, stackable, level, equipment_slot) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+        $stmt = $db->prepare('INSERT INTO items (name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
         foreach ($items as $item) {
             $stmt->execute($item);
         }
