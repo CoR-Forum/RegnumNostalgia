@@ -58,6 +58,8 @@
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
       line-height: 1;
     }
+
+    
     #attribution a{ color: #fff; text-decoration: underline }
     /* Top-center logo */
     #logo{
@@ -739,24 +741,7 @@
       <button id="inventory-close-btn" style="background: #2a2a2a; border: 1px solid #444; color: #e0e0e0; font-size: 11px; cursor: pointer; padding: 0; width: 16px; height: 14px; line-height: 1; font-family: 'MS Sans Serif', Arial, sans-serif; font-weight: 700;">X</button>
     </div>
 
-    <div id="equipment-area" style="display:none; padding: 8px;">
-      <div class="equipment-area">
-        <div class="equipment-row" id="equipment-row-top">
-          <div class="equipment-slot empty" data-slot="head" title="Head"><div class="slot-icon">👑</div></div>
-          <div class="equipment-slot empty" data-slot="body" title="Body"><div class="slot-icon">🛡️</div></div>
-          <div class="equipment-slot empty" data-slot="hands" title="Hands"><div class="slot-icon">🧤</div></div>
-          <div class="equipment-slot empty" data-slot="shoulders" title="Shoulders"><div class="slot-icon">🧥</div></div>
-          <div class="equipment-slot empty" data-slot="legs" title="Legs"><div class="slot-icon">👖</div></div>
-        </div>
-        <div class="equipment-row" id="equipment-row-bottom">
-          <div class="equipment-slot empty" data-slot="weapon_right" title="Weapon R"><div class="slot-icon">⚔️</div></div>
-          <div class="equipment-slot empty" data-slot="weapon_left" title="Weapon L"><div class="slot-icon">🪓</div></div>
-          <div class="equipment-slot empty" data-slot="ring_right" title="Ring R"><div class="slot-icon">💍</div></div>
-          <div class="equipment-slot empty" data-slot="ring_left" title="Ring L"><div class="slot-icon">💍</div></div>
-          <div class="equipment-slot empty" data-slot="amulet" title="Amulet"><div class="slot-icon">📿</div></div>
-        </div>
-      </div>
-    </div>
+    <!-- equipment moved to Character window -->
 
     <div id="inventory-list" style="padding: 8px; background: #1a1a1a;">
       <div id="inventory-loading" style="text-align: center; color: #e0e0e0; padding: 40px;">
@@ -807,19 +792,75 @@
           <span style="width:45px; font-size:11px; color:#e0e0e0;">Level:</span>
           <div id="player-level" style="font-weight:600; color: #ffd700;">1</div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px; flex:1;">
-          <span style="width:30px; font-size:11px; color:#e0e0e0;">XP:</span>
-          <div id="player-xp-text" style="font-size:11px; color:#e0e0e0;">0</div>
-          <div id="player-xp-to-next" style="font-size:11px; color:#a0a0a0; margin-left:6px;">Next: 0</div>
-        </div>
+        <div style="flex:1;"></div>
       </div>
     </div>
   </div>
 
   <div id="map"></div>
   <div id="coords" aria-hidden="true"></div>
+  
+  <!-- Character Window (equipment + stats) -->
+  <div id="character-window" style="position: absolute; left: 12px; bottom: 12px; width: 320px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+    <div id="character-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+      <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Character</h2>
+      <button id="character-close-btn" style="background: #2a2a2a; border: 1px solid #444; color: #e0e0e0; font-size: 11px; cursor: pointer; padding: 0; width: 16px; height: 14px; line-height: 1; font-weight: 700;">X</button>
+    </div>
+
+    <div id="character-body" style="display: flex; flex-direction: column; gap: 8px; padding: 8px;">
+      <div>
+        <div class="equipment-area">
+          <div class="equipment-row" id="equipment-row-top">
+            <div class="equipment-slot empty" data-slot="head" title="Head"><div class="slot-icon">👑</div></div>
+            <div class="equipment-slot empty" data-slot="body" title="Body"><div class="slot-icon">🛡️</div></div>
+            <div class="equipment-slot empty" data-slot="hands" title="Hands"><div class="slot-icon">🧤</div></div>
+            <div class="equipment-slot empty" data-slot="shoulders" title="Shoulders"><div class="slot-icon">🧥</div></div>
+            <div class="equipment-slot empty" data-slot="legs" title="Legs"><div class="slot-icon">👖</div></div>
+          </div>
+          <div class="equipment-row" id="equipment-row-bottom">
+            <div class="equipment-slot empty" data-slot="weapon_right" title="Weapon R"><div class="slot-icon">⚔️</div></div>
+            <div class="equipment-slot empty" data-slot="weapon_left" title="Weapon L"><div class="slot-icon">🪓</div></div>
+            <div class="equipment-slot empty" data-slot="ring_right" title="Ring R"><div class="slot-icon">💍</div></div>
+            <div class="equipment-slot empty" data-slot="ring_left" title="Ring L"><div class="slot-icon">💍</div></div>
+            <div class="equipment-slot empty" data-slot="amulet" title="Amulet"><div class="slot-icon">📿</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #e0e0e0;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="margin-bottom:4px; font-weight:700;">Level</div>
+            <div id="char-level" style="font-size:18px; font-weight:700; color:#ffd700;">1</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="margin-top:6px;">
+              <div class="territory-health-bar" style="position:relative; height:18px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.04); width:160px;">
+                <div id="char-xp-fill" style="height:100%; width:0%; background: linear-gradient(90deg,#8b5cf6,#06b6d4); transition:width 220ms linear; display:block;"></div>
+                <div id="char-xp-bar-overlay" style="position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; pointer-events:none; color:#fff; font-size:12px; font-weight:600; text-shadow:0 1px 0 rgba(0,0,0,0.7);"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px; font-weight:700;">Stats</div>
+        <div id="char-stats-container" style="display:flex; justify-content:space-between; gap:12px; margin-top:4px;">
+          <div id="char-stats" style="font-size:12px; display:flex; flex-direction:column; gap:4px;">
+            <div id="stat-int">Int: 20</div>
+            <div id="stat-dex">Dex: 20</div>
+            <div id="stat-con">Con: 20</div>
+            <div id="stat-str">Str: 20</div>
+            <div id="stat-const">Constitution: 20</div>
+          </div>
+          <div id="char-armor-damage" style="font-size:12px; display:flex; flex-direction:column; gap:8px; align-items:flex-end; min-width:80px;">
+            <div id="stat-damage">Damage: 0</div>
+            <div id="stat-armor">Armor: 0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="header-actions">
     <button class="btn-logout" id="inventory-btn">Inventory</button>
+    <button class="btn-logout" id="character-btn">Character</button>
     <button class="btn-logout" id="logout-btn">Logout</button>
   </div>
   <div id="attribution" aria-label="Map author and source">
@@ -1171,7 +1212,21 @@
       closeInventory();
     });
 
+    // Character button and close handler
+    document.getElementById('character-btn').addEventListener('click', () => {
+      openCharacter();
+    });
+    document.getElementById('character-close-btn').addEventListener('click', () => {
+      closeCharacter();
+    });
+
     // Make inventory window draggable
+    // Global helper to translate windows
+    function setTranslate(xPos, yPos, el) {
+      if (!el) return;
+      el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+    }
+
     (function() {
       const inventoryWindow = document.getElementById('inventory-window');
       const header = document.getElementById('inventory-header');
@@ -1209,10 +1264,7 @@
         initialY = currentY;
         isDragging = false;
       }
-
-      function setTranslate(xPos, yPos, el) {
-        el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
-      }
+    
     })();
 
     // Build Path behavior moved to public/build-path.js
@@ -1244,16 +1296,11 @@
       document.getElementById('inventory-loading').style.display = 'block';
       document.getElementById('inventory-items').style.display = 'none';
       document.getElementById('inventory-empty').style.display = 'none';
-      document.getElementById('equipment-area').style.display = 'block';
+      // equipment is shown in Character window now
 
       try {
-        // Fetch inventory and equipment in parallel
-        const [invData, equipData] = await Promise.all([
-          apiCall('/inventory'),
-          apiCall('/equipment')
-        ]);
-
-        displayEquipment(equipData.equipment);
+        // Fetch inventory (equipment will be fetched separately by character window when opened)
+        const invData = await apiCall('/inventory');
         displayInventory(invData.items);
       } catch (error) {
         console.error('Failed to fetch inventory:', error);
@@ -1264,6 +1311,53 @@
 
     function closeInventory() {
       document.getElementById('inventory-window').style.display = 'none';
+    }
+
+    // Character window functions
+    async function openCharacter(){
+      const win = document.getElementById('character-window');
+      if (!win) return;
+      win.style.display = 'flex';
+      try{
+        const data = await apiCall('/equipment');
+        displayEquipment(data.equipment);
+      }catch(err){ console.error('Failed to load equipment:', err); }
+      updateCharacterStats();
+    }
+
+    function closeCharacter(){
+      const el = document.getElementById('character-window'); if(el) el.style.display = 'none';
+    }
+
+    function updateCharacterStats(){
+      try{
+        const lvlEl = document.getElementById('char-level'); if (lvlEl) lvlEl.textContent = gameState.level || 1;
+        try {
+          const fill = document.getElementById('char-xp-fill');
+          const xp = Number(gameState.xp || 0);
+          const xpToNextVal = Number(gameState.xpToNext || 0);
+          const pct = (xpToNextVal > 0) ? Math.round((xp / (xp + xpToNextVal)) * 100) : 100;
+          if (fill) fill.style.width = pct + '%';
+          try {
+            const overlay = document.getElementById('char-xp-bar-overlay');
+            if (overlay) overlay.textContent = `XP ${xp} / ${xp + xpToNextVal}`;
+          } catch (e) {}
+        } catch (e) {}
+        const s = gameState.stats || { intelligence:20, dexterity:20, concentration:20, strength:20, constitution:20 };
+        document.getElementById('stat-int').textContent = `Int: ${s.intelligence || 20}`;
+        document.getElementById('stat-dex').textContent = `Dex: ${s.dexterity || 20}`;
+        document.getElementById('stat-con').textContent = `Con: ${s.concentration || 20}`;
+        document.getElementById('stat-str').textContent = `Str: ${s.strength || 20}`;
+        document.getElementById('stat-const').textContent = `Constitution: ${s.constitution || 20}`;
+        try {
+          const dmg = Number(gameState.damage || 0);
+          const arm = Number(gameState.armor || 0);
+          const dmgEl = document.getElementById('stat-damage');
+          const armEl = document.getElementById('stat-armor');
+          if (dmgEl) dmgEl.textContent = `Damage: ${dmg}`;
+          if (armEl) armEl.textContent = `Armor: ${arm}`;
+        } catch (e) {}
+      }catch(e){}
     }
 
     function displayInventory(items) {
@@ -1290,6 +1384,46 @@
         currency: '💰',
         misc: '📦'
       };
+
+      // Make character window draggable
+      (function() {
+        const characterWindow = document.getElementById('character-window');
+        const header = document.getElementById('character-header');
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        header.addEventListener('mousedown', dragStartChar);
+        document.addEventListener('mousemove', dragChar);
+        document.addEventListener('mouseup', dragEndChar);
+
+        function dragStartChar(e) {
+          initialX = e.clientX - xOffset;
+          initialY = e.clientY - yOffset;
+          isDragging = true;
+        }
+
+        function dragChar(e) {
+          if (isDragging) {
+            e.preventDefault();
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
+            xOffset = currentX;
+            yOffset = currentY;
+            setTranslate(currentX, currentY, characterWindow);
+          }
+        }
+
+        function dragEndChar(e) {
+          initialX = currentX;
+          initialY = currentY;
+          isDragging = false;
+        }
+      })();
 
       // Calculate total gold
       let totalGold = 0;
@@ -1337,6 +1471,25 @@
         itemDiv.addEventListener('mouseleave', hideTooltip);
         itemDiv.addEventListener('mousemove', (e) => moveTooltip(e));
 
+        // Right-click to equip
+        itemDiv.addEventListener('contextmenu', async (e) => {
+          try {
+            e.preventDefault();
+            const id = itemDiv.dataset.inventoryId;
+            if (!id) return;
+            const form = new URLSearchParams();
+            form.append('inventoryId', id);
+            try {
+              await apiCall('/equipment/equip', { method: 'POST', body: form });
+            } catch (err) {
+              const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
+              if (window.addLogMessage) window.addLogMessage(msg, 'error');
+            }
+            try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openCharacter(); } catch(e){}
+            try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openInventory(); } catch(e){}
+          } catch (e) { console.error('inventory right-click equip failed', e); }
+        });
+
         container.appendChild(itemDiv);
       });
       
@@ -1359,9 +1512,16 @@
             // Unequip slot
             const form = new URLSearchParams();
             form.append('slot', data.slot);
-            await apiCall('/equipment/unequip', { method: 'POST', body: form });
+            try {
+              await apiCall('/equipment/unequip', { method: 'POST', body: form });
+            } catch (err) {
+              try {
+                const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
+                if (window.addLogMessage) window.addLogMessage(msg, 'error');
+              } catch (e) { console.error('Failed to log unequip error', e); }
+            }
             // refresh inventory and equipment
-            await openInventory();
+            try { await openInventory(); } catch(e){}
           }
         } catch(err){ console.error('Failed to unequip:', err); }
       });
@@ -1491,6 +1651,23 @@
               const payload = JSON.stringify({ fromSlot: true, slot: slot, inventoryId: info.inventoryId });
               try{ ev.dataTransfer.setData('application/json', payload); }catch(_){ ev.dataTransfer.setData('text/plain', payload); }
             });
+
+            // Right-click to unequip
+            target.addEventListener('contextmenu', async (e) => {
+              try {
+                e.preventDefault();
+                const form = new URLSearchParams();
+                form.append('slot', slot);
+                try {
+                  await apiCall('/equipment/unequip', { method: 'POST', body: form });
+                } catch (err) {
+                  const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
+                  if (window.addLogMessage) window.addLogMessage(msg, 'error');
+                }
+                try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openInventory(); } catch(e){}
+                try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openCharacter(); } catch(e){}
+              } catch (e) { console.error('equipment right-click unequip failed', e); }
+            });
           } else {
             // empty fallback content: keep the icon already present
             target.innerHTML = target.innerHTML || `<div class="slot-icon">🔸</div>`;
@@ -1512,8 +1689,25 @@
                 // Allow dropping onto any slot; server will auto-assign the correct template slot.
                 const form = new URLSearchParams();
                 form.append('inventoryId', data.inventoryId);
-                await apiCall('/equipment/equip', { method: 'POST', body: form });
-                await openInventory();
+                try {
+                  await apiCall('/equipment/equip', { method: 'POST', body: form });
+                } catch (err) {
+                  try {
+                    const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
+                    if (window.addLogMessage) window.addLogMessage(msg, 'error');
+                  } catch (e) { console.error('Failed to log equip error', e); }
+                }
+                // Refresh equipment view and inventory if visible
+                try {
+                  if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') {
+                    await openCharacter();
+                  }
+                } catch(e){}
+                try {
+                  if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') {
+                    await openInventory();
+                  }
+                } catch(e){}
               }
             }catch(err){ console.error('Equip failed', err); }
           });
@@ -1555,11 +1749,7 @@
       realmBadge.className = `realm-badge ${gameState.realm}`;
       // populate level/xp display if present
       const lvlEl = document.getElementById('player-level');
-      const xpText = document.getElementById('player-xp-text');
-      const xpNext = document.getElementById('player-xp-to-next');
       if (lvlEl) lvlEl.textContent = gameState.level || 1;
-      if (xpText) xpText.textContent = `${gameState.xp || 0} XP`;
-      if (xpNext) xpNext.textContent = `Next: ${gameState.xpToNext || 0}`;
       panel.classList.add('visible');
     }
 
@@ -1610,6 +1800,9 @@
       try {
         // Get current position
         const data = await apiCall('/player/position');
+        if (!data || !data.position) {
+          throw new Error('Invalid /player/position response');
+        }
         gameState.position = data.position;
         gameState.realm = data.realm;
         gameState.health = data.health;
@@ -1976,7 +2169,7 @@
           gameState.xpToNext = typeof posData.xpToNext !== 'undefined' ? posData.xpToNext : (gameState.xpToNext || 0);
           gameState.stats = posData.stats || gameState.stats || { intelligence:20, dexterity:20, concentration:20, strength:20, constitution:20 };
           // update info panel values
-          try { showPlayerInfo(); } catch (e) {}
+          try { showPlayerInfo(); updateCharacterStats(); } catch (e) {}
           updatePlayerStats();
 
           // Update local player position and marker so UI reacts to server-driven walking
