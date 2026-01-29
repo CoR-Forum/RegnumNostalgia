@@ -5,11 +5,18 @@
  * Designed to be safe to run repeatedly by the cron runner.
  */
 
-define('DB_PATH', dirname(__DIR__) . '/database.sqlite');
+define('DB_HOST', getenv('GAME_DB_HOST') ?: 'db');
+define('DB_PORT', getenv('GAME_DB_PORT') ?: 3306);
+define('DB_NAME', getenv('GAME_DB_NAME') ?: 'regnum_nostalgia');
+define('DB_USER', getenv('GAME_DB_USER') ?: 'regnum_user');
+define('DB_PASS', getenv('GAME_DB_PASS') ?: 'regnum_pass');
 
 try {
-    $db = new PDO('sqlite:' . DB_PATH);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+    $db = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 
     // Ensure row exists
     $stmt = $db->prepare('SELECT id, started_at, last_updated, ingame_hour, ingame_minute, tick_seconds FROM server_time WHERE id = 1');

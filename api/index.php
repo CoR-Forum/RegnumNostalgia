@@ -19,7 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Constants
-define('DB_PATH', __DIR__ . '/database.sqlite');
+define('DB_HOST', getenv('GAME_DB_HOST') ?: 'db');
+define('DB_PORT', getenv('GAME_DB_PORT') ?: 3306);
+define('DB_NAME', getenv('GAME_DB_NAME') ?: 'regnum_nostalgia');
+define('DB_USER', getenv('GAME_DB_USER') ?: 'regnum_user');
+define('DB_PASS', getenv('GAME_DB_PASS') ?: 'regnum_pass');
 define('FORUM_API_URL', 'https://cor-forum.de/api.php');
 define('FORUM_API_KEY', getenv('COR_FORUM_API_KEY') ?: '');
 define('SESSION_DURATION', 86400); // 24 hours
@@ -47,8 +51,11 @@ function getDB() {
     static $db = null;
     if ($db === null) {
         try {
-            $db = new PDO('sqlite:' . DB_PATH);
-            $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+            $db = new PDO($dsn, DB_USER, DB_PASS, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+            ]);
         } catch (PDOException $e) {
             error_log('Database connection failed: ' . $e->getMessage());
             respondError('Database connection failed', 500);
@@ -928,7 +935,7 @@ function handleStartMove() {
 
     // upsert walker row for user
     $now = time();
-    $stmt = $db->prepare('INSERT INTO walkers (user_id, positions, current_index, started_at, updated_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET positions = excluded.positions, current_index = 0, started_at = excluded.started_at, updated_at = excluded.updated_at');
+    $stmt = $db->prepare('INSERT INTO walkers (user_id, positions, current_index, started_at, updated_at) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE positions = VALUES(positions), current_index = 0, started_at = VALUES(started_at), updated_at = VALUES(updated_at)');
     $stmt->execute([$session['user_id'], json_encode($positions), 0, $now, $now]);
 
     $destination = $positions[count($positions)-1];
@@ -1480,7 +1487,7 @@ function handlePostShoutbox() {
         }
     }
 
-    // Lookup username from the game's `players` table (SQLite). Reject if not found.
+    // Lookup username from the game's `players` table (MariaDB). Reject if not found.
     $username = '';
     try {
         $gdb = getDB();

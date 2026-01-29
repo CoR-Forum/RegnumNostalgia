@@ -4,11 +4,18 @@
 date_default_timezone_set('UTC');
 
 $apiUrl = 'https://cort.thebus.top/api/var/warstatus.json';
-$dbPath = __DIR__ . '/../database.sqlite';
+define('DB_HOST', getenv('GAME_DB_HOST') ?: 'db');
+define('DB_PORT', getenv('GAME_DB_PORT') ?: 3306);
+define('DB_NAME', getenv('GAME_DB_NAME') ?: 'regnum_nostalgia');
+define('DB_USER', getenv('GAME_DB_USER') ?: 'regnum_user');
+define('DB_PASS', getenv('GAME_DB_PASS') ?: 'regnum_pass');
 
 try {
-    $db = new PDO('sqlite:' . $dbPath);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+    $db = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 
     // Fetch JSON via cURL
     $ch = curl_init($apiUrl);
@@ -90,7 +97,7 @@ try {
     $syncSql = "UPDATE territories SET realm = (
         SELECT LOWER(new_realm) FROM territory_captures
         WHERE territory_captures.territory_id = territories.territory_id
-        ORDER BY captured_at DESC, id DESC LIMIT 1
+        ORDER BY captured_at DESC, capture_id DESC LIMIT 1
     ) WHERE EXISTS (SELECT 1 FROM territory_captures WHERE territory_captures.territory_id = territories.territory_id)";
     $synced = $db->exec($syncSql);
     if ($synced !== false) {

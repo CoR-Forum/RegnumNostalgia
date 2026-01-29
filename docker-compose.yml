@@ -12,12 +12,43 @@ services:
     restart: unless-stopped
 
   php:
-    image: php:8.2-fpm-alpine
+    build:
+      context: ./api
+      dockerfile: Dockerfile
     volumes:
       - ./api:/var/www/api
       - ./public:/var/www/public
     working_dir: /var/www/api
     env_file:
       - .env
+    depends_on:
+      - db
     entrypoint: ["/bin/sh", "/var/www/api/docker-entrypoint.sh"]
+    restart: unless-stopped
+
+  db:
+    image: mariadb:11.3
+    environment:
+      MARIADB_ROOT_PASSWORD: ${GAME_DB_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${GAME_DB_NAME:-regnum_nostalgia}
+      MARIADB_USER: ${GAME_DB_USER:-regnum_user}
+      MARIADB_PASSWORD: ${GAME_DB_PASS:-regnum_pass}
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+    restart: unless-stopped
+    ports:
+      - "8336:3306"
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: ${GAME_DB_USER:-regnum_user}
+      PMA_PASSWORD: ${GAME_DB_PASS:-regnum_pass}
+      PMA_ARBITRARY: 0
+    ports:
+      - "8322:80"
+    depends_on:
+      - db
     restart: unless-stopped

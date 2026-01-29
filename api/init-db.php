@@ -1,27 +1,34 @@
 <?php
 /**
  * Database initialization script
- * Run this once to create the SQLite database and tables
+ * Run this once to create the MariaDB database and tables
  */
 
-define('DB_PATH', __DIR__ . '/database.sqlite');
+define('DB_HOST', getenv('GAME_DB_HOST') ?: 'db');
+define('DB_PORT', getenv('GAME_DB_PORT') ?: 3306);
+define('DB_NAME', getenv('GAME_DB_NAME') ?: 'regnum_nostalgia');
+define('DB_USER', getenv('GAME_DB_USER') ?: 'regnum_user');
+define('DB_PASS', getenv('GAME_DB_PASS') ?: 'regnum_pass');
 
 try {
-    $db = new PDO('sqlite:' . DB_PATH);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+    $db = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 
     // Create sessions table
     $db->exec('
         CREATE TABLE IF NOT EXISTS sessions (
-            session_id TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL,
-            username TEXT NOT NULL,
-            realm TEXT,
-            created_at INTEGER NOT NULL,
-            expires_at INTEGER NOT NULL,
-            last_activity INTEGER NOT NULL,
-            fingerprint TEXT
-        )
+            session_id VARCHAR(64) PRIMARY KEY,
+            user_id INT NOT NULL,
+            username VARCHAR(255) NOT NULL,
+            realm VARCHAR(16) NULL,
+            created_at INT NOT NULL,
+            expires_at INT NOT NULL,
+            last_activity INT NOT NULL,
+            fingerprint VARCHAR(128) NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)');
@@ -30,24 +37,24 @@ try {
     // Create players table
     $db->exec('
         CREATE TABLE IF NOT EXISTS players (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT NOT NULL,
-            realm TEXT,
-            x INTEGER NOT NULL DEFAULT 0,
-            y INTEGER NOT NULL DEFAULT 0,
-            health INTEGER NOT NULL DEFAULT 600,
-            max_health INTEGER NOT NULL DEFAULT 600,
-            mana INTEGER NOT NULL DEFAULT 200,
-            max_mana INTEGER NOT NULL DEFAULT 200,
-            xp INTEGER NOT NULL DEFAULT 0,
-            level INTEGER NOT NULL DEFAULT 1,
-            intelligence INTEGER NOT NULL DEFAULT 20,
-            dexterity INTEGER NOT NULL DEFAULT 20,
-            concentration INTEGER NOT NULL DEFAULT 20,
-            strength INTEGER NOT NULL DEFAULT 20,
-            constitution INTEGER NOT NULL DEFAULT 20,
-            last_active INTEGER NOT NULL
-        )
+            user_id INT PRIMARY KEY,
+            username VARCHAR(255) NOT NULL,
+            realm VARCHAR(16) NULL,
+            x INT NOT NULL DEFAULT 0,
+            y INT NOT NULL DEFAULT 0,
+            health INT NOT NULL DEFAULT 600,
+            max_health INT NOT NULL DEFAULT 600,
+            mana INT NOT NULL DEFAULT 200,
+            max_mana INT NOT NULL DEFAULT 200,
+            xp INT NOT NULL DEFAULT 0,
+            level INT NOT NULL DEFAULT 1,
+            intelligence INT NOT NULL DEFAULT 20,
+            dexterity INT NOT NULL DEFAULT 20,
+            concentration INT NOT NULL DEFAULT 20,
+            strength INT NOT NULL DEFAULT 20,
+            constitution INT NOT NULL DEFAULT 20,
+            last_active INT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     '); 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_players_last_active ON players(last_active)');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_players_realm ON players(realm)');
@@ -56,21 +63,21 @@ try {
     // Create territories table (forts and castles)
     $db->exec('
         CREATE TABLE IF NOT EXISTS territories (
-            territory_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            realm TEXT NOT NULL,
-            name TEXT NOT NULL,
-            type TEXT NOT NULL,
-            health INTEGER NOT NULL DEFAULT 100,
-            max_health INTEGER NOT NULL DEFAULT 100,
-            x INTEGER NOT NULL,
-            y INTEGER NOT NULL,
-            owner_realm TEXT,
-            owner_players TEXT,
-            contested INTEGER NOT NULL DEFAULT 0,
-            contested_since INTEGER,
-            icon_name TEXT,
-            icon_name_contested TEXT
-        )
+            territory_id INT AUTO_INCREMENT PRIMARY KEY,
+            realm VARCHAR(16) NOT NULL,
+            name VARCHAR(255) NOT NULL,
+            type VARCHAR(32) NOT NULL,
+            health INT NOT NULL DEFAULT 100,
+            max_health INT NOT NULL DEFAULT 100,
+            x INT NOT NULL,
+            y INT NOT NULL,
+            owner_realm VARCHAR(16) NULL,
+            owner_players TEXT NULL,
+            contested TINYINT(1) NOT NULL DEFAULT 0,
+            contested_since INT NULL,
+            icon_name VARCHAR(255) NULL,
+            icon_name_contested VARCHAR(255) NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_territories_realm ON territories(realm)');
@@ -79,16 +86,16 @@ try {
     // Create superbosses table
     $db->exec('
         CREATE TABLE IF NOT EXISTS superbosses (
-            boss_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            icon_name TEXT,
-            health INTEGER NOT NULL,
-            max_health INTEGER NOT NULL,
-            x INTEGER NOT NULL,
-            y INTEGER NOT NULL,
-            last_attacked INTEGER,
-            respawn_time INTEGER
-        )
+            boss_id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            icon_name VARCHAR(255) NULL,
+            health INT NOT NULL,
+            max_health INT NOT NULL,
+            x INT NOT NULL,
+            y INT NOT NULL,
+            last_attacked INT NULL,
+            respawn_time INT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_superbosses_health ON superbosses(health)');
@@ -96,13 +103,13 @@ try {
     // Create territory captures table to track ownership changes
     $db->exec('
         CREATE TABLE IF NOT EXISTS territory_captures (
-            capture_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            territory_id INTEGER NOT NULL,
-            previous_realm TEXT,
-            new_realm TEXT NOT NULL,
-            captured_at INTEGER NOT NULL,
+            capture_id INT AUTO_INCREMENT PRIMARY KEY,
+            territory_id INT NOT NULL,
+            previous_realm VARCHAR(16) NULL,
+            new_realm VARCHAR(16) NOT NULL,
+            captured_at INT NOT NULL,
             FOREIGN KEY (territory_id) REFERENCES territories(territory_id)
-        )
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_territory_captures_territory_id ON territory_captures(territory_id)');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_territory_captures_captured_at ON territory_captures(captured_at)');
@@ -110,17 +117,17 @@ try {
     // Create items table (item templates)
     $db->exec(" 
         CREATE TABLE IF NOT EXISTS items (
-            item_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL UNIQUE,
-            type TEXT NOT NULL,
-            description TEXT,
-            stats TEXT,
-            rarity TEXT DEFAULT 'common',
-            stackable INTEGER DEFAULT 1,
-            level INTEGER DEFAULT 1,
-            equipment_slot TEXT DEFAULT NULL,
-            icon_name TEXT DEFAULT NULL
-        )
+            item_id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL UNIQUE,
+            type VARCHAR(64) NOT NULL,
+            description TEXT NULL,
+            stats TEXT NULL,
+            rarity VARCHAR(32) DEFAULT 'common',
+            stackable TINYINT(1) DEFAULT 1,
+            level INT DEFAULT 1,
+            equipment_slot VARCHAR(32) DEFAULT NULL,
+            icon_name VARCHAR(255) DEFAULT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_items_type ON items(type)');
@@ -130,14 +137,14 @@ try {
     // Create inventory table (player ownership)
     $db->exec('
         CREATE TABLE IF NOT EXISTS inventory (
-            inventory_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            item_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL DEFAULT 1,
-            acquired_at INTEGER NOT NULL,
+            inventory_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            item_id INT NOT NULL,
+            quantity INT NOT NULL DEFAULT 1,
+            acquired_at INT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES players(user_id),
             FOREIGN KEY (item_id) REFERENCES items(item_id)
-        )
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_inventory_user_id ON inventory(user_id)');
@@ -147,20 +154,20 @@ try {
     // Create equipment table (player equipment slots)
     $db->exec('
         CREATE TABLE IF NOT EXISTS equipment (
-            equipment_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL UNIQUE,
-            head INTEGER,
-            body INTEGER,
-            hands INTEGER,
-            shoulders INTEGER,
-            legs INTEGER,
-            weapon_right INTEGER,
-            weapon_left INTEGER,
-            ring_right INTEGER,
-            ring_left INTEGER,
-            amulet INTEGER,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            equipment_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL UNIQUE,
+            head INT NULL,
+            body INT NULL,
+            hands INT NULL,
+            shoulders INT NULL,
+            legs INT NULL,
+            weapon_right INT NULL,
+            weapon_left INT NULL,
+            ring_right INT NULL,
+            ring_left INT NULL,
+            amulet INT NULL,
+            created_at INT NOT NULL,
+            updated_at INT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES players(user_id),
             FOREIGN KEY (head) REFERENCES inventory(inventory_id),
             FOREIGN KEY (body) REFERENCES inventory(inventory_id),
@@ -172,7 +179,7 @@ try {
             FOREIGN KEY (ring_right) REFERENCES inventory(inventory_id),
             FOREIGN KEY (ring_left) REFERENCES inventory(inventory_id),
             FOREIGN KEY (amulet) REFERENCES inventory(inventory_id)
-        )
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
 
     $db->exec('CREATE INDEX IF NOT EXISTS idx_equipment_user_id ON equipment(user_id)');
@@ -180,13 +187,13 @@ try {
     // Create walkers table (player movement jobs)
     $db->exec('
         CREATE TABLE IF NOT EXISTS walkers (
-            walker_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL UNIQUE,
-            positions TEXT NOT NULL,
-            current_index INTEGER NOT NULL DEFAULT 0,
-            started_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
-        )
+            walker_id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL UNIQUE,
+            positions LONGTEXT NOT NULL,
+            current_index INT NOT NULL DEFAULT 0,
+            started_at INT NOT NULL,
+            updated_at INT NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_walkers_user_id ON walkers(user_id)');
 
@@ -195,13 +202,13 @@ try {
     // Create server_time table to track in-game time (1 real hour == 24 in-game hours)
     $db->exec('
         CREATE TABLE IF NOT EXISTS server_time (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            started_at INTEGER NOT NULL,
-            last_updated INTEGER NOT NULL,
-            ingame_hour INTEGER NOT NULL DEFAULT 0,
-            ingame_minute INTEGER NOT NULL DEFAULT 0,
-            tick_seconds INTEGER NOT NULL DEFAULT 150
-        )
+            id TINYINT PRIMARY KEY,
+            started_at INT NOT NULL,
+            last_updated INT NOT NULL,
+            ingame_hour INT NOT NULL DEFAULT 0,
+            ingame_minute INT NOT NULL DEFAULT 0,
+            tick_seconds INT NOT NULL DEFAULT 150
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
 
     $stmt = $db->prepare('SELECT COUNT(*) FROM server_time');
@@ -355,7 +362,7 @@ try {
     }
 
     echo "Database initialized successfully!\n";
-    echo "Database location: " . DB_PATH . "\n";
+    echo "Database: " . DB_NAME . "@" . DB_HOST . ":" . DB_PORT . "\n";
     echo "\nTables created:\n";
     echo "  - sessions (session_id, user_id, username, realm, created_at, expires_at, last_activity, fingerprint)\n";
     echo "  - players (user_id, username, realm, x, y, health, max_health, mana, max_mana, xp, level, intelligence, dexterity, concentration, strength, constitution, last_active)\n";

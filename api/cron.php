@@ -2,7 +2,11 @@
 // cron.php: continuously calculate player levels from xp and write to DB
 // Run this as a long-running process (supervisor/systemd) or via cron wrapper.
 
-define('DB_PATH', __DIR__ . '/database.sqlite');
+define('DB_HOST', getenv('GAME_DB_HOST') ?: 'db');
+define('DB_PORT', getenv('GAME_DB_PORT') ?: 3306);
+define('DB_NAME', getenv('GAME_DB_NAME') ?: 'regnum_nostalgia');
+define('DB_USER', getenv('GAME_DB_USER') ?: 'regnum_user');
+define('DB_PASS', getenv('GAME_DB_PASS') ?: 'regnum_pass');
 define('LEVELS_PATH', __DIR__ . '/levels.json');
 
 function loadLevels() {
@@ -33,8 +37,11 @@ function xpToLevelValue($xp, $levels) {
 }
 
 try {
-    $db = new PDO('sqlite:' . DB_PATH);
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $dsn = 'mysql:host=' . DB_HOST . ';port=' . DB_PORT . ';dbname=' . DB_NAME . ';charset=utf8mb4';
+    $db = new PDO($dsn, DB_USER, DB_PASS, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+    ]);
 } catch (PDOException $e) {
     fwrite(STDERR, "Failed to open DB: " . $e->getMessage() . "\n");
     exit(1);

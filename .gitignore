@@ -4,3 +4,5 @@ screenshots.sqlite*
 cor-forum-api-reference.*
 .env
 roimg/*
+data/*
+READ.md

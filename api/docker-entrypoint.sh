@@ -1,39 +1,56 @@
 #!/bin/sh
 set -e
 
-# Install system dependencies for SQLite
-apk add --no-cache sqlite-dev
-
-# Install PDO SQLite extension
-docker-php-ext-install pdo pdo_sqlite
-
-# Install MySQL/MariaDB dev libraries and enable mysqli/pdo_mysql extensions
-# so PHP can use the remote forum MySQL server via `mysqli`.
-apk add --no-cache mariadb-dev
-docker-php-ext-install mysqli pdo_mysql
-
 # Ensure application directory exists and is writable before initializing DB
 mkdir -p /var/www/api
 chown -R www-data:www-data /var/www/api || true
 find /var/www/api -type d -exec chmod 750 {} + || true
 
-# Initialize database if it doesn't exist
-if [ ! -f /var/www/api/database.sqlite ]; then
-    echo "Initializing database..."
-    if ! php /var/www/api/init-db.php; then
-        echo "ERROR: Database initialization failed. Check filesystem permissions and that the host mount is writable by the container." >&2
-        ls -la /var/www || true
-        ls -la /var/www/api || true
-        exit 1
+# Wait for MariaDB to be ready
+echo "Waiting for MariaDB..."
+db_ready=0
+db_host="${GAME_DB_HOST:-db}"
+db_port="${GAME_DB_PORT:-3306}"
+db_user="${GAME_DB_USER:-regnum_user}"
+db_pass="${GAME_DB_PASS:-regnum_pass}"
+db_root_pass="${GAME_DB_ROOT_PASSWORD:-}"
+
+for i in $(seq 1 60); do
+    if command -v nc >/dev/null 2>&1; then
+        if nc -z "$db_host" "$db_port"; then
+            echo "MariaDB port is open"
+            db_ready=1
+            break
+        fi
     fi
-else
-    echo "Database already exists, skipping initialization"
+
+    if [ -n "$db_root_pass" ]; then
+        if mariadb-admin ping -h "$db_host" -P "$db_port" -u root -p"$db_root_pass" --silent; then
+            echo "MariaDB is up (root ping)"
+            db_ready=1
+            break
+        fi
+    fi
+
+    if mariadb-admin ping -h "$db_host" -P "$db_port" -u "$db_user" -p"$db_pass" --silent; then
+        echo "MariaDB is up (app user ping)"
+        db_ready=1
+        break
+    fi
+
+    sleep 1
+done
+
+if [ "$db_ready" -ne 1 ]; then
+    echo "ERROR: MariaDB did not become ready in time." >&2
+    exit 1
 fi
 
-# Ensure the sqlite file is writable by PHP-FPM
-if [ -f /var/www/api/database.sqlite ]; then
-    chown www-data:www-data /var/www/api/database.sqlite || true
-    chmod 660 /var/www/api/database.sqlite || true
+# Initialize MariaDB schema (idempotent)
+echo "Initializing MariaDB schema (if needed)..."
+if ! php /var/www/api/init-db.php; then
+    echo "ERROR: Database initialization failed." >&2
+    exit 1
 fi
 
 # Set up health regeneration loop (every 5 seconds)

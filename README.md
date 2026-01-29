@@ -27,7 +27,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Technical Features
 - **Session Management**: 24-hour sessions with auto-renewal on activity
 - **Background Workers**: Automated health regeneration, time sync, walking processor, level calculation
-- **SQLite Database**: Persistent storage for players, items, territories, sessions, and more
+- **MariaDB Database**: Persistent storage for players, items, territories, sessions, and more
 - **RESTful API**: Clean PHP backend with comprehensive endpoints
 - **Responsive UI**: Draggable windows, HUD elements, and territory/boss overlays
 
@@ -105,7 +105,7 @@ regnum-nostalgia/
 
 - **Frontend**: HTML5, JavaScript (ES6+), Leaflet.js for mapping
 - **Backend**: PHP 8.2-FPM with PDO for database access
-- **Database**: SQLite with comprehensive schema
+- **Database**: MariaDB with comprehensive schema (screenshots metadata remains in SQLite)
 - **Web Server**: Nginx (Alpine-based)
 - **Containerization**: Docker & Docker Compose
 - **Map Coordinates**: 6144×6144 coordinate system with 3×3 tiled layout
@@ -163,6 +163,7 @@ See [GAME_SETUP.md](GAME_SETUP.md) for complete API documentation.
 
 ### Environment Variables
 - `COR_FORUM_API_KEY`: API key for forum authentication
+- `GAME_DB_HOST`, `GAME_DB_PORT`, `GAME_DB_NAME`, `GAME_DB_USER`, `GAME_DB_PASS`: MariaDB connection for game data
 - `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins
 
 ### Spawn Points
@@ -215,12 +216,12 @@ Ignis: [5000, 618]    // Red/Humans
 
 ### Database Issues
 ```bash
-# Check database exists
-docker exec -it <php-container> ls -la /var/www/api/database.sqlite
+# Check MariaDB tables
+docker exec -it <db-container> mariadb -u$GAME_DB_USER -p$GAME_DB_PASS -e "USE $GAME_DB_NAME; SHOW TABLES;"
 
-# Reinitialize database
-docker exec -it <php-container> rm /var/www/api/database.sqlite
-docker-compose restart php
+# Reinitialize database (clean start)
+docker-compose down -v
+docker-compose up -d
 ```
 
 ### Background Workers Not Running
@@ -241,9 +242,10 @@ Verify tiles exist at `public/assets/tiles/1-1.png` through `3-3.png`
 ## 📝 Development
 
 ### Running Without Docker
-1. Install PHP 8.2+ with SQLite extensions
-2. Set up Nginx or Apache to serve `public/` and proxy `/api/` to PHP-FPM
-3. Run background workers manually:
+1. Install PHP 8.2+ with PDO MySQL extensions (SQLite still needed for screenshots metadata)
+2. Run a MariaDB server and set `GAME_DB_*` env vars
+3. Set up Nginx or Apache to serve `public/` and proxy `/api/` to PHP-FPM
+4. Run background workers manually:
 ```bash
 php api/cron/regenerate-health.php &
 php api/cron/process-server-time.php &

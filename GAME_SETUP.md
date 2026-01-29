@@ -18,8 +18,8 @@ A simple multiplayer browser-based map game built on top of the Regnum Online Ol
 ### Technical Stack
 - **Frontend**: HTML5, JavaScript, Leaflet.js
 - **Backend**: PHP 8.2 with FastCGI
-- **Database**: SQLite (api/database.sqlite)
-- **Infrastructure**: Docker (Nginx + PHP-FPM)
+- **Database**: MariaDB (game data) + SQLite for screenshots metadata
+- **Infrastructure**: Docker (Nginx, PHP-FPM, MariaDB, phpMyAdmin)
 - **Map**: 6144x6144 coordinate system with 3x3 tiled layout
 
 ## How to Start
@@ -116,7 +116,8 @@ docker-compose logs web
 ### Reinitialize database
 ```bash
 docker-compose down
-rm api/database.sqlite
+docker-compose down -v
+docker-compose up -d
 docker-compose up -d
 ```
 
@@ -152,7 +153,7 @@ Possible additions to make the game more interesting:
   ├── index.php            # Main API router and endpoints
   ├── init-db.php          # Database initialization script
   ├── docker-entrypoint.sh # Container startup script
-  └── database.sqlite      # SQLite database (created on first run)
+  └── (MariaDB via docker-compose)
 
 /public
   ├── index.html           # Game client (HTML + CSS + JavaScript)
