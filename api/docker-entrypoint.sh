@@ -53,7 +53,7 @@ if ! php /var/www/api/init-db.php; then
     exit 1
 fi
 
-# Set up health regeneration loop (every 5 seconds)
+# Set up health regeneration loop (every 1 second)
 echo "Starting health regeneration background service..."
 
 # Initialize screenshots DB if it doesn't exist
@@ -80,10 +80,10 @@ chmod +x /var/www/api/cron/regenerate-health.php
 # Start regeneration loop in background (logs -> stdout/stderr)
 (while true; do
     /usr/local/bin/php /var/www/api/cron/regenerate-health.php 2>&1
-    sleep 5
+    sleep 1
 done) &
 
-echo "Health regeneration service started (runs every 5 seconds)"
+echo "Health regeneration service started (runs every 1 second)"
 
 # Start server-time cron (every 10 seconds)
 chmod +x /var/www/api/cron/process-server-time.php || true
