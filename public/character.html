@@ -55,3 +55,240 @@
     </div>
   </div>
 </div>
+
+<style>
+  /* Equipment slot visuals (moved from index.html) */
+  .equipment-slot.empty{ opacity:0.45; }
+  .equipment-slot .slot-icon{ font-size:22px; }
+  .equipment-slot .slot-rarity-border{ inset: -2px; border-radius:4px; }
+  .equipment-slot.drag-over{ outline: 2px dashed #0d6efd; }
+  /* Equipment slot background icons */
+  .equipment-slot[data-slot="head"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-head.png'); }
+  .equipment-slot[data-slot="body"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-torso.png'); }
+  .equipment-slot[data-slot="hands"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-arms.png'); }
+  .equipment-slot[data-slot="shoulders"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-pauldron.png'); }
+  .equipment-slot[data-slot="legs"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-legs.png'); }
+  .equipment-slot[data-slot="weapon_right"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-hand-right.png'); }
+  .equipment-slot[data-slot="weapon_left"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-hand-left.png'); }
+  .equipment-slot[data-slot="ring_right"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-rings.png'); }
+  .equipment-slot[data-slot="ring_left"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-rings.png'); }
+  .equipment-slot[data-slot="amulet"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-amulet.png'); }
+
+  /* Character window (classic layout) */
+  .char-section{ border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); }
+  .char-section + .char-section{ margin-top: 4px; }
+  .char-section-title{
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    color: #e0e0e0;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    background: rgba(0,0,0,0.35);
+  }
+  .char-section-body{ padding: 6px; font-size: 12px; color: #e0e0e0; }
+  .char-line{ margin: 2px 0; }
+  .char-xp-bar{ height: 8px; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,0,0.4); margin: 6px 0; }
+  #char-xp-fill{ height: 100%; width: 0%; background: linear-gradient(90deg,#2dd4bf,#60a5fa); }
+  .char-attr-row{ display:flex; justify-content:space-between; gap: 8px; margin: 2px 0; }
+  .char-attr-name{ flex: 1; color: #ffffff; }
+  .char-attr-name.char-attr-good,
+  .char-attr-name.char-attr-bad{ color: #ffffff; }
+  .char-attr-value{ min-width: 40px; text-align: right; }
+  .char-attr-value{ color: #ffffff; }
+  .char-attr-good{ color: #22c55e; }
+  .char-attr-bad{ color: #ef4444; }
+</style>
+
+<script>
+  // Character window JS moved from index.html. Depends on global `apiCall`, `gameState`, and tooltip helpers.
+  async function openCharacter(){
+    const win = document.getElementById('character-window');
+    if (!win) return;
+    win.style.display = 'flex';
+    try{
+      const posData = await apiCall('/player/position');
+      if (posData) {
+        gameState.xp = typeof posData.xp !== 'undefined' ? posData.xp : gameState.xp;
+        gameState.level = typeof posData.level !== 'undefined' ? posData.level : gameState.level;
+        gameState.xpToNext = typeof posData.xpToNext !== 'undefined' ? posData.xpToNext : gameState.xpToNext;
+        gameState.stats = posData.stats || gameState.stats;
+        gameState.damage = typeof posData.damage !== 'undefined' ? posData.damage : (gameState.damage || 0);
+        gameState.armor = typeof posData.armor !== 'undefined' ? posData.armor : (gameState.armor || 0);
+        gameState.username = typeof posData.username !== 'undefined' ? posData.username : gameState.username;
+        gameState.realm = typeof posData.realm !== 'undefined' ? posData.realm : gameState.realm;
+        gameState.className = typeof posData.className !== 'undefined' ? posData.className : (typeof posData.class !== 'undefined' ? posData.class : gameState.className);
+      }
+    }catch(err){ console.error('Failed to load character data:', err); }
+    updateCharacterStats();
+  }
+
+  function closeCharacter(){
+    const el = document.getElementById('character-window'); if(el) el.style.display = 'none';
+  }
+
+  function updateCharacterStats(){
+    try{
+      const lvlEl = document.getElementById('char-level'); if (lvlEl) lvlEl.textContent = gameState.level || 1;
+      const nameEl = document.getElementById('char-name'); if (nameEl) nameEl.textContent = gameState.username || '-';
+      const realmEl = document.getElementById('char-realm');
+      if (realmEl) {
+        const realm = gameState.realm ? (String(gameState.realm).charAt(0).toUpperCase() + String(gameState.realm).slice(1)) : '-';
+        realmEl.textContent = realm;
+      }
+      const classEl = document.getElementById('char-class');
+      if (classEl) classEl.textContent = gameState.className || gameState.class || 'Unknown';
+      try {
+        const fill = document.getElementById('char-xp-fill');
+        const xp = Number(gameState.xp || 0);
+        const xpToNextVal = Number(gameState.xpToNext || 0);
+        const pct = (xpToNextVal > 0) ? Math.round((xp / (xp + xpToNextVal)) * 100) : 100;
+        if (fill) fill.style.width = pct + '%';
+        const xpText = document.getElementById('char-xp-text');
+        if (xpText) xpText.textContent = `${xp} / ${xp + xpToNextVal}`;
+        const rpEl = document.getElementById('char-rp');
+        const rpVal = Number(gameState.regnumPoints || 0);
+        if (rpEl) rpEl.textContent = `${rpVal} Regnum Points`;
+      } catch (e) {}
+      const s = gameState.stats || { intelligence:20, dexterity:20, concentration:20, strength:20, constitution:20 };
+      document.getElementById('stat-int').textContent = `${s.intelligence || 20}`;
+      document.getElementById('stat-dex').textContent = `${s.dexterity || 20}`;
+      document.getElementById('stat-con').textContent = `${s.concentration || 20}`;
+      document.getElementById('stat-str').textContent = `${s.strength || 20}`;
+      document.getElementById('stat-const').textContent = `${s.constitution || 20}`;
+      try {
+        const dmg = Number(gameState.damage || 0);
+        const arm = Number(gameState.armor || 0);
+        const dmgEl = document.getElementById('stat-attack');
+        const armEl = document.getElementById('stat-armor');
+        if (dmgEl) dmgEl.textContent = `${dmg}`;
+        if (armEl) armEl.textContent = `${arm}`;
+        const hitEl = document.getElementById('stat-hit');
+        const evasionEl = document.getElementById('stat-evasion');
+        const blockEl = document.getElementById('stat-block');
+        if (hitEl) hitEl.textContent = `${Number(gameState.hitChance || 0)}`;
+        if (evasionEl) evasionEl.textContent = `${Number(gameState.evasion || 0)}`;
+        if (blockEl) blockEl.textContent = `${Number(gameState.blockChance || 0)}`;
+        const weaknessEl = document.getElementById('stat-weakness');
+        if (weaknessEl) weaknessEl.textContent = `${Number(gameState.weakness || 0)}%`;
+      } catch (e) {}
+    }catch(e){}
+  }
+
+  function getEquipIconSrc(item){
+    const iconName = item.iconName || item.icon_name;
+    return iconName ? `assets/v1/items/${iconName}` : '';
+  }
+
+  function getItemTypeLabel(item){
+    const slot = item.equipmentSlot || item.equipment_slot || null;
+    if(slot){
+      switch(slot){
+        case 'head': return 'Armor (Head)';
+        case 'body': return 'Armor (Body)';
+        case 'hands': return 'Armor (Hands)';
+        case 'shoulders': return 'Armor (Shoulders)';
+        case 'legs': return 'Armor (Legs)';
+        case 'weapon_right': return 'Weapon (Right Hand)';
+        case 'weapon_left': return 'Weapon (Left Hand)';
+        case 'ring_right':
+        case 'ring_left': return 'Ring';
+        case 'amulet': return 'Amulet';
+        default: return item.itemType || '';
+      }
+    }
+    const t = item.itemType || '';
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
+  async function displayEquipment(equipment){
+    try{
+      const slots = ['head','body','hands','shoulders','legs','weapon_right','weapon_left','ring_right','ring_left','amulet'];
+      slots.forEach(slot => {
+        const el = document.querySelector(`.equipment-slot[data-slot="${slot}"]`);
+        if(!el) return;
+        const info = equipment[slot] || { inventoryId: null, item: null };
+        el.classList.toggle('empty', !info || !info.inventoryId);
+        el.dataset.slot = slot;
+        const newEl = el.cloneNode(true);
+        el.parentNode.replaceChild(newEl, el);
+        const target = newEl;
+
+        if(info && info.inventoryId){
+          const it = info.item || {};
+          const iconSrc = getEquipIconSrc(it || {});
+          target.innerHTML = iconSrc ? `<div class="slot-icon"><img src="${iconSrc}" alt="${it.name || it.itemName || 'Item'}"></div>` : '';
+          target.dataset.inventoryId = info.inventoryId;
+          target.addEventListener('mouseenter', (e)=>{
+            const tooltipItem = {
+              itemName: it.name || it.itemName || '',
+              itemType: it.type || it.itemType || '',
+              equipmentSlot: it.equipmentSlot || it.equipment_slot || null,
+              description: it.description || '',
+              stats: it.stats || {},
+              rarity: it.rarity || 'common',
+              quantity: it.quantity || 1,
+              level: typeof it.level !== 'undefined' ? it.level : 1,
+              iconName: it.iconName || it.icon_name || null
+            };
+            showTooltip(e, tooltipItem);
+          });
+          target.addEventListener('mousemove', moveTooltip);
+          target.addEventListener('mouseleave', hideTooltip);
+
+          target.draggable = true;
+          target.addEventListener('dragstart', (ev) => {
+            const payload = JSON.stringify({ fromSlot: true, slot: slot, inventoryId: info.inventoryId });
+            try{ ev.dataTransfer.setData('application/json', payload); }catch(_){ ev.dataTransfer.setData('text/plain', payload); }
+          });
+
+          target.addEventListener('contextmenu', async (e) => {
+            try {
+              e.preventDefault();
+              const form = new URLSearchParams();
+              form.append('slot', slot);
+              try {
+                await apiCall('/equipment/unequip', { method: 'POST', body: form });
+              } catch (err) {
+                const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
+                if (window.addLogMessage) window.addLogMessage(msg, 'error');
+              }
+              try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openInventory(); } catch(e){}
+              try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openCharacter(); } catch(e){}
+            } catch (e) { console.error('equipment right-click unequip failed', e); }
+          });
+        } else {
+          target.innerHTML = '';
+          target.removeAttribute('data-inventory-id');
+          target.draggable = false;
+          target.addEventListener('mouseenter', ()=>{});
+        }
+
+        target.addEventListener('dragover', (e)=>{ e.preventDefault(); target.classList.add('drag-over'); });
+        target.addEventListener('dragleave', ()=>{ target.classList.remove('drag-over'); });
+        target.addEventListener('drop', async (e)=>{
+          e.preventDefault(); target.classList.remove('drag-over');
+          try{
+            const payload = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+            if(!payload) return;
+            const data = JSON.parse(payload);
+            if(data.inventoryId){
+              const form = new URLSearchParams();
+              form.append('inventoryId', data.inventoryId);
+              try {
+                await apiCall('/equipment/equip', { method: 'POST', body: form });
+              } catch (err) {
+                try {
+                  const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
+                  if (window.addLogMessage) window.addLogMessage(msg, 'error');
+                } catch (e) { console.error('Failed to log equip error', e); }
+              }
+              try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') { await openCharacter(); } } catch(e){}
+              try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') { await openInventory(); } } catch(e){}
+            }
+          }catch(err){ console.error('Equip failed', err); }
+        });
+      });
+    }catch(err){ console.error('displayEquipment error', err); }
+  }
+</script>
