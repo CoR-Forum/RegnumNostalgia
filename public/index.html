@@ -424,6 +424,23 @@
       overflow: hidden;
       border: 1px solid rgba(255,255,255,0.3);
     }
+    /* Hide health bars visually by default but keep their layout/space. Reveal on hover. */
+    .territory-health-bar,
+    .overlay-bar {
+      opacity: 0;
+      transition: opacity 0.16s ease;
+      pointer-events: none; /* don't block map interactions */
+    }
+    /* Reveal health bars when hovering markers or the UI overlay */
+    .custom-territory-marker:hover .territory-health-bar,
+    .custom-player-marker:hover .territory-health-bar,
+    .custom-territory-marker:focus .territory-health-bar,
+    .custom-player-marker:focus .territory-health-bar,
+    #ui-character-status:hover .overlay-bar,
+    #ui-character-status:focus .overlay-bar {
+      opacity: 1;
+      pointer-events: auto;
+    }
     .territory-health-fill{
       height: 100%;
       transition: width 0.3s ease;
@@ -2045,6 +2062,9 @@
           gameState.walkDestinationMarker = null;
         }
         gameState.walkingTarget = null;
+        // Also clear any displayed walk path immediately when the player
+        // arrives so the yellow path indicator is removed.
+        try { drawWalkPath(null); } catch (e) { console.debug('clear walk path failed', e); }
       }
     }
 
@@ -2114,6 +2134,22 @@
             drawWalkPath(data.walker.positions);
           }
         } catch (e) { console.debug('drawWalkPath on init failed', e); }
+
+        // If the server provided a walker destination, show the yellow
+        // destination marker and set walkingTarget immediately so the UI is
+        // consistent on login.
+        try {
+          if (data.walker && data.walker.destination) {
+            const dest = data.walker.destination;
+            const dx = parseInt(dest[0], 10);
+            const dy = parseInt(dest[1], 10);
+            if (gameState.walkDestinationMarker) {
+              try { map.removeLayer(gameState.walkDestinationMarker); } catch (e) {}
+            }
+            gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
+            gameState.walkingTarget = { x: dx, y: dy };
+          }
+        } catch (e) { console.debug('init: set walkDestinationMarker failed', e); }
 
         // Load and render paths from server only if enabled
         if (gameState.showPaths) await loadAndRenderPaths();
@@ -2513,7 +2549,7 @@
                 const dx = parseInt(dest[0], 10);
                 const dy = parseInt(dest[1], 10);
                 if (!gameState.walkDestinationMarker) {
-                  gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map).bindPopup('Walking to destination');
+                  gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
                 } else {
                   try { gameState.walkDestinationMarker.setLatLng([totalH - dy, dx]); } catch (e) {}
                 }
@@ -2572,21 +2608,24 @@
       const currentPlayerIds = new Set();
 
       players.forEach(player => {
-        // Skip own player (coerce to string to avoid type-mismatch duplicates)
-        if (String(player.userId) === String(gameState.userId)) return;
+        // Normalize player id to string to avoid type-mismatch duplicates
+        const pid = String(player.userId);
 
-        currentPlayerIds.add(player.userId);
+        // Skip own player
+        if (pid === String(gameState.userId)) return;
+
+        currentPlayerIds.add(pid);
 
         const latLng = [totalH - player.y, player.x];
         const healthPercent = Math.max(0, Math.min(100, Math.round(((Number(player.health) || 0) / (Number(player.maxHealth) || 1)) * 100)));
         // Determine ally vs enemy (same realm = ally). Use case-insensitive compare and treat missing realm as enemy.
         const playerRealm = (player.realm || '').toString().toLowerCase();
 
-        if (gameState.otherPlayers.has(player.userId)) {
+        if (gameState.otherPlayers.has(pid)) {
           // Update existing marker - remove and recreate with new health
-          const oldMarker = gameState.otherPlayers.get(player.userId);
+          const oldMarker = gameState.otherPlayers.get(pid);
           map.removeLayer(oldMarker);
-          
+
           const customIcon = L.divIcon({
             className: 'custom-player-marker',
             html: `
@@ -2604,7 +2643,7 @@
           const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
           marker.bindPopup(`<b>${player.username}</b><br>Realm: ${player.realm}<br>Health: ${player.health}/${player.maxHealth}`);
           marker.bindTooltip(`${player.username}`, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
-          gameState.otherPlayers.set(player.userId, marker);
+          gameState.otherPlayers.set(pid, marker);
         } else {
           // Create new marker with health bar
           const customIcon = L.divIcon({
@@ -2624,13 +2663,13 @@
           const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
           marker.bindPopup(`<b>${player.username}</b><br>Realm: ${player.realm}<br>Health: ${player.health}/${player.maxHealth}`);
           marker.bindTooltip(`${player.username}`, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
-          gameState.otherPlayers.set(player.userId, marker);
+          gameState.otherPlayers.set(pid, marker);
         }
       });
 
       // Remove markers for players no longer online
       for (const [userId, marker] of gameState.otherPlayers.entries()) {
-        if (!currentPlayerIds.has(userId)) {
+        if (!currentPlayerIds.has(String(userId))) {
           map.removeLayer(marker);
           gameState.otherPlayers.delete(userId);
         }
@@ -2991,7 +3030,8 @@
     #ui-compass img{ height: 166px; display:block; }
 
     /* Top-left character status (overlay) */
-    #ui-character-status{ position: fixed; top: 0; left: 0; z-index: 20001; pointer-events: none; }
+    /* Allow hover on the character overlay so its health/mana bars can be revealed on hover. */
+    #ui-character-status{ position: fixed; top: 0; left: 0; z-index: 20001; pointer-events: auto; }
     #ui-character-status img{ height: 86px; width: auto; display:block; }
     #ui-character-status .ui-character-overlay{ position: absolute; top: 4px; left: 6px; right: 6px; bottom: 4px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; gap:4px; box-sizing:border-box; pointer-events: none; z-index:20002; transform: translate(-6px, -2px); }
     #ui-character-status .ui-character-overlay .status-top{ position:absolute; top:2px; left:4px; display:flex; align-items:center; gap:6px; z-index:20003; }
