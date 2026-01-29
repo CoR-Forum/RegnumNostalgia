@@ -42,8 +42,8 @@ services:
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
-      PMA_USER: ${GAME_DB_USER:-regnum_user}
-      PMA_PASSWORD: ${GAME_DB_PASS:-regnum_pass}
+      PMA_USER: ${PMA_GAME_DB_USER:-regnum_user}
+      PMA_PASSWORD: ${PMA_GAME_DB_PASS:-regnum_pass}
       PMA_ARBITRARY: 0
     ports:
       - "8322:80"
