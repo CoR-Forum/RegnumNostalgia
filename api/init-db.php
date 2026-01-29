@@ -387,22 +387,33 @@ try {
     $playersWithoutItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if (count($playersWithoutItems) > 0) {
-        // Get item IDs for starter items
-        $stmt = $db->prepare('SELECT item_id FROM items WHERE name = ?');
-        $stmt->execute(['Health Potion']);
-        $healthPotionId = $stmt->fetchColumn();
-        $stmt->execute(['Mana Potion']);
-        $manaPotionId = $stmt->fetchColumn();
-        $stmt->execute(['Iron Sword']);
-        $ironSwordId = $stmt->fetchColumn();
-        
-        $stmt = $db->prepare('INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?)');
+        // Get item IDs for starter items by template_key
+        $getByKey = $db->prepare('SELECT item_id FROM items WHERE template_key = ? LIMIT 1');
+        $starterKeys = [
+            'health_potion' => null,
+            'mana_potion' => null,
+            'iron_sword' => null
+        ];
+        foreach (array_keys($starterKeys) as $k) {
+            $getByKey->execute([$k]);
+            $starterKeys[$k] = $getByKey->fetchColumn();
+            if (!$starterKeys[$k]) {
+                error_log("Warning: starter item with template_key={$k} not found in items table");
+            }
+        }
+
+        $insertInv = $db->prepare('INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?)');
         foreach ($playersWithoutItems as $player) {
             $now = time();
-            // Give starter items
-            $stmt->execute([$player['user_id'], $healthPotionId, 5, $now]);
-            $stmt->execute([$player['user_id'], $manaPotionId, 3, $now]);
-            $stmt->execute([$player['user_id'], $ironSwordId, 1, $now]);
+            if ($starterKeys['health_potion']) {
+                $insertInv->execute([$player['user_id'], $starterKeys['health_potion'], 5, $now]);
+            }
+            if ($starterKeys['mana_potion']) {
+                $insertInv->execute([$player['user_id'], $starterKeys['mana_potion'], 3, $now]);
+            }
+            if ($starterKeys['iron_sword']) {
+                $insertInv->execute([$player['user_id'], $starterKeys['iron_sword'], 1, $now]);
+            }
         }
         echo "  - Seeded starter items for " . count($playersWithoutItems) . " existing players\n";
     }

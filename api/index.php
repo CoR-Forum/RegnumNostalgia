@@ -436,39 +436,39 @@ function handleRealmSelect() {
     $itemCount = $stmt->fetchColumn();
 
     if ($itemCount == 0) {
-        // Give the new player a specific starter set by item name
+        // Give the new player a specific starter set by template_key
         $starterItems = [
-            ['name' => 'Gold Coin', 'quantity' => 50],
-            ['name' => 'Iron Sword', 'quantity' => 1],
-            ['name' => 'Wooden Shield', 'quantity' => 1],
-            ['name' => 'Leather Cap', 'quantity' => 1]
+            ['template_key' => 'gold_coin', 'quantity' => 50],
+            ['template_key' => 'iron_sword', 'quantity' => 1],
+            ['template_key' => 'wooden_shield', 'quantity' => 1],
+            ['template_key' => 'leather_cap', 'quantity' => 1]
         ];
 
-        $find = $db->prepare('SELECT item_id FROM items WHERE name = ? LIMIT 1');
+        // Look up item_id and equipment_slot by template_key
+        $find = $db->prepare('SELECT item_id, equipment_slot, name FROM items WHERE template_key = ? LIMIT 1');
         $ins = $db->prepare('INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?)');
         $now = now();
         $starterInventoryIds = [];
+        $starterEquipmentSlots = [];
 
         foreach ($starterItems as $entry) {
-            $find->execute([$entry['name']]);
-            $itemId = $find->fetchColumn();
-            if ($itemId) {
-                $ins->execute([$session['user_id'], (int)$itemId, (int)$entry['quantity'], $now]);
-                $starterInventoryIds[$entry['name']] = (int)$db->lastInsertId();
+            $find->execute([$entry['template_key']]);
+            $row = $find->fetch(PDO::FETCH_ASSOC);
+            if ($row && isset($row['item_id'])) {
+                $ins->execute([$session['user_id'], (int)$row['item_id'], (int)$entry['quantity'], $now]);
+                $starterInventoryIds[$entry['template_key']] = (int)$db->lastInsertId();
+                $starterEquipmentSlots[$entry['template_key']] = $row['equipment_slot'];
             }
         }
 
-        // Auto-equip starter items if present
+        // Auto-equip starter items if present (use equipment_slot from items table)
         $equip = ensureEquipmentRow($db, $session['user_id']);
         $equip['updated_at'] = now();
-        if (!empty($starterInventoryIds['Leather Cap'])) {
-            $equip['head'] = $starterInventoryIds['Leather Cap'];
-        }
-        if (!empty($starterInventoryIds['Iron Sword'])) {
-            $equip['weapon_right'] = $starterInventoryIds['Iron Sword'];
-        }
-        if (!empty($starterInventoryIds['Wooden Shield'])) {
-            $equip['weapon_left'] = $starterInventoryIds['Wooden Shield'];
+        foreach ($starterInventoryIds as $tkey => $invId) {
+            $slot = $starterEquipmentSlots[$tkey] ?? null;
+            if ($slot && array_key_exists($slot, $equip) && $invId) {
+                $equip[$slot] = $invId;
+            }
         }
         updateEquipmentDB($db, $equip);
     }
