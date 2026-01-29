@@ -1394,11 +1394,33 @@ function handleEquipItem() {
             respondError('Inventory item not found', 404);
         }
 
-        // fetch item template info (equipment_slot)
-        $stmt = $db->prepare('SELECT items.item_id, items.equipment_slot FROM inventory inv JOIN items ON inv.item_id = items.item_id WHERE inv.inventory_id = ?');
+        // fetch item template info (equipment_slot) and required level
+        $stmt = $db->prepare('SELECT items.item_id, items.equipment_slot, items.level, items.name FROM inventory inv JOIN items ON inv.item_id = items.item_id WHERE inv.inventory_id = ?');
         $stmt->execute([$inventoryId]);
         $tpl = $stmt->fetch(PDO::FETCH_ASSOC);
         $templateSlot = $tpl['equipment_slot'] ?? null;
+        $requiredLevel = isset($tpl['level']) ? (int)$tpl['level'] : 1;
+        $itemName = $tpl['name'] ?? 'item';
+
+        // check player's level against item requirement
+        $pstmt = $db->prepare('SELECT level, xp FROM players WHERE user_id = ? LIMIT 1');
+        $pstmt->execute([$session['user_id']]);
+        $prow = $pstmt->fetch(PDO::FETCH_ASSOC);
+        if ($prow) {
+            if (isset($prow['level']) && $prow['level'] !== null) {
+                $playerLevel = (int)$prow['level'];
+            } else {
+                $playerXp = isset($prow['xp']) ? (int)$prow['xp'] : 0;
+                $playerLevel = xpToLevel($playerXp);
+            }
+        } else {
+            $playerLevel = 1;
+        }
+
+        if ($playerLevel < $requiredLevel) {
+            $db->rollBack();
+            respondError('Your level is too low to equip "' . $itemName . '". Requires level ' . $requiredLevel, 403);
+        }
 
         // Items without a template equipment_slot are not equippable
         if (!$templateSlot) {
