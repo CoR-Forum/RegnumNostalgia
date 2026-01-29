@@ -2559,6 +2559,8 @@
           gameState.stats = posData.stats || gameState.stats || { intelligence:20, dexterity:20, concentration:20, strength:20, constitution:20 };
           // update info panel values
           try { showPlayerInfo(); updateCharacterStats(); } catch (e) {}
+          // update server time UI if provided by the position API
+          try { if (typeof window.updateServerTimeUI === 'function') window.updateServerTimeUI(posData); } catch (e) { console.debug('updateServerTimeUI call failed', e); }
           updatePlayerStats();
 
           // Update local player position and marker so UI reacts to server-driven walking
@@ -3018,6 +3020,27 @@
         return 'Night';
       }
 
+      // Expose a global helper so other modules can update the server time UI
+      window.updateServerTimeUI = function(data){
+        try {
+          if (!data) return;
+          // data may be a full /player/position response or a simple serverTime object
+          const st = data.serverTime || data.server_time || data.server_time || data.serverTime || data.server || data;
+          const hour = Number(st && st.hour) || 0;
+          const minute = Number(st && st.minute) || 0;
+
+          // prefer daytimeIcon from position API, fall back to icon
+          if (data.daytimeIcon) ICON.src = data.daytimeIcon;
+          else if (data.icon) ICON.src = data.icon;
+
+          const hh = String(hour).padStart(2, '0');
+          const mm = String(minute).padStart(2, '0');
+          const label = getDaytimeLabel(hour);
+          TOOLTIP.textContent = `${hh}:${mm} — ${label}`;
+          TOOLTIP.setAttribute('aria-hidden', 'false');
+        } catch (e) { console.warn('updateServerTimeUI failed', e); }
+      };
+
       async function fetchServerTime(){
         try{
           const headers = {};
@@ -3028,17 +3051,8 @@
           if(!res.ok) return;
           const data = await res.json();
           if(!data || !data.success) return;
-          const st = data.serverTime || data.server_time || { hour: 0, minute: 0 };
-          const hour = Number(st.hour) || 0;
-          const minute = Number(st.minute) || 0;
-          // prefer daytimeIcon from position API, fall back to icon or generated path
-          if(data.daytimeIcon) ICON.src = data.daytimeIcon;
-          else if(data.icon) ICON.src = data.icon;
-          const hh = String(hour).padStart(2, '0');
-          const mm = String(minute).padStart(2, '0');
-          const label = getDaytimeLabel(hour);
-          TOOLTIP.textContent = `${hh}:${mm} — ${label}`;
-          TOOLTIP.setAttribute('aria-hidden', 'false');
+          // Reuse the same update helper so behavior is consistent
+          if (window.updateServerTimeUI) window.updateServerTimeUI(data);
         }catch(e){ console.warn('Failed to fetch server time', e); }
       }
 
