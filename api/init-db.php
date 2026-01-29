@@ -114,27 +114,37 @@ try {
     $db->exec('CREATE INDEX IF NOT EXISTS idx_territory_captures_territory_id ON territory_captures(territory_id)');
     $db->exec('CREATE INDEX IF NOT EXISTS idx_territory_captures_captured_at ON territory_captures(captured_at)');
 
-    // Create items table (item templates)
-    $db->exec(" 
-        CREATE TABLE IF NOT EXISTS items (
-            item_id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(255) NOT NULL UNIQUE,
-            type VARCHAR(64) NOT NULL,
+    // NOTE: item templates are stored in a dedicated SQLite database file
+    // Create itemTemplates.sqlite and the `items` table inside it.
+    $dockerItemsPath = '/var/www/api/itemTemplates.sqlite';
+    $localItemsPath = __DIR__ . '/itemTemplates.sqlite';
+    $itemsSqlitePath = file_exists(dirname($dockerItemsPath)) ? $dockerItemsPath : $localItemsPath;
+    try {
+        $itemsDb = new PDO('sqlite:' . $itemsSqlitePath);
+        $itemsDb->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $itemsDb->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        $itemsDb->exec("CREATE TABLE IF NOT EXISTS items (
+            item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            type TEXT NOT NULL,
             description TEXT NULL,
             stats TEXT NULL,
-            rarity VARCHAR(32) DEFAULT 'common',
-            stackable TINYINT(1) DEFAULT 1,
-            level INT DEFAULT 1,
-            equipment_slot VARCHAR(32) DEFAULT NULL,
-            icon_name VARCHAR(255) DEFAULT NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    ");
-
-    $db->exec('CREATE INDEX IF NOT EXISTS idx_items_type ON items(type)');
+            rarity TEXT DEFAULT 'common',
+            stackable INTEGER DEFAULT 1,
+            level INTEGER DEFAULT 1,
+            equipment_slot TEXT DEFAULT NULL,
+            icon_name TEXT DEFAULT NULL
+        )");
+    } catch (PDOException $e) {
+        echo "Warning: failed to open or create itemTemplates.sqlite: " . $e->getMessage() . "\n";
+        $itemsDb = null;
+    }
 
     // NOTE: paths are now loaded from a JSON file (not stored in DB)
 
     // Create inventory table (player ownership)
+    // NOTE: foreign key to `items` was removed because templates live in SQLite
     $db->exec('
         CREATE TABLE IF NOT EXISTS inventory (
             inventory_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -142,8 +152,7 @@ try {
             item_id INT NOT NULL,
             quantity INT NOT NULL DEFAULT 1,
             acquired_at INT NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES players(user_id),
-            FOREIGN KEY (item_id) REFERENCES items(item_id)
+            FOREIGN KEY (user_id) REFERENCES players(user_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ');
 
@@ -279,7 +288,7 @@ try {
         echo "  - Seeded " . count($superbosses) . " superbosses\n";
     }
 
-    // Seed items (item templates)
+    // Seed items (item templates) into SQLite `itemTemplates.sqlite`
     $items = [
         // Consumables & currency
         ['Health Potion', 'consumable', 'Restores 100 health', '{"heal": 100}', 'common', 1, 1, NULL, 'item-health-potion-50.png'],
@@ -325,16 +334,22 @@ try {
         ['Amulet of Strength', 'misc', 'Increases strength significantly', '{"damage": 10, "strength": 5}', 'rare', 0, 6, 'amulet', 'item-amulet-strength.png'],
     ];
 
-    $stmt = $db->prepare('SELECT COUNT(*) FROM items');
-    $stmt->execute();
-    $count = $stmt->fetchColumn();
+    if ($itemsDb) {
+        $stmt = $itemsDb->prepare('SELECT COUNT(*) FROM items');
+        $stmt->execute();
+        $count = (int)$stmt->fetchColumn();
 
-    if ($count == 0) {
-        $stmt = $db->prepare('INSERT INTO items (name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-        foreach ($items as $item) {
-            $stmt->execute($item);
+        if ($count === 0) {
+            $ins = $itemsDb->prepare('INSERT INTO items (name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+            foreach ($items as $item) {
+                // Use NULL for PHP null values so PDO maps correctly
+                $params = array_map(function($v){ return $v === NULL ? null : $v; }, $item);
+                $ins->execute($params);
+            }
+            echo "  - Seeded " . count($items) . " item templates into SQLite\n";
         }
-        echo "  - Seeded " . count($items) . " item templates\n";
+    } else {
+        echo "  - Skipping seeding item templates: SQLite DB not available\n";
     }
 
     // Paths are provided via api/paths.json (not seeded into DB)
@@ -345,24 +360,24 @@ try {
     $playersWithoutItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     if (count($playersWithoutItems) > 0) {
-        // Get item IDs for starter items
-        $stmt = $db->prepare('SELECT item_id FROM items WHERE name = ?');
-        $stmt->execute(['Health Potion']);
-        $healthPotionId = $stmt->fetchColumn();
-        $stmt->execute(['Mana Potion']);
-        $manaPotionId = $stmt->fetchColumn();
-        $stmt->execute(['Iron Sword']);
-        $ironSwordId = $stmt->fetchColumn();
-        
-        $stmt = $db->prepare('INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?)');
-        foreach ($playersWithoutItems as $player) {
-            $now = time();
-            // Give starter items
-            $stmt->execute([$player['user_id'], $healthPotionId, 5, $now]);
-            $stmt->execute([$player['user_id'], $manaPotionId, 3, $now]);
-            $stmt->execute([$player['user_id'], $ironSwordId, 1, $now]);
-        }
-        echo "  - Seeded starter items for " . count($playersWithoutItems) . " existing players\n";
+            // Get item IDs for starter items from SQLite templates DB
+            $healthPotionId = null; $manaPotionId = null; $ironSwordId = null;
+            if ($itemsDb) {
+                $q = $itemsDb->prepare('SELECT item_id FROM items WHERE name = ? LIMIT 1');
+                $q->execute(['Health Potion']); $healthPotionId = $q->fetchColumn();
+                $q->execute(['Mana Potion']); $manaPotionId = $q->fetchColumn();
+                $q->execute(['Iron Sword']); $ironSwordId = $q->fetchColumn();
+            }
+
+            $ins = $db->prepare('INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?)');
+            foreach ($playersWithoutItems as $player) {
+                $now = time();
+                // Give starter items only if template IDs were found
+                if ($healthPotionId) $ins->execute([$player['user_id'], (int)$healthPotionId, 5, $now]);
+                if ($manaPotionId) $ins->execute([$player['user_id'], (int)$manaPotionId, 3, $now]);
+                if ($ironSwordId) $ins->execute([$player['user_id'], (int)$ironSwordId, 1, $now]);
+            }
+            echo "  - Seeded starter items for " . count($playersWithoutItems) . " existing players (where templates exist)\n";
     }
 
     echo "Database initialized successfully!\n";
@@ -372,7 +387,7 @@ try {
     echo "  - players (user_id, username, realm, x, y, health, max_health, mana, max_mana, xp, level, intelligence, dexterity, concentration, strength, constitution, last_active)\n";
     echo "  - territories (territory_id, realm, name, type, health, x, y, owner_realm, owner_players, contested, contested_since)\n";
     echo "  - superbosses (boss_id, name, health, max_health, x, y, last_attacked, respawn_time)\n";
-    echo "  - items (item_id, name, type, description, stats, rarity, stackable, equipment_slot)\n";
+    echo "  - item templates in itemTemplates.sqlite (item_id, name, type, description, stats, rarity, stackable, equipment_slot)\n";
     echo "  - inventory (inventory_id, user_id, item_id, quantity, acquired_at)\n";
     echo "  - equipment (equipment_id, user_id, head, body, hands, shoulders, legs, weapon_right, weapon_left, ring_right, ring_left, amulet, created_at, updated_at)\n";
     echo "  - server_time (started_at, last_updated, ingame_hour, ingame_minute, tick_seconds)\n";

@@ -444,14 +444,12 @@ function handleRealmSelect() {
             ['name' => 'Leather Cap', 'quantity' => 1]
         ];
 
-        $find = $db->prepare('SELECT item_id FROM items WHERE name = ? LIMIT 1');
         $ins = $db->prepare('INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?)');
         $now = now();
         $starterInventoryIds = [];
 
         foreach ($starterItems as $entry) {
-            $find->execute([$entry['name']]);
-            $itemId = $find->fetchColumn();
+            $itemId = findItemTemplateByName($entry['name']);
             if ($itemId) {
                 $ins->execute([$session['user_id'], (int)$itemId, (int)$entry['quantity'], $now]);
                 $starterInventoryIds[$entry['name']] = (int)$db->lastInsertId();
@@ -1056,74 +1054,37 @@ function handleGetInventory() {
         if (!empty($equip[$s])) $excluded[] = (int)$equip[$s];
     }
 
+    // Build base query to fetch inventory rows only (no JOIN to templates)
+    $params = [$session['user_id']];
+    $sql = 'SELECT inventory_id, item_id, quantity, acquired_at FROM inventory WHERE user_id = ?';
     if (count($excluded) > 0) {
         $placeholders = implode(',', array_fill(0, count($excluded), '?'));
-        $sql = '
-        SELECT 
-            inv.inventory_id, 
-            inv.item_id,
-            inv.quantity, 
-            inv.acquired_at,
-            items.name,
-            items.type,
-            items.description,
-            items.stats,
-            items.rarity,
-            items.stackable,
-            items.level,
-            items.equipment_slot,
-            items.icon_name
-        FROM inventory inv
-        JOIN items ON inv.item_id = items.item_id
-        WHERE inv.user_id = ? AND inv.inventory_id NOT IN (' . $placeholders . ')
-        ORDER BY inv.acquired_at DESC
-        ';
-        $params = array_merge([$session['user_id']], $excluded);
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-    } else {
-        // No equipped exclusions: select the full set of item fields (including level)
-        $sql = '
-        SELECT 
-            inv.inventory_id, 
-            inv.item_id,
-            inv.quantity, 
-            inv.acquired_at,
-            items.name,
-            items.type,
-            items.description,
-            items.stats,
-            items.rarity,
-            items.stackable,
-            items.level,
-            items.equipment_slot,
-            items.icon_name
-        FROM inventory inv
-        JOIN items ON inv.item_id = items.item_id
-        WHERE inv.user_id = ? 
-        ORDER BY inv.acquired_at DESC
-        ';
-        $stmt = $db->prepare($sql);
-        $stmt->execute([$session['user_id']]);
+        $sql .= ' AND inventory_id NOT IN (' . $placeholders . ')';
+        $params = array_merge($params, $excluded);
     }
-    $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $sql .= ' ORDER BY acquired_at DESC';
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $inventoryRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $result = [];
-    foreach ($items as $item) {
+    foreach ($inventoryRows as $row) {
+        $tpl = getItemTemplateById((int)$row['item_id']);
         $result[] = [
-            'inventoryId' => (int)$item['inventory_id'],
-            'itemId' => (int)$item['item_id'],
-            'itemName' => $item['name'],
-            'itemType' => $item['type'],
-            'quantity' => (int)$item['quantity'],
-            'description' => $item['description'],
-            'stats' => json_decode($item['stats'], true),
-            'rarity' => $item['rarity'],
-            'stackable' => (bool)$item['stackable'],
-            'level' => isset($item['level']) ? (int)$item['level'] : 1,
-            'equipmentSlot' => $item['equipment_slot'] !== null ? $item['equipment_slot'] : null,
-            'iconName' => $item['icon_name'] ?? null,
-            'acquiredAt' => (int)$item['acquired_at']
+            'inventoryId' => (int)$row['inventory_id'],
+            'itemId' => (int)$row['item_id'],
+            'itemName' => $tpl ? $tpl['name'] : null,
+            'itemType' => $tpl ? $tpl['type'] : null,
+            'quantity' => (int)$row['quantity'],
+            'description' => $tpl ? $tpl['description'] : null,
+            'stats' => $tpl ? $tpl['stats'] : null,
+            'rarity' => $tpl ? $tpl['rarity'] : null,
+            'stackable' => $tpl ? (bool)$tpl['stackable'] : false,
+            'level' => $tpl ? (int)$tpl['level'] : 1,
+            'equipmentSlot' => $tpl ? ($tpl['equipment_slot'] !== null ? $tpl['equipment_slot'] : null) : null,
+            'iconName' => $tpl ? ($tpl['icon_name'] ?? null) : null,
+            'acquiredAt' => (int)$row['acquired_at']
         ];
     }
 
@@ -1152,15 +1113,13 @@ function handleAddInventoryItem() {
     }
 
     $db = getDB();
-    
-    // Check if item exists in items table
-    $stmt = $db->prepare('SELECT item_id, name, stackable FROM items WHERE item_id = ?');
-    $stmt->execute([$itemId]);
-    $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$item) {
+    // Check if item exists in the SQLite templates DB
+    $tpl = getItemTemplateById($itemId);
+    if (!$tpl) {
         respondError('Item does not exist', 404);
     }
+    $item = ['item_id' => $tpl['item_id'], 'name' => $tpl['name'], 'stackable' => (int)($tpl['stackable'] ?? 0)];
     
     // Check if player already has this item (for stackable items)
     $stmt = $db->prepare('SELECT inventory_id, quantity FROM inventory WHERE user_id = ? AND item_id = ?');
@@ -1215,20 +1174,19 @@ function handleRemoveInventoryItem() {
     }
 
     $db = getDB();
-    
-    // Get current item with details from items table
-    $stmt = $db->prepare('
-        SELECT inv.inventory_id, inv.quantity, items.name
-        FROM inventory inv
-        JOIN items ON inv.item_id = items.item_id
-        WHERE inv.inventory_id = ? AND inv.user_id = ?
-    ');
-    $stmt->execute([$inventoryId, $session['user_id']]);
-    $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$item) {
+    // Get current inventory row
+    $stmt = $db->prepare('SELECT inventory_id, item_id, quantity FROM inventory WHERE inventory_id = ? AND user_id = ?');
+    $stmt->execute([$inventoryId, $session['user_id']]);
+    $itemRow = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$itemRow) {
         respondError('Item not found', 404);
     }
+
+    // Lookup template for name
+    $tpl = getItemTemplateById((int)$itemRow['item_id']);
+    $item = [ 'inventory_id' => $itemRow['inventory_id'], 'quantity' => $itemRow['quantity'], 'name' => $tpl ? $tpl['name'] : null ];
 
     if ($item['quantity'] <= $quantity) {
         // Remove item completely
@@ -1259,8 +1217,8 @@ function handleRemoveInventoryItem() {
 function handleGetItems() {
     $session = validateSession();
 
-    $db = getDB();
-    $stmt = $db->prepare('SELECT item_id, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name FROM items ORDER BY type, name');
+    $itemsDb = getItemsDB();
+    $stmt = $itemsDb->prepare('SELECT item_id, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name FROM items ORDER BY type, name');
     $stmt->execute();
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -1271,7 +1229,7 @@ function handleGetItems() {
             'name' => $item['name'],
             'type' => $item['type'],
             'description' => $item['description'],
-            'stats' => json_decode($item['stats'], true),
+            'stats' => is_string($item['stats']) ? json_decode($item['stats'], true) : (is_array($item['stats']) ? $item['stats'] : null),
             'rarity' => $item['rarity'],
             'stackable' => (bool)$item['stackable'],
             'level' => isset($item['level']) ? (int)$item['level'] : 1,
@@ -1325,28 +1283,24 @@ function ensureEquipmentRow($db, $userId) {
 
 function fetchEquippedItemDetails($db, $inventoryId) {
     if (!$inventoryId) return null;
-    $stmt = $db->prepare('
-        SELECT inv.inventory_id, inv.item_id, inv.quantity, items.name, items.type, items.description, items.stats, items.rarity, items.stackable, items.level, items.equipment_slot, items.icon_name
-        FROM inventory inv
-        JOIN items ON inv.item_id = items.item_id
-        WHERE inv.inventory_id = ?
-    ');
+    $stmt = $db->prepare('SELECT inventory_id, item_id, quantity FROM inventory WHERE inventory_id = ?');
     $stmt->execute([$inventoryId]);
     $it = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$it) return null;
+    $tpl = getItemTemplateById((int)$it['item_id']);
     return [
         'inventoryId' => (int)$it['inventory_id'],
         'itemId' => (int)$it['item_id'],
-        'name' => $it['name'],
-        'type' => $it['type'],
+        'name' => $tpl ? $tpl['name'] : null,
+        'type' => $tpl ? $tpl['type'] : null,
         'quantity' => (int)$it['quantity'],
-        'description' => $it['description'],
-        'stats' => json_decode($it['stats'], true),
-        'rarity' => $it['rarity'],
-        'stackable' => (bool)$it['stackable'],
-        'level' => isset($it['level']) ? (int)$it['level'] : 1,
-        'equipmentSlot' => isset($it['equipment_slot']) ? $it['equipment_slot'] : null,
-        'iconName' => $it['icon_name'] ?? null
+        'description' => $tpl ? $tpl['description'] : null,
+        'stats' => $tpl ? $tpl['stats'] : null,
+        'rarity' => $tpl ? $tpl['rarity'] : null,
+        'stackable' => $tpl ? (bool)$tpl['stackable'] : false,
+        'level' => $tpl ? (int)$tpl['level'] : 1,
+        'equipmentSlot' => $tpl ? ($tpl['equipment_slot'] ?? null) : null,
+        'iconName' => $tpl ? ($tpl['icon_name'] ?? null) : null
     ];
 }
 
@@ -1393,11 +1347,15 @@ function handleEquipItem() {
             respondError('Inventory item not found', 404);
         }
 
-        // fetch item template info (equipment_slot)
-        $stmt = $db->prepare('SELECT items.item_id, items.equipment_slot FROM inventory inv JOIN items ON inv.item_id = items.item_id WHERE inv.inventory_id = ?');
+        // fetch item template info (equipment_slot) via SQLite templates DB
+        $stmt = $db->prepare('SELECT item_id FROM inventory WHERE inventory_id = ?');
         $stmt->execute([$inventoryId]);
-        $tpl = $stmt->fetch(PDO::FETCH_ASSOC);
-        $templateSlot = $tpl['equipment_slot'] ?? null;
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $templateSlot = null;
+        if ($row) {
+            $tpl = getItemTemplateById((int)$row['item_id']);
+            $templateSlot = $tpl['equipment_slot'] ?? null;
+        }
 
         // Items without a template equipment_slot are not equippable
         if (!$templateSlot) {
@@ -1592,6 +1550,40 @@ function getScreenshotsDB() {
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
     }
     return $db;
+}
+
+function getItemsDB() {
+    static $db = null;
+    if ($db === null) {
+        $dockerPath = '/var/www/api/itemTemplates.sqlite';
+        $localPath = __DIR__ . '/itemTemplates.sqlite';
+        $dbPath = file_exists($dockerPath) || is_dir('/var/www/api') ? $dockerPath : $localPath;
+        if (!file_exists(dirname($dbPath))) {
+            // fallback to local path if directory not present
+            $dbPath = $localPath;
+        }
+        $db = new PDO('sqlite:' . $dbPath);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    }
+    return $db;
+}
+
+function findItemTemplateByName($name) {
+    $db = getItemsDB();
+    $stmt = $db->prepare('SELECT item_id FROM items WHERE name = ? LIMIT 1');
+    $stmt->execute([$name]);
+    return $stmt->fetchColumn();
+}
+
+function getItemTemplateById($itemId) {
+    $db = getItemsDB();
+    $stmt = $db->prepare('SELECT item_id, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name FROM items WHERE item_id = ? LIMIT 1');
+    $stmt->execute([$itemId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$row) return null;
+    $row['stats'] = json_decode($row['stats'], true);
+    return $row;
 }
 
 function sanitizeFilename($name) {

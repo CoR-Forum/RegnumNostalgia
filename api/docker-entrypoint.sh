@@ -74,6 +74,12 @@ if [ -f /var/www/api/screenshots.sqlite ]; then
     chmod 660 /var/www/api/screenshots.sqlite || true
 fi
 
+# Ensure the item templates sqlite file is writable by PHP-FPM
+if [ -f /var/www/api/itemTemplates.sqlite ]; then
+    chown www-data:www-data /var/www/api/itemTemplates.sqlite || true
+    chmod 660 /var/www/api/itemTemplates.sqlite || true
+fi
+
 # Make sure regeneration script is executable
 chmod +x /var/www/api/cron/regenerate-health.php
 
