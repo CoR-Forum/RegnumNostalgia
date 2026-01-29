@@ -1157,10 +1157,10 @@
       const fullBounds = [[0,0],[totalH,totalW]]; // [[y1,x1],[y2,x2]]
       map.fitBounds(fullBounds);
 
-      // Snap back to bounds, but allow a padding buffer so users can pan slightly
-      // outside before the map bounces back. Adjust `pad` (pixels) and
-      // `maxBoundsViscosity` above to tune feel.
-      const pad = 200 * scale; // pixels of padding outside the image (scaled)
+      // Snap back to bounds, but allow a larger padding buffer so users can
+      // pan further outside before the map bounces back. Increase the
+      // allowed off-screen drag by 50% over the original setting.
+      const pad = 1000 * scale; // pixels of padding outside the image (scaled)
       const paddedBounds = [[-pad, -pad], [totalH + pad, totalW + pad]];
       map.setMaxBounds(paddedBounds);
 
@@ -1798,15 +1798,29 @@
 
     let currentTooltip = null;
 
+    function positionTooltip(tooltip, anchorEl) {
+      if (!tooltip || !anchorEl) return;
+      const rect = anchorEl.getBoundingClientRect();
+      const tipRect = tooltip.getBoundingClientRect();
+      const gap = 6;
+      let left = rect.left + (rect.width / 2) - (tipRect.width / 2);
+      left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
+      let top = rect.top - tipRect.height - gap;
+      // If there isn't room above, place below the element
+      if (top < 4) top = rect.bottom + gap;
+      tooltip.style.left = Math.round(left) + 'px';
+      tooltip.style.top = Math.round(top) + 'px';
+    }
+
     function showTooltip(event, item) {
       hideTooltip();
-      
-    const tooltip = document.createElement('div');
-    tooltip.className = 'item-tooltip';
+
+      const tooltip = document.createElement('div');
+      tooltip.className = 'item-tooltip';
 
       const tooltipIconName = item.iconName || item.icon_name;
       const tooltipIconSrc = tooltipIconName ? `assets/v1/items/${tooltipIconName}` : '';
-      
+
       // Format stats
       let statsHtml = '';
       if (item.stats && Object.keys(item.stats).length > 0) {
@@ -1815,7 +1829,7 @@
         });
         statsHtml = `<div class="tooltip-stats">${statsParts.join('<br>')}</div>`;
       }
-      
+
       const rarityClass = (item.rarity || 'common');
 
       tooltip.innerHTML = `
@@ -1830,14 +1844,26 @@
         ${statsHtml}
         <div class="tooltip-rarity ${rarityClass}">${rarityClass}</div>
       `;
-      
+
       document.body.appendChild(tooltip);
       currentTooltip = tooltip;
-      moveTooltip(event);
+
+      // Anchor tooltip to the hovered inventory/equipment element
+      const anchorEl = event.currentTarget || event.target;
+      tooltip.__anchorEl = anchorEl;
+
+      // Position after next frame so layout/measurements are accurate
+      requestAnimationFrame(() => positionTooltip(tooltip, anchorEl));
     }
 
     function moveTooltip(event) {
       if (!currentTooltip) return;
+      // If anchored to an element, re-position relative to that element
+      if (currentTooltip.__anchorEl) {
+        positionTooltip(currentTooltip, currentTooltip.__anchorEl);
+        return;
+      }
+      // Fallback: follow mouse (legacy behavior)
       const offsetX = -15;
       const offsetY = 15;
       currentTooltip.style.left = (event.clientX + offsetX) + 'px';
@@ -2751,7 +2777,7 @@
               <div class="tooltip-row"><strong>Health:</strong> ${health.toLocaleString()}/${maxHealth.toLocaleString()}</div>
               ${statusText}
             `;
-            marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: true, direction: 'top', offset: [0, -10] });
+            marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: false, permanent: false, interactive: false, direction: 'top', offset: [0, -40] });
             gameState.territories.set(territory.territoryId, marker);
           } else {
             // Create new marker with custom icon
@@ -2762,7 +2788,7 @@
               <div class="tooltip-row"><strong>Health:</strong> ${health.toLocaleString()}/${maxHealth.toLocaleString()}</div>
               ${statusText}
             `;
-            marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: true, direction: 'top', offset: [0, -10] });
+            marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: false, permanent: false, interactive: false, direction: 'top', offset: [0, -40] });
             gameState.territories.set(territory.territoryId, marker);
           }
         }
@@ -2839,7 +2865,7 @@
             
             ${respawnHtml}
           `;
-          marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: true, direction: 'top', offset: [0, -10] });
+          marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: false, permanent: false, interactive: false, direction: 'top', offset: [0, -40] });
           gameState.superbosses.set(boss.bossId, marker);
         } else {
           // Create new marker
@@ -2853,7 +2879,7 @@
             ${levelHtml}
             ${respawnHtml}
           `;
-          marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: true, direction: 'top', offset: [0, -10] });
+          marker.bindTooltip(ttHtml, { className: 'info-tooltip', sticky: false, permanent: false, interactive: false, direction: 'top', offset: [0, -40] });
           gameState.superbosses.set(boss.bossId, marker);
         }
       });
