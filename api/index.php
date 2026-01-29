@@ -1519,30 +1519,21 @@ function handlePostShoutbox() {
 }
 
 /* ================================================================
-    SCREENSHOTS: Manage screenshot metadata and file uploads
+    SCREENSHOTS: Manage screenshot metadata and file uploads using SQLite
 ================================================================ */
 
-function getScreenshotsFilePath() {
-    // Use /var/www/public when in Docker, fallback to relative path for local dev
-    $dockerPath = '/var/www/api/screenshots.json';
-    $localPath = __DIR__ . '/../api/screenshots.json';
-    return file_exists($dockerPath) || is_dir('/var/www/api') ? $dockerPath : $localPath;
-}
-
-function loadScreenshots() {
-    $path = getScreenshotsFilePath();
-    if (!file_exists($path)) {
-        return [];
+function getScreenshotsDB() {
+    static $db = null;
+    if ($db === null) {
+        $dockerPath = '/var/www/api/screenshots.sqlite';
+        $localPath = __DIR__ . '/screenshots.sqlite';
+        $dbPath = file_exists($dockerPath) || is_dir('/var/www/api') ? $dockerPath : $localPath;
+        
+        $db = new PDO('sqlite:' . $dbPath);
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
     }
-    $json = file_get_contents($path);
-    $data = json_decode($json, true);
-    return is_array($data) ? $data : [];
-}
-
-function saveScreenshots($screenshots) {
-    $path = getScreenshotsFilePath();
-    $json = json_encode($screenshots, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    return file_put_contents($path, $json) !== false;
+    return $db;
 }
 
 function sanitizeFilename($name) {
@@ -1556,7 +1547,36 @@ function sanitizeFilename($name) {
 
 function handleGetScreenshots() {
     $session = validateSession();
-    $screenshots = loadScreenshots();
+    
+    $db = getScreenshotsDB();
+    $stmt = $db->query("SELECT * FROM screenshots ORDER BY id ASC");
+    $rows = $stmt->fetchAll();
+    
+    // Transform to match frontend format
+    $screenshots = array_map(function($row) {
+        return [
+            'id' => (int)$row['id'],
+            'filename' => $row['filename'],
+            'name' => [
+                'en' => $row['name_en'],
+                'de' => $row['name_de'],
+                'es' => $row['name_es']
+            ],
+            'description' => [
+                'en' => $row['description_en'],
+                'de' => $row['description_de'],
+                'es' => $row['description_es']
+            ],
+            'location' => $row['location'],
+            'visibleCharacters' => $row['visible_characters'],
+            'x' => (int)$row['x'],
+            'y' => (int)$row['y'],
+            'uploadedBy' => is_numeric($row['uploaded_by']) ? (int)$row['uploaded_by'] : $row['uploaded_by'],
+            'uploadedAt' => (int)$row['uploaded_at'],
+            'updatedAt' => $row['updated_at'] ? (int)$row['updated_at'] : null
+        ];
+    }, $rows);
+    
     respondSuccess(['screenshots' => $screenshots]);
 }
 
@@ -1661,21 +1681,42 @@ function handleAddScreenshot() {
     // Get the uploaded filename
     $uploadedFilename = isset($uploadResult['saved_as']) ? $uploadResult['saved_as'] : $filename;
     
-    // Load existing screenshots
-    $screenshots = loadScreenshots();
+    // Insert into database
+    $db = getScreenshotsDB();
+    $stmt = $db->prepare("
+        INSERT INTO screenshots (
+            filename, name_en, name_de, name_es,
+            description_en, description_de, description_es,
+            location, visible_characters, x, y,
+            uploaded_by, uploaded_at
+        ) VALUES (
+            :filename, :name_en, :name_de, :name_es,
+            :description_en, :description_de, :description_es,
+            :location, :visible_characters, :x, :y,
+            :uploaded_by, :uploaded_at
+        )
+    ");
     
-    // Generate new ID
-    $maxId = 0;
-    foreach ($screenshots as $s) {
-        if (isset($s['id']) && $s['id'] > $maxId) {
-            $maxId = $s['id'];
-        }
-    }
-    $newId = $maxId + 1;
+    $stmt->execute([
+        ':filename' => $uploadedFilename,
+        ':name_en' => $name_en ?: null,
+        ':name_de' => $name_de ?: null,
+        ':name_es' => $name_es ?: null,
+        ':description_en' => $description_en ?: null,
+        ':description_de' => $description_de ?: null,
+        ':description_es' => $description_es ?: null,
+        ':location' => $location ?: null,
+        ':visible_characters' => $visible_characters ?: null,
+        ':x' => $x,
+        ':y' => $y,
+        ':uploaded_by' => $session['user_id'],
+        ':uploaded_at' => now()
+    ]);
     
-    // Create new screenshot entry
+    $newId = $db->lastInsertId();
+    
     $newScreenshot = [
-        'id' => $newId,
+        'id' => (int)$newId,
         'filename' => $uploadedFilename,
         'name' => [
             'en' => $name_en ?: null,
@@ -1694,13 +1735,6 @@ function handleAddScreenshot() {
         'uploadedBy' => $session['user_id'],
         'uploadedAt' => now()
     ];
-    
-    // Add to list and save
-    $screenshots[] = $newScreenshot;
-    
-    if (!saveScreenshots($screenshots)) {
-        respondError('Failed to save screenshot metadata', 500);
-    }
     
     respondSuccess(['screenshot' => $newScreenshot]);
 }
@@ -1729,42 +1763,73 @@ function handleUpdateScreenshot($id) {
         respondError('X and Y coordinates are required');
     }
     
-    // Load screenshots
-    $screenshots = loadScreenshots();
-    $found = false;
+    // Update in database
+    $db = getScreenshotsDB();
+    $stmt = $db->prepare("
+        UPDATE screenshots SET
+            name_en = :name_en,
+            name_de = :name_de,
+            name_es = :name_es,
+            description_en = :description_en,
+            description_de = :description_de,
+            description_es = :description_es,
+            location = :location,
+            visible_characters = :visible_characters,
+            x = :x,
+            y = :y,
+            updated_at = :updated_at
+        WHERE id = :id
+    ");
     
-    foreach ($screenshots as &$screenshot) {
-        if ($screenshot['id'] === $id) {
-            $found = true;
-            
-            // Update fields
-            $screenshot['name'] = [
-                'en' => $name_en ?: null,
-                'de' => $name_de ?: null,
-                'es' => $name_es ?: null
-            ];
-            $screenshot['description'] = [
-                'en' => $description_en ?: null,
-                'de' => $description_de ?: null,
-                'es' => $description_es ?: null
-            ];
-            $screenshot['location'] = $location ?: null;
-            $screenshot['visibleCharacters'] = $visible_characters ?: null;
-            $screenshot['x'] = $x;
-            $screenshot['y'] = $y;
-            $screenshot['updatedAt'] = now();
-            
-            break;
-        }
-    }
+    $stmt->execute([
+        ':name_en' => $name_en ?: null,
+        ':name_de' => $name_de ?: null,
+        ':name_es' => $name_es ?: null,
+        ':description_en' => $description_en ?: null,
+        ':description_de' => $description_de ?: null,
+        ':description_es' => $description_es ?: null,
+        ':location' => $location ?: null,
+        ':visible_characters' => $visible_characters ?: null,
+        ':x' => $x,
+        ':y' => $y,
+        ':updated_at' => now(),
+        ':id' => $id
+    ]);
     
-    if (!$found) {
+    if ($stmt->rowCount() === 0) {
         respondError('Screenshot not found', 404);
     }
     
-    if (!saveScreenshots($screenshots)) {
-        respondError('Failed to update screenshot metadata', 500);
+    // Get updated screenshot
+    $stmt = $db->prepare("SELECT * FROM screenshots WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $row = $stmt->fetch();
+    
+    if (!$row) {
+        respondError('Screenshot not found', 404);
     }
+    
+    $screenshot = [
+        'id' => (int)$row['id'],
+        'filename' => $row['filename'],
+        'name' => [
+            'en' => $row['name_en'],
+            'de' => $row['name_de'],
+            'es' => $row['name_es']
+        ],
+        'description' => [
+            'en' => $row['description_en'],
+            'de' => $row['description_de'],
+            'es' => $row['description_es']
+        ],
+        'location' => $row['location'],
+        'visibleCharacters' => $row['visible_characters'],
+        'x' => (int)$row['x'],
+        'y' => (int)$row['y'],
+        'uploadedBy' => is_numeric($row['uploaded_by']) ? (int)$row['uploaded_by'] : $row['uploaded_by'],
+        'uploadedAt' => (int)$row['uploaded_at'],
+        'updatedAt' => $row['updated_at'] ? (int)$row['updated_at'] : null
+    ];
     
     respondSuccess(['screenshot' => $screenshot]);
 }
@@ -1773,33 +1838,45 @@ function handleDeleteScreenshot($id) {
     $session = validateSession();
     $id = (int)$id;
     
-    // Load screenshots
-    $screenshots = loadScreenshots();
-    $found = false;
-    $deletedScreenshot = null;
+    $db = getScreenshotsDB();
     
-    foreach ($screenshots as $index => $screenshot) {
-        if ($screenshot['id'] === $id) {
-            $found = true;
-            $deletedScreenshot = $screenshot;
-            
-            // Note: External API doesn't support delete operation
-            // Files remain on the server but metadata is removed from local JSON
-            // Consider implementing a cleanup script or using the rename API to move to trash folder
-            
-            // Remove from array
-            array_splice($screenshots, $index, 1);
-            break;
-        }
-    }
+    // Get screenshot info before deleting
+    $stmt = $db->prepare("SELECT * FROM screenshots WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $row = $stmt->fetch();
     
-    if (!$found) {
+    if (!$row) {
         respondError('Screenshot not found', 404);
     }
     
-    if (!saveScreenshots($screenshots)) {
-        respondError('Failed to update screenshot metadata', 500);
-    }
+    $deletedScreenshot = [
+        'id' => (int)$row['id'],
+        'filename' => $row['filename'],
+        'name' => [
+            'en' => $row['name_en'],
+            'de' => $row['name_de'],
+            'es' => $row['name_es']
+        ],
+        'description' => [
+            'en' => $row['description_en'],
+            'de' => $row['description_de'],
+            'es' => $row['description_es']
+        ],
+        'location' => $row['location'],
+        'visibleCharacters' => $row['visible_characters'],
+        'x' => (int)$row['x'],
+        'y' => (int)$row['y'],
+        'uploadedBy' => is_numeric($row['uploaded_by']) ? (int)$row['uploaded_by'] : $row['uploaded_by'],
+        'uploadedAt' => (int)$row['uploaded_at']
+    ];
+    
+    // Note: External API doesn't support delete operation
+    // Files remain on the server but metadata is removed from database
+    
+    // Delete from database
+    $stmt = $db->prepare("DELETE FROM screenshots WHERE id = :id");
+    $stmt->execute([':id' => $id]);
     
     respondSuccess(['message' => 'Screenshot deleted', 'screenshot' => $deletedScreenshot]);
 }
+

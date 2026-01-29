@@ -22,6 +22,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 - **World Bosses**: Superbosses with spawn timers and respawn mechanics
 - **In-game Time**: Server-synchronized day/night cycle
 - **Path Builder**: Create and share custom routes across the map
+- **Screenshot Manager**: Upload, organize, and manage screenshots with multilingual metadata (EN/DE/ES)
 
 ### Technical Features
 - **Session Management**: 24-hour sessions with auto-renewal on activity
@@ -85,11 +86,14 @@ regnum-nostalgia/
 │   ├── index.html                # Main game client (2800+ lines)
 │   ├── build-path.js             # Path builder UI logic
 │   ├── regions.js                # Region overlay rendering
+│   ├── screenshotManager.js      # Screenshot upload/management UI
 │   └── assets/
 │       ├── tiles/                # Map tiles (3x3 grid: 1-1.png ... 3-3.png)
+│       ├── screenshots/          # User-uploaded screenshots
 │       ├── ingame-maps/          # Mini-map assets
 │       ├── icons/                # UI icons
-│       └── markers.json          # Map marker definitions
+│       ├── markers.json          # Map marker definitions
+│       └── screenshots.json      # Screenshot metadata
 ├── nginx/
 │   └── default.conf              # Nginx reverse proxy config
 ├── docker-compose.yml            # Container orchestration
@@ -135,6 +139,12 @@ All endpoints are accessible at `http://localhost:8321/api/`
 
 ### Multiplayer
 - `GET /api/players/online` - Get all active players (last 5 seconds)
+
+### Screenshots
+- `GET /api/screenshots` - List all screenshots with metadata
+- `POST /api/screenshots` - Upload new screenshot with multilingual name/description
+- `PUT /api/screenshots/{id}` - Update screenshot metadata
+- `DELETE /api/screenshots/{id}` - Delete screenshot and file
 
 ### Inventory & Equipment
 - `GET /api/inventory` - List all inventory items
@@ -193,6 +203,13 @@ Ignis: [5000, 618]    // Red/Humans
 - Automated waypoint walking (2-second tick)
 - Real-time position updates visible to other players
 - Persistent walker queues in database
+
+### Screenshots
+- Right-click map → "Screenshots" to open manager
+- Upload images with multilingual names/descriptions (EN/DE/ES)
+- Stored in `public/assets/screenshots/` with metadata in `screenshots.json`
+- Map markers show screenshots at their coordinates
+- Edit metadata or delete screenshots through UI
 
 ## 🐛 Troubleshooting
 

@@ -39,6 +39,24 @@ fi
 # Set up health regeneration loop (every 5 seconds)
 echo "Starting health regeneration background service..."
 
+# Initialize screenshots DB if it doesn't exist
+if [ ! -f /var/www/api/screenshots.sqlite ]; then
+    echo "Initializing screenshots database..."
+    if ! php /var/www/api/init-screenshots-db.php; then
+        echo "ERROR: Screenshots DB initialization failed." >&2
+        ls -la /var/www/api || true
+        # don't exit the container; continue but log the error
+    fi
+else
+    echo "Screenshots DB already exists, skipping initialization"
+fi
+
+# Ensure the screenshots sqlite file is writable by PHP-FPM
+if [ -f /var/www/api/screenshots.sqlite ]; then
+    chown www-data:www-data /var/www/api/screenshots.sqlite || true
+    chmod 660 /var/www/api/screenshots.sqlite || true
+fi
+
 # Make sure regeneration script is executable
 chmod +x /var/www/api/cron/regenerate-health.php
 

@@ -1,5 +1,6 @@
 .DS_Store
 database.sqlite*
+screenshots.sqlite*
 cor-forum-api-reference.*
 .env
-public/assets/screenshots/*
+roimg/*
