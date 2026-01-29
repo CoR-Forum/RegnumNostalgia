@@ -917,21 +917,61 @@ function handleStartMove() {
         $de = distance($targetX,$targetY,$n['x'],$n['y']);
         if ($de < $minE) { $minE = $de; $end = $nid; }
     }
+    if ($start === null) respondError('No path start found',500);
 
-    if ($start === null || $end === null) respondError('No path endpoints found',500);
+    // Decide whether to use direct walking or the path network.
+    // Use direct walking for short trips (avoid using the network),
+    // but prefer the network for longer travel.
+    $tripDist = distance($px, $py, $targetX, $targetY);
+    $directThreshold = 300; // pixels - trips shorter or equal to this go direct
+    $maxNodeDistance = 300; // pixels - if nearest node is this far or farther, we may still start direct
 
-    // Dijkstra from start to end
-    $pathNodeIds = dijkstra($adj, $start, $end);
-    if ($pathNodeIds === null) respondError('No route found', 400);
-
-    // Build positions array of [x,y]
     $positions = [];
-    foreach ($pathNodeIds as $nid) {
-        $positions[] = [$nodes[$nid]['x'],$nodes[$nid]['y']];
+    if ($tripDist <= $directThreshold) {
+        // Short trip: walk directly from player to target
+        $positions[] = [$px, $py];
+    } else {
+        // Long trip: prefer the path network where available
+        if ($minS > $maxNodeDistance) {
+            // No nearby node for player: start directly from player's position
+            $positions[] = [$px, $py];
+        } else {
+            // Try to Dijkstra from start to end if we have an end node
+            $pathNodeIds = null;
+            if ($end !== null) {
+                $pathNodeIds = dijkstra($adj, $start, $end);
+            }
+
+            // If we couldn't find an end node or no route exists, fall back to
+            // starting at the nearest path node and then go to the target.
+            if ($pathNodeIds === null) {
+                $positions[] = [ $nodes[$start]['x'], $nodes[$start]['y'] ];
+            } else {
+                // Build positions array of [x,y] from the found path nodes
+                foreach ($pathNodeIds as $nid) {
+                    $positions[] = [$nodes[$nid]['x'],$nodes[$nid]['y']];
+                }
+            }
+        }
     }
 
-    // append final exact target as last step so player reaches clicked location (on path nearest to it)
-    $positions[] = [$targetX, $targetY];
+    // append intermediate steps from the last path node to the exact target
+    $last = $positions[count($positions)-1];
+    $lx = (int)$last[0]; $ly = (int)$last[1];
+    $dx = $targetX - $lx; $dy = $targetY - $ly;
+    $distToTarget = distance($lx, $ly, $targetX, $targetY);
+    $stepSize = 40; // pixels per step for direct segments
+    if ($distToTarget <= $stepSize || $distToTarget == 0) {
+        $positions[] = [$targetX, $targetY];
+    } else {
+        $steps = (int)ceil($distToTarget / $stepSize);
+        for ($si = 1; $si <= $steps; $si++) {
+            $t = $si / $steps;
+            $px = (int)round($lx + $dx * $t);
+            $py = (int)round($ly + $dy * $t);
+            $positions[] = [$px, $py];
+        }
+    }
 
     // create a new walker for the user
     // Rules:
