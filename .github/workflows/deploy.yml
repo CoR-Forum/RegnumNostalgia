@@ -38,6 +38,12 @@ jobs:
           COR_FORUM_DB_USER: ${{ secrets.COR_FORUM_DB_USER }}
           COR_FORUM_DB_PASS: ${{ secrets.COR_FORUM_DB_PASS }}
           SCREENSHOTS_API_KEY: ${{ secrets.SCREENSHOTS_API_KEY }}
+          GAME_DB_HOST: ${{ vars.GAME_DB_HOST }}
+          GAME_DB_PORT: ${{ vars.GAME_DB_PORT }}
+          GAME_DB_NAME: ${{ vars.GAME_DB_NAME }}
+          GAME_DB_USER: ${{ vars.GAME_DB_USER }}
+          GAME_DB_PASS: ${{ secrets.GAME_DB_PASS }}
+          GAME_DB_ROOT_PASSWORD: ${{ secrets.GAME_DB_ROOT_PASSWORD }}
         run: |
           set -euo pipefail
           SSH_PATH="${SSH_PATH}"
@@ -45,7 +51,7 @@ jobs:
           REMOTE_DIR="${SSH_PATH#*:}"
           echo "Creating .env file on $REMOTE_HOST"
           # Write multiple variables atomically on the remote host
-          ssh -o StrictHostKeyChecking=no "$REMOTE_HOST" "printf 'COR_FORUM_API_KEY=%s\nCORS_ALLOWED_ORIGINS=%s\nCOR_FORUM_DB_HOST=%s\nCOR_FORUM_DB_PORT=%s\nCOR_FORUM_DB_NAME=%s\nCOR_FORUM_DB_USER=%s\nCOR_FORUM_DB_PASS=%s\nSCREENSHOTS_API_KEY=%s\n' \"$COR_FORUM_API_KEY\" \"$CORS_ALLOWED_ORIGINS\" \"$COR_FORUM_DB_HOST\" \"$COR_FORUM_DB_PORT\" \"$COR_FORUM_DB_NAME\" \"$COR_FORUM_DB_USER\" \"$COR_FORUM_DB_PASS\" \"$SCREENSHOTS_API_KEY\" > \"$REMOTE_DIR/.env\""
+          ssh -o StrictHostKeyChecking=no "$REMOTE_HOST" "printf 'COR_FORUM_API_KEY=%s\nCORS_ALLOWED_ORIGINS=%s\nCOR_FORUM_DB_HOST=%s\nCOR_FORUM_DB_PORT=%s\nCOR_FORUM_DB_NAME=%s\nCOR_FORUM_DB_USER=%s\nCOR_FORUM_DB_PASS=%s\nSCREENSHOTS_API_KEY=%s\n# Game database (MariaDB)\nGAME_DB_HOST=%s\nGAME_DB_PORT=%s\nGAME_DB_NAME=%s\nGAME_DB_USER=%s\nGAME_DB_PASS=%s\nGAME_DB_ROOT_PASSWORD=%s\n' \"$COR_FORUM_API_KEY\" \"$CORS_ALLOWED_ORIGINS\" \"$COR_FORUM_DB_HOST\" \"$COR_FORUM_DB_PORT\" \"$COR_FORUM_DB_NAME\" \"$COR_FORUM_DB_USER\" \"$COR_FORUM_DB_PASS\" \"$SCREENSHOTS_API_KEY\" \"$GAME_DB_HOST\" \"$GAME_DB_PORT\" \"$GAME_DB_NAME\" \"$GAME_DB_USER\" \"$GAME_DB_PASS\" \"$GAME_DB_ROOT_PASSWORD\" > \"$REMOTE_DIR/.env\""
 
       - name: Restart docker compose on remote
         env:
