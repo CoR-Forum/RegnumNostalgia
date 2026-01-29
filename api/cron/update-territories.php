@@ -40,8 +40,8 @@ try {
         exit(1);
     }
 
-    $selectStmt = $db->prepare('SELECT realm FROM territories WHERE territory_id = ?');
-    $updateStmt = $db->prepare('UPDATE territories SET realm = ? WHERE territory_id = ?');
+    $selectStmt = $db->prepare('SELECT owner_realm FROM territories WHERE territory_id = ?');
+    $updateStmt = $db->prepare('UPDATE territories SET owner_realm = ? WHERE territory_id = ?');
     $insertCapture = $db->prepare('INSERT INTO territory_captures (territory_id, previous_realm, new_realm, captured_at) VALUES (?, ?, ?, ?)');
 
     // Use a transaction so captures and territory updates stay consistent
@@ -94,7 +94,7 @@ try {
     }
 
     // Ensure territories.realm matches the most recent capture (if any)
-    $syncSql = "UPDATE territories SET realm = (
+    $syncSql = "UPDATE territories SET owner_realm = (
         SELECT LOWER(new_realm) FROM territory_captures
         WHERE territory_captures.territory_id = territories.territory_id
         ORDER BY captured_at DESC, capture_id DESC LIMIT 1
