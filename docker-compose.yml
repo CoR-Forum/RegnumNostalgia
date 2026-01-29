@@ -36,8 +36,6 @@ services:
     volumes:
       - ./data/mariadb:/var/lib/mysql
     restart: unless-stopped
-    ports:
-      - "8336:3306"
 
   phpmyadmin:
     image: phpmyadmin:5
