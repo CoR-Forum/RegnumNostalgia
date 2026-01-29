@@ -441,7 +441,8 @@ function handleRealmSelect() {
             ['template_key' => 'gold_coin', 'quantity' => 50],
             ['template_key' => 'iron_sword', 'quantity' => 1],
             ['template_key' => 'wooden_shield', 'quantity' => 1],
-            ['template_key' => 'leather_cap', 'quantity' => 1]
+            ['template_key' => 'leather_cap', 'quantity' => 1],
+            ['template_key' => 'alasthor_amulet', 'quantity' => 1]
         ];
 
         // Look up item_id and equipment_slot by template_key
