@@ -706,82 +706,30 @@
   </style>
 </head>
 <body>
-  <!-- Login/Realm Selection Modal -->
-  <div id="modal-overlay">
-    <div class="modal-content ui-window">
-      <div class="modal-logo" style="text-align:center;padding-bottom:8px;pointer-events:none;">
-        <img src="assets/regnum-nostalgia-logo.png" alt="Regnum Nostalgia" style="max-width:240px;height:auto;display:inline-block;">
-      </div>
-      <!-- Step 1: Login -->
-      <div id="step-login" class="modal-step active">
-        <div class="modal-title ui-window-titlebar">
-          <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Regnum Nostalgia - Login</h2>
-        </div>
-        <div class="modal-body ui-window-body">
-          <div style="color:#e0e0e0;margin-bottom:12px;font-size:11px;text-align:center;padding-top:12px;">
-        Login with your cor-forum.de account
-          </div>
-          <div id="auto-login-loading" class="hidden" style="text-align:center;padding:20px;color:#e0e0e0;font-size:11px;">
-            <div class="loading-spinner" style="display:inline-block;margin-bottom:8px;"></div>
-            <div>Checking session...</div>
-          </div>
-          <div id="login-error" class="error-message hidden"></div>
-          <form id="login-form">
-        <div class="form-group">
-          <label class="form-label" for="username">Username</label>
-          <input type="text" id="username" class="form-input" placeholder="Enter your cor-forum.de username" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="password">Password</label>
-          <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
-        </div>
-        <button type="submit" id="login-btn" class="btn btn-primary">
-          <span id="login-text">Login</span>
-          <span id="login-spinner" class="loading-spinner" style="display:none;"></span>
-        </button>
-          </form>
-          <p style="margin-top:8px;font-size:11px;color:#e0e0e0;text-align:center;">
-        <a href="https://cor-forum.de/board/register/" target="_blank" rel="noopener noreferrer" style="color:#00d9ff;text-decoration:underline;">Sign up</a>&nbsp;&nbsp;<a href="https://cor-forum.de/board/lost-password/" target="_blank" rel="noopener noreferrer" style="color:#00d9ff;text-decoration:underline;">Reset password</a>
-          </p>
-        </div>
-      </div>
-      
+  <!-- Login window loaded from separate file -->
+  <script>
+    (function(){
+      fetch('login.html').then(r => r.text()).then(html => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
 
-      <!-- Step 2: Realm Selection -->
-      <div id="step-realm" class="modal-step">
-        <div class="modal-title ui-window-titlebar">
-          <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Regnum Nostalgia - Select Realm</h2>
-        </div>
-        <div class="modal-body ui-window-body">
-          <p style="color:#e0e0e0;text-align:center;margin-bottom:8px;font-size:11px;">You may change your realm later</p>
-          <div id="realm-error" class="error-message hidden"></div>
-          <div class="realm-cards">
-            <div class="realm-card syrtis" data-realm="syrtis">
-              <div class="realm-icon"><img src="assets/logo-syrtis.webp" alt="Syrtis"></div>
-              <div class="realm-info">
-                <h3>Syrtis</h3>
-                <p>The Elven Kingdom</p>
-              </div>
-            </div>
-            <div class="realm-card alsius" data-realm="alsius">
-              <div class="realm-icon"><img src="assets/logo-alsius.webp" alt="Alsius"></div>
-              <div class="realm-info">
-                <h3>Alsius</h3>
-                <p>The Dwarven Realm</p>
-              </div>
-            </div>
-            <div class="realm-card ignis" data-realm="ignis">
-              <div class="realm-icon"><img src="assets/logo-ignis.webp" alt="Ignis"></div>
-              <div class="realm-info">
-                <h3>Ignis</h3>
-                <p>The Human Empire</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+        // Move non-script nodes directly to body (not into a container)
+        Array.from(tmp.childNodes).forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
+          document.body.appendChild(node);
+        });
+
+        // Execute inline scripts
+        const scripts = tmp.querySelectorAll('script');
+        scripts.forEach(s => {
+          const ns = document.createElement('script');
+          if (s.src) ns.src = s.src;
+          else ns.textContent = s.textContent;
+          document.body.appendChild(ns);
+        });
+      }).catch(err => console.error('Failed to load login window:', err));
+    })();
+  </script>
 
   <!-- Inventory Window -->
   <div id="inventory-window" class="ui-window" style="position: absolute; right: 12px; bottom: 62px; width: 304px; z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
@@ -1219,7 +1167,6 @@
     
     // Expose gameState on window so other modules can access it
     const storedToken = localStorage.getItem('sessionToken');
-    console.log('[Session] Initializing gameState, stored token:', storedToken ? 'present' : 'missing');
     
     window.gameState = {
       sessionToken: storedToken,
@@ -1299,6 +1246,9 @@
       return data;
     }
 
+    // Expose apiCall globally for use by other modules (login.html, etc.)
+    window.apiCall = apiCall;
+
     // Small helper to format durations like respawn timers
     function formatDurationSeconds(s) {
       if (typeof s !== 'number' || isNaN(s)) return '';
@@ -1312,88 +1262,23 @@
       return out;
     }
 
-    // Login handler
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-      const loginBtn = document.getElementById('login-btn');
-      const loginText = document.getElementById('login-text');
-      const loginSpinner = document.getElementById('login-spinner');
-      const errorEl = document.getElementById('login-error');
-
-      loginBtn.disabled = true;
-      loginText.style.display = 'none';
-      loginSpinner.style.display = 'inline-block';
-      errorEl.classList.add('hidden');
+    async function openInventory() {
+      const window = document.getElementById('inventory-window');
+      window.style.display = 'flex';
+      document.getElementById('inventory-loading').style.display = 'block';
+      document.getElementById('inventory-items').style.display = 'none';
+      document.getElementById('inventory-empty').style.display = 'none';
 
       try {
-        const formData = new URLSearchParams();
-        formData.append('username', username);
-        formData.append('password', password);
-
-        const data = await apiCall('/login', {
-          method: 'POST',
-          body: formData,
-          skipAuth: true
-        });
-
-        if (!data || !data.sessionToken) {
-          throw new Error((data && data.error) ? data.error : 'Login failed: missing session token');
-        }
-
-        gameState.sessionToken = data.sessionToken;
-        gameState.userId = data.userId;
-        gameState.username = data.username;
-        gameState.realm = data.realm;
-
-        try { 
-          localStorage.setItem('sessionToken', data.sessionToken); 
-          console.log('[Session] Login successful, token stored');
-        } catch (e) {
-          console.error('[Session] Failed to store token in localStorage:', e);
-        }
-
-        if (data.needsRealmSelection) {
-          showRealmSelection();
-        } else {
-          await initGame();
-        }
+        const [equipData, invData] = await Promise.all([apiCall('/equipment'), apiCall('/inventory')]);
+        if (equipData) displayEquipment(equipData.equipment);
+        if (invData) displayInventory(invData.items);
       } catch (error) {
-        errorEl.textContent = error.message;
-        errorEl.classList.remove('hidden');
-        loginBtn.disabled = false;
-        loginText.style.display = 'inline';
-        loginSpinner.style.display = 'none';
+        console.error('Failed to fetch inventory:', error);
+        alert('Failed to load inventory: ' + error.message);
+        closeInventory();
       }
-    });
-
-    // Realm selection handler
-    document.querySelectorAll('.realm-card').forEach(card => {
-      card.addEventListener('click', async () => {
-        const realm = card.dataset.realm;
-        const errorEl = document.getElementById('realm-error');
-        errorEl.classList.add('hidden');
-
-        try {
-          const formData = new URLSearchParams();
-          formData.append('realm', realm);
-
-          const data = await apiCall('/realm/select', {
-            method: 'POST',
-            body: formData
-          });
-
-          gameState.realm = data.realm;
-          gameState.position = data.position;
-
-          await initGame();
-        } catch (error) {
-          errorEl.textContent = error.message;
-          errorEl.classList.remove('hidden');
-        }
-      });
-    });
+    }
 
     // Inventory button handler (legacy header button may be absent)
     const _inventoryBtn = document.getElementById('inventory-btn');
@@ -1556,11 +1441,6 @@
       }
       location.reload();
     });
-
-    function showRealmSelection() {
-      document.getElementById('step-login').classList.remove('active');
-      document.getElementById('step-realm').classList.add('active');
-    }
 
     async function openInventory() {
       const window = document.getElementById('inventory-window');
@@ -1920,26 +1800,7 @@
       }catch(err){ console.error('displayEquipment error', err); }
     }
 
-    function hideModal() {
-      const overlay = document.getElementById('modal-overlay');
-      overlay.classList.add('hidden');
-      // restore overlay pointer behavior
-      try { overlay.style.pointerEvents = 'auto'; } catch (e) {}
-      // leave build mode off when modal hidden
-      try { gameState.buildPathMode = false; } catch (e) {}
-      // clear any inline styles applied to build modal step
-      try {
-        const step = document.getElementById('step-build-path');
-        if (step) {
-          step.style.position = '';
-          step.style.left = '';
-          step.style.top = '';
-          step.style.zIndex = '';
-          step.style.pointerEvents = '';
-          step.style.maxWidth = '';
-        }
-      } catch (e) {}
-    }
+    // hideModal and showRealmSelection functions now in login.html
 
     // Build Path UI moved to public/build-path.js
 
@@ -2132,6 +1993,9 @@
         } catch (e) {}
       }
     }
+
+    // Expose initGame globally for use by login.html
+    window.initGame = initGame;
 
     function createPlayerMarker(x, y) {
       if (gameState.playerMarker) {
@@ -2893,49 +2757,58 @@
     // Initialize reusable window wiring (drag + close)
     initWindows();
 
-    // Auto-login if session token exists
-    if (gameState.sessionToken) {
-      console.log('[Session] Session token found, attempting auto-login');
-      // Show loading animation
-      try {
-        const loginForm = document.getElementById('login-form');
-        const autoLoginLoading = document.getElementById('auto-login-loading');
-        if (loginForm) loginForm.style.display = 'none';
-        if (autoLoginLoading) autoLoginLoading.classList.remove('hidden');
-      } catch (e) {}
-      
-      setTimeout(() => {
-        initGame().catch((err) => {
-          // Auto-login failed. Do not forcibly remove the stored session token here;
-          // `initGame` already clears it if the server reported an auth failure.
-          console.log('[Session] Auto-login failed:', err && err.message ? err.message : err);
-          try {
-            // Hide loading and show login form
-            const loginForm = document.getElementById('login-form');
-            const autoLoginLoading = document.getElementById('auto-login-loading');
-            if (loginForm) loginForm.style.display = 'block';
-            if (autoLoginLoading) autoLoginLoading.classList.add('hidden');
-            
-            document.body.classList.remove('authenticated');
-            const overlay = document.getElementById('modal-overlay'); 
-            if (overlay) { 
-              overlay.classList.remove('hidden');
-              console.log('[Session] Showing login modal after auto-login failure');
-            }
-            try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
-          } catch (e) {}
-        });
-      }, 1000);
-    } else {
-      console.log('[Session] No session token found, showing login modal');
-      // Ensure modal is visible and login screen is active
-      try {
-        const overlay = document.getElementById('modal-overlay');
-        if (overlay) overlay.classList.remove('hidden');
-        document.getElementById('step-login').classList.add('active');
-        document.getElementById('step-realm').classList.remove('active');
-      } catch (e) {}
+    // Wait for login.html to be loaded before checking auto-login
+    function checkAutoLogin() {
+      const overlay = document.getElementById('modal-overlay');
+      if (!overlay) {
+        // Login HTML not loaded yet, wait a bit
+        setTimeout(checkAutoLogin, 50);
+        return;
+      }
+
+      // Auto-login if session token exists
+      if (gameState.sessionToken) {
+        // Show loading animation
+        try {
+          const loginForm = document.getElementById('login-form');
+          const autoLoginLoading = document.getElementById('auto-login-loading');
+          if (loginForm) loginForm.style.display = 'none';
+          if (autoLoginLoading) autoLoginLoading.classList.remove('hidden');
+        } catch (e) {}
+        
+        setTimeout(() => {
+          initGame().catch((err) => {
+            // Auto-login failed. Do not forcibly remove the stored session token here;
+            // `initGame` already clears it if the server reported an auth failure.
+            try {
+              // Hide loading and show login form
+              const loginForm = document.getElementById('login-form');
+              const autoLoginLoading = document.getElementById('auto-login-loading');
+              if (loginForm) loginForm.style.display = 'block';
+              if (autoLoginLoading) autoLoginLoading.classList.add('hidden');
+              
+              document.body.classList.remove('authenticated');
+              const overlay = document.getElementById('modal-overlay'); 
+              if (overlay) { 
+                overlay.classList.remove('hidden');
+              }
+              try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
+            } catch (e) {}
+          });
+        }, 1000);
+      } else {
+        // Ensure modal is visible and login screen is active
+        try {
+          const overlay = document.getElementById('modal-overlay');
+          if (overlay) overlay.classList.remove('hidden');
+          document.getElementById('step-login').classList.add('active');
+          document.getElementById('step-realm').classList.remove('active');
+        } catch (e) {}
+      }
     }
+
+    // Start checking for auto-login
+    checkAutoLogin();
   </script>
 
   <script>
