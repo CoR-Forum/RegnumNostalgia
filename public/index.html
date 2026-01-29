@@ -2126,11 +2126,23 @@
 
         updatePlayerCoords(gameState.position.x, gameState.position.y);
       } catch (error) {
-        // Initialization failed (likely invalid/expired session).
-        // Don't show a blocking alert — clear session and return to login screen.
+        // Initialization failed. Only remove the stored session token if the
+        // server explicitly rejected it (401/403) or reported it as invalid/expired.
         console.debug('initGame failed, returning to login:', error && error.message ? error.message : error);
-        try { localStorage.removeItem('sessionToken'); } catch (e) {}
-        try { gameState.sessionToken = null; } catch (e) {}
+        try {
+          const msg = String((error && error.message) ? error.message : '');
+          const status = (error && typeof error.status !== 'undefined') ? error.status : null;
+          const authFailure = (status === 401 || status === 403) || /invalid|expired|unauthor/i.test(msg);
+          if (authFailure) {
+            try { localStorage.removeItem('sessionToken'); } catch (e) {}
+            try { gameState.sessionToken = null; } catch (e) {}
+          } else {
+            // For transient/network errors, keep the token so the user isn't
+            // forcibly logged out by a hard reload; allow them to retry.
+            console.debug('initGame: keeping sessionToken due to non-auth error');
+          }
+        } catch (e) { console.debug('initGame: error while evaluating auth failure', e); }
+
         try {
           // Hide authenticated UI and show login modal
           document.body.classList.remove('authenticated');
@@ -2890,11 +2902,16 @@
 
     // Auto-login if session token exists
     if (gameState.sessionToken) {
-      initGame().catch(() => {
-        // Session invalid, show login
-        localStorage.removeItem('sessionToken');
-        gameState.sessionToken = null;
-      });
+      initGame().catch((err) => {
+          // Auto-login failed. Do not forcibly remove the stored session token here;
+          // `initGame` already clears it if the server reported an auth failure.
+          console.debug('Auto-initGame failed:', err && err.message ? err.message : err);
+          try {
+            document.body.classList.remove('authenticated');
+            const overlay = document.getElementById('modal-overlay'); if (overlay) overlay.classList.remove('hidden');
+            try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
+          } catch (e) {}
+        });
     }
   </script>
   <script src="build-path.js"></script>
