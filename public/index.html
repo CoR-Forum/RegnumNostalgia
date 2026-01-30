@@ -1961,29 +1961,8 @@
         // Start polling for superbosses
         startSuperbossesPolling();
 
-        // Refresh territories and superbosses when viewport changes
-        map.on('moveend zoomend', () => {
-          // Trigger immediate refresh on both
-          (async () => {
-            try {
-              const bounds = getViewportBounds();
-              const data = await apiCall(`/territories?minX=${bounds.minX}&maxX=${bounds.maxX}&minY=${bounds.minY}&maxY=${bounds.maxY}`);
-              updateTerritories(data.territories);
-            } catch (error) {
-              console.error('Failed to refresh territories on viewport change:', error);
-            }
-          })();
-          
-          (async () => {
-            try {
-              const bounds = getViewportBounds();
-              const data = await apiCall(`/superbosses?minX=${bounds.minX}&maxX=${bounds.maxX}&minY=${bounds.minY}&maxY=${bounds.maxY}`);
-              updateSuperbosses(data.superbosses);
-            } catch (error) {
-              console.error('Failed to refresh superbosses on viewport change:', error);
-            }
-          })();
-        });
+        // Refresh territories and superbosses when viewport changes (debounced)
+        map.on('moveend zoomend', onViewportChange);
 
         // Do not load screenshots automatically on page load.
         // Screenshots will be loaded and displayed when the Screenshot Manager is opened.
@@ -2517,12 +2496,43 @@
       return { minX, maxX, minY, maxY };
     }
 
+    // Helper function to build URL with bounds parameters
+    function buildBoundsUrl(endpoint, bounds) {
+      const params = new URLSearchParams({
+        minX: bounds.minX,
+        maxX: bounds.maxX,
+        minY: bounds.minY,
+        maxY: bounds.maxY
+      });
+      return `${endpoint}?${params.toString()}`;
+    }
+
+    // Debounced function to refresh map data on viewport changes
+    let viewportChangeTimeout = null;
+    function onViewportChange() {
+      if (viewportChangeTimeout) {
+        clearTimeout(viewportChangeTimeout);
+      }
+      viewportChangeTimeout = setTimeout(async () => {
+        try {
+          const bounds = getViewportBounds();
+          const territoriesData = await apiCall(buildBoundsUrl('/territories', bounds));
+          updateTerritories(territoriesData.territories);
+          
+          const superbossesData = await apiCall(buildBoundsUrl('/superbosses', bounds));
+          updateSuperbosses(superbossesData.superbosses);
+        } catch (error) {
+          console.error('Failed to refresh map data on viewport change:', error);
+        }
+      }, 300); // 300ms debounce
+    }
+
     function startTerritoriesPolling() {
       // Poll every 5 seconds
       gameState.territoriesPollInterval = setInterval(async () => {
         try {
           const bounds = getViewportBounds();
-          const data = await apiCall(`/territories?minX=${bounds.minX}&maxX=${bounds.maxX}&minY=${bounds.minY}&maxY=${bounds.maxY}`);
+          const data = await apiCall(buildBoundsUrl('/territories', bounds));
           updateTerritories(data.territories);
         } catch (error) {
           console.error('Failed to fetch territories:', error);
@@ -2531,9 +2541,13 @@
 
       // Initial fetch
       (async () => {
-        const bounds = getViewportBounds();
-        const data = await apiCall(`/territories?minX=${bounds.minX}&maxX=${bounds.maxX}&minY=${bounds.minY}&maxY=${bounds.maxY}`);
-        updateTerritories(data.territories);
+        try {
+          const bounds = getViewportBounds();
+          const data = await apiCall(buildBoundsUrl('/territories', bounds));
+          updateTerritories(data.territories);
+        } catch (error) {
+          console.error('Failed to fetch initial territories:', error);
+        }
       })();
     }
 
@@ -2626,7 +2640,7 @@
       gameState.superbossesPollInterval = setInterval(async () => {
         try {
           const bounds = getViewportBounds();
-          const data = await apiCall(`/superbosses?minX=${bounds.minX}&maxX=${bounds.maxX}&minY=${bounds.minY}&maxY=${bounds.maxY}`);
+          const data = await apiCall(buildBoundsUrl('/superbosses', bounds));
           updateSuperbosses(data.superbosses);
         } catch (error) {
           console.error('Failed to fetch superbosses:', error);
@@ -2635,9 +2649,13 @@
 
       // Initial fetch
       (async () => {
-        const bounds = getViewportBounds();
-        const data = await apiCall(`/superbosses?minX=${bounds.minX}&maxX=${bounds.maxX}&minY=${bounds.minY}&maxY=${bounds.maxY}`);
-        updateSuperbosses(data.superbosses);
+        try {
+          const bounds = getViewportBounds();
+          const data = await apiCall(buildBoundsUrl('/superbosses', bounds));
+          updateSuperbosses(data.superbosses);
+        } catch (error) {
+          console.error('Failed to fetch initial superbosses:', error);
+        }
       })();
     }
 

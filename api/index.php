@@ -688,6 +688,10 @@ function handleGetTerritories() {
     $params = [];
     
     if ($minX !== null && $maxX !== null && $minY !== null && $maxY !== null) {
+        // Validate bounds make logical sense
+        if ($minX > $maxX || $minY > $maxY) {
+            respondError('Invalid bounds: minX must be <= maxX and minY must be <= maxY', 400);
+        }
         $sql .= ' WHERE x >= :minX AND x <= :maxX AND y >= :minY AND y <= :maxY';
         $params = [
             ':minX' => $minX,
@@ -760,6 +764,10 @@ function handleGetSuperbosses() {
     $params = [];
     
     if ($minX !== null && $maxX !== null && $minY !== null && $maxY !== null) {
+        // Validate bounds make logical sense
+        if ($minX > $maxX || $minY > $maxY) {
+            respondError('Invalid bounds: minX must be <= maxX and minY must be <= maxY', 400);
+        }
         $sql .= ' AND x >= :minX AND x <= :maxX AND y >= :minY AND y <= :maxY';
         $params = [
             ':minX' => $minX,
