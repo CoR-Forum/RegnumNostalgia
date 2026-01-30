@@ -1164,15 +1164,15 @@ function handleGetInventory() {
     $activeMountId = $playerData ? $playerData['active_mount_inventory_id'] : null;
 
     // Get usage information for items with limited usage
-    $usageStmt = $db->prepare('SELECT inventory_id, uses_remaining FROM inventory_usage WHERE inventory_id IN (' . implode(',', array_map(function($i) { return (int)$i['inventory_id']; }, $items)) . ')');
+    $usageData = [];
     if (count($items) > 0) {
-        $usageStmt->execute();
-        $usageData = [];
+        $inventoryIds = array_map(function($i) { return (int)$i['inventory_id']; }, $items);
+        $placeholders = implode(',', array_fill(0, count($inventoryIds), '?'));
+        $usageStmt = $db->prepare("SELECT inventory_id, uses_remaining FROM inventory_usage WHERE inventory_id IN ($placeholders)");
+        $usageStmt->execute($inventoryIds);
         while ($row = $usageStmt->fetch(PDO::FETCH_ASSOC)) {
             $usageData[(int)$row['inventory_id']] = (int)$row['uses_remaining'];
         }
-    } else {
-        $usageData = [];
     }
 
     $result = [];
