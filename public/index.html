@@ -83,6 +83,24 @@
         .ui-hud-btn[data-action="spellbook"]{ background-image: url('assets/ui-v1/hud/ui-icon-spellbook-base.png'); }
         .ui-hud-btn[data-action="spellbook"]:hover{ background-image: url('assets/ui-v1/hud/ui-icon-spellbook-hover.png'); }
         .ui-hud-btn[data-action="spellbook"]:active{ background-image: url('assets/ui-v1/hud/ui-icon-spellbook-pressed.png'); }
+
+        /* Settings button - using a simple gear icon fallback */
+        .ui-hud-btn[data-action="settings"]{ 
+          background-image: url('assets/ui-v1/hud/ui-icon-settings-base.png'); 
+          /* Fallback: use unicode gear symbol if image not found */
+        }
+        .ui-hud-btn[data-action="settings"]:hover{ background-image: url('assets/ui-v1/hud/ui-icon-settings-hover.png'); }
+        .ui-hud-btn[data-action="settings"]:active{ background-image: url('assets/ui-v1/hud/ui-icon-settings-pressed.png'); }
+        /* Fallback text for settings if images don't load */
+        .ui-hud-btn[data-action="settings"]::before {
+          content: '⚙';
+          font-size: 24px;
+          display: block;
+          text-align: center;
+          line-height: 39px;
+          color: #ccc;
+        }
+        .ui-hud-btn[data-action="settings"]:hover::before { color: #fff; }
       z-index: 1100;
       display: flex;
       gap: 8px;
@@ -400,6 +418,89 @@
     }
     .btn-logout:active{
       background: #1a1a1a;
+    }
+
+    /* Toggle Switch Styles for Settings */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #4a4a4a;
+      transition: 0.3s;
+      border-radius: 24px;
+      border: 1px solid #333;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+      background-color: #2a5a8a;
+    }
+    input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+    .toggle-slider:hover {
+      background-color: #5a5a5a;
+    }
+    input:checked + .toggle-slider:hover {
+      background-color: #3a6a9a;
+    }
+
+    /* Range Slider Styles for Settings */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: #4a4a4a;
+      outline: none;
+      border-radius: 3px;
+      border: 1px solid #333;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      background: #2a5a8a;
+      cursor: pointer;
+      border-radius: 50%;
+      border: 2px solid #1a4a7a;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      background: #2a5a8a;
+      cursor: pointer;
+      border-radius: 50%;
+      border: 2px solid #1a4a7a;
+    }
+    input[type="range"]:hover::-webkit-slider-thumb {
+      background: #3a6a9a;
+    }
+    input[type="range"]:hover::-moz-range-thumb {
+      background: #3a6a9a;
     }
 
     /* Territory Health Bar Styles */
@@ -775,6 +876,71 @@
     </div>
   </div>
   
+  <!-- Settings Window -->
+  <div id="settings-window" class="ui-window" style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 400px; z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+    <div id="settings-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+      <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Settings</h2>
+      <button id="settings-close-btn" class="ui-window-close-btn"></button>
+    </div>
+
+    <div class="ui-window-body" style="padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+      <!-- Audio Settings Section -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <h3 style="margin: 0; font-size: 12px; font-weight: 700; color: #ffffff; border-bottom: 1px solid #3a4f6f; padding-bottom: 6px;">Audio Settings</h3>
+        
+        <!-- Music Toggle -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label for="settings-music-enabled" style="font-size: 11px; color: #e0e0e0;">Music:</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-music-enabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Music Volume -->
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <label for="settings-music-volume" style="font-size: 11px; color: #e0e0e0; white-space: nowrap;">Music Volume:</label>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+            <input type="range" id="settings-music-volume" min="0" max="100" value="70" style="flex: 1;">
+            <span id="settings-music-volume-label" style="font-size: 11px; color: #e0e0e0; min-width: 35px;">70%</span>
+          </div>
+        </div>
+
+        <!-- Sound Toggle -->
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label for="settings-sound-enabled" style="font-size: 11px; color: #e0e0e0;">Sound Effects:</label>
+          <label class="toggle-switch">
+            <input type="checkbox" id="settings-sound-enabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <!-- Sound Volume -->
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <label for="settings-sound-volume" style="font-size: 11px; color: #e0e0e0; white-space: nowrap;">SFX Volume:</label>
+          <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+            <input type="range" id="settings-sound-volume" min="0" max="100" value="80" style="flex: 1;">
+            <span id="settings-sound-volume-label" style="font-size: 11px; color: #e0e0e0; min-width: 35px;">80%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Key Bindings Section (Future Expansion) -->
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <h3 style="margin: 0; font-size: 12px; font-weight: 700; color: #ffffff; border-bottom: 1px solid #3a4f6f; padding-bottom: 6px;">Key Bindings</h3>
+        <div style="font-size: 10px; color: #888; text-align: center; padding: 20px;">
+          Key binding customization coming soon...
+        </div>
+      </div>
+
+      <!-- Save Button -->
+      <div style="display: flex; justify-content: center; gap: 10px; padding-top: 10px;">
+        <button id="settings-save-btn" style="padding: 6px 20px; font-size: 11px; background: #2a5a8a; color: white; border: 1px solid #1a4a7a; border-radius: 3px; cursor: pointer; font-family: 'MS Sans Serif', Arial, sans-serif;">Save Settings</button>
+        <button id="settings-test-sound-btn" style="padding: 6px 20px; font-size: 11px; background: #4a4a4a; color: white; border: 1px solid #3a3a3a; border-radius: 3px; cursor: pointer; font-family: 'MS Sans Serif', Arial, sans-serif;">Test Sound</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Build Path panel moved to public/build-path.js -->
 
   <!-- Player info moved into the top-left character-status overlay -->
@@ -910,6 +1076,7 @@
       <div class="ui-hud-group" aria-hidden="false">
         <button id="inventory-hud-btn" class="ui-hud-btn" data-action="inventory" aria-label="Open Inventory"></button>
         <button id="character-hud-btn" class="ui-hud-btn" data-action="character" aria-label="Open Character"></button>
+        <button id="settings-hud-btn" class="ui-hud-btn" data-action="settings" aria-label="Settings"></button>
         <button id="actions-hud-btn" class="ui-hud-btn" data-action="actions" aria-label="Actions"></button>
         <button id="party-hud-btn" class="ui-hud-btn" data-action="party" aria-label="Party"></button>
         <button id="premium-hud-btn" class="ui-hud-btn" data-action="premium" aria-label="Premium"></button>
@@ -972,6 +1139,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="regions.js"></script>
   <script src="screenshotManager.js"></script>
+  <script src="assets/js/soundManager.js"></script>
   <script>
     /**
      * @typedef {{x:number,y:number}} Coords
@@ -1294,6 +1462,7 @@
         // Prefer explicit known handlers
         if (action === 'inventory') { return openInventory(); }
         if (action === 'character') { return openCharacter(); }
+        if (action === 'settings') { return openSettings(); }
 
         // Try to call a global open<Action>() function if available (e.g. openParty)
         const fnName = 'open' + action.charAt(0).toUpperCase() + action.slice(1);
@@ -1307,6 +1476,132 @@
     // Character button (header button may be absent)
     const _characterBtn = document.getElementById('character-btn');
     if (_characterBtn) _characterBtn.addEventListener('click', () => { openCharacter(); });
+
+    // Settings window functions
+    async function openSettings() {
+      const window = document.getElementById('settings-window');
+      window.style.display = 'flex';
+      
+      try {
+        // Load current settings
+        const data = await apiCall('/settings');
+        if (data && data.settings) {
+          applySettingsToUI(data.settings);
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+        // Continue with default values
+      }
+    }
+
+    function closeSettings() {
+      const window = document.getElementById('settings-window');
+      window.style.display = 'none';
+      if (window.soundManager) {
+        window.soundManager.playSound('window_close');
+      }
+    }
+
+    function applySettingsToUI(settings) {
+      document.getElementById('settings-music-enabled').checked = Boolean(settings.music_enabled);
+      document.getElementById('settings-sound-enabled').checked = Boolean(settings.sound_enabled);
+      document.getElementById('settings-music-volume').value = settings.music_volume || 70;
+      document.getElementById('settings-sound-volume').value = settings.sound_volume || 80;
+      document.getElementById('settings-music-volume-label').textContent = (settings.music_volume || 70) + '%';
+      document.getElementById('settings-sound-volume-label').textContent = (settings.sound_volume || 80) + '%';
+      
+      // Apply to sound manager
+      if (window.soundManager) {
+        window.soundManager.applySettings(settings);
+      }
+    }
+
+    async function saveSettings() {
+      const settings = {
+        music_enabled: document.getElementById('settings-music-enabled').checked ? 1 : 0,
+        sound_enabled: document.getElementById('settings-sound-enabled').checked ? 1 : 0,
+        music_volume: parseInt(document.getElementById('settings-music-volume').value, 10),
+        sound_volume: parseInt(document.getElementById('settings-sound-volume').value, 10)
+      };
+
+      try {
+        const data = await apiCall('/settings', {
+          method: 'POST',
+          body: new URLSearchParams(settings)
+        });
+        
+        if (data && data.settings) {
+          applySettingsToUI(data.settings);
+          alert('Settings saved successfully!');
+        }
+      } catch (error) {
+        console.error('Failed to save settings:', error);
+        alert('Failed to save settings: ' + error.message);
+      }
+    }
+
+    // Settings window event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      // Volume slider updates
+      const musicVolumeSlider = document.getElementById('settings-music-volume');
+      const soundVolumeSlider = document.getElementById('settings-sound-volume');
+      
+      if (musicVolumeSlider) {
+        musicVolumeSlider.addEventListener('input', (e) => {
+          const value = e.target.value;
+          document.getElementById('settings-music-volume-label').textContent = value + '%';
+          if (window.soundManager) {
+            window.soundManager.setMusicVolume(value);
+          }
+        });
+      }
+      
+      if (soundVolumeSlider) {
+        soundVolumeSlider.addEventListener('input', (e) => {
+          const value = e.target.value;
+          document.getElementById('settings-sound-volume-label').textContent = value + '%';
+          if (window.soundManager) {
+            window.soundManager.setSoundVolume(value);
+          }
+        });
+      }
+      
+      // Toggle switches
+      const musicToggle = document.getElementById('settings-music-enabled');
+      const soundToggle = document.getElementById('settings-sound-enabled');
+      
+      if (musicToggle) {
+        musicToggle.addEventListener('change', (e) => {
+          if (window.soundManager) {
+            window.soundManager.setMusicEnabled(e.target.checked);
+          }
+        });
+      }
+      
+      if (soundToggle) {
+        soundToggle.addEventListener('change', (e) => {
+          if (window.soundManager) {
+            window.soundManager.setSoundEnabled(e.target.checked);
+          }
+        });
+      }
+      
+      // Save button
+      const saveBtn = document.getElementById('settings-save-btn');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', saveSettings);
+      }
+      
+      // Test sound button
+      const testBtn = document.getElementById('settings-test-sound-btn');
+      if (testBtn) {
+        testBtn.addEventListener('click', () => {
+          if (window.soundManager) {
+            window.soundManager.playSound('equip');
+          }
+        });
+      }
+    });
 
     // Window helpers
     function setTranslate(xPos, yPos, el) {
@@ -1419,6 +1714,7 @@
     function initWindows() {
       initWindow({ id: 'inventory-window', headerId: 'inventory-header', closeId: 'inventory-close-btn', onClose: closeInventory });
       initWindow({ id: 'character-window', headerId: 'character-header', closeId: 'character-close-btn', onClose: closeCharacter });
+      initWindow({ id: 'settings-window', headerId: 'settings-header', closeId: 'settings-close-btn', onClose: closeSettings });
       initWindow({ id: 'shoutbox-window', headerId: 'shoutbox-header', closeId: 'shoutbox-close-btn' });
       initWindow({ id: 'mini-info-window', headerId: null, closeId: 'mini-info-close-btn', draggable: false });
     }
