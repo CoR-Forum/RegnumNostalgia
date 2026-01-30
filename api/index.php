@@ -682,6 +682,22 @@ function handleGetTerritories() {
 
     $result = [];
     foreach ($territories as $territory) {
+        // Generate icon name based on owner_realm instead of base realm
+        $ownerRealm = $territory['owner_realm'] ?: $territory['realm'];
+        $type = $territory['type'];
+        
+        $iconName = null;
+        $iconNameContested = null;
+        
+        if ($type === 'wall') {
+            $iconName = 'door-safe.png';
+            $iconNameContested = 'door-vulnerable.png';
+        } else {
+            // fort or castle
+            $iconName = "fort-{$ownerRealm}.png";
+            $iconNameContested = "fort-{$ownerRealm}-contested.png";
+        }
+        
         $result[] = [
             'territoryId' => (int)$territory['territory_id'],
             'realm' => $territory['realm'],
@@ -695,10 +711,10 @@ function handleGetTerritories() {
             'ownerPlayers' => $territory['owner_players'],
             'contested' => (bool)$territory['contested'],
             'contestedSince' => $territory['contested_since'] ? (int)$territory['contested_since'] : null,
-            'iconName' => $territory['icon_name'] ?? null,
-            'iconNameContested' => $territory['icon_name_contested'] ?? null,
-            'iconUrl' => ($territory['icon_name'] ?? null) ? '/assets/markers/' . $territory['icon_name'] : null,
-            'iconUrlContested' => ($territory['icon_name_contested'] ?? null) ? '/assets/markers/' . $territory['icon_name_contested'] : null
+            'iconName' => $iconName,
+            'iconNameContested' => $iconNameContested,
+            'iconUrl' => $iconName ? '/assets/markers/' . $iconName : null,
+            'iconUrlContested' => $iconNameContested ? '/assets/markers/' . $iconNameContested : null
         ];
     }
 

@@ -71,7 +71,7 @@ try {
             continue;
         }
 
-        // API owner should be written into the `realm` column (lowercased)
+        // API owner should be written into the `owner_realm` column (lowercased)
         $realm = strtolower($owner);
 
         // Ignore empty owners
@@ -89,19 +89,9 @@ try {
             $insertCapture->execute([$tid, $prevRealm, $realm, time()]);
         }
 
+        // Always update territory owner_realm
         $updateStmt->execute([$realm, $tid]);
         $updated += $updateStmt->rowCount();
-    }
-
-    // Ensure territories.realm matches the most recent capture (if any)
-    $syncSql = "UPDATE territories SET owner_realm = (
-        SELECT LOWER(new_realm) FROM territory_captures
-        WHERE territory_captures.territory_id = territories.territory_id
-        ORDER BY captured_at DESC, capture_id DESC LIMIT 1
-    ) WHERE EXISTS (SELECT 1 FROM territory_captures WHERE territory_captures.territory_id = territories.territory_id)";
-    $synced = $db->exec($syncSql);
-    if ($synced !== false) {
-        $updated += $synced;
     }
 
     $db->commit();
