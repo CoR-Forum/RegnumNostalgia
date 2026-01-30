@@ -1758,10 +1758,16 @@
 
     function closeInventory() {
       document.getElementById('inventory-window').style.display = 'none';
+      if (window.soundManager) {
+        window.soundManager.playSound('window_close');
+      }
     }
 
     function closeCharacter() {
       document.getElementById('character-window').style.display = 'none';
+      if (window.soundManager) {
+        window.soundManager.playSound('window_close');
+      }
     }
 
     // Character window functions moved to public/character.html
@@ -1834,6 +1840,10 @@
             form.append('inventoryId', id);
             try {
               await apiCall('/equipment/equip', { method: 'POST', body: form });
+              // Play equip sound
+              if (window.soundManager) {
+                window.soundManager.playSound('equip');
+              }
             } catch (err) {
               const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
               if (window.addLogMessage) window.addLogMessage(msg, 'error');
@@ -1867,6 +1877,10 @@
             form.append('slot', data.slot);
             try {
               await apiCall('/equipment/unequip', { method: 'POST', body: form });
+              // Play unequip sound
+              if (window.soundManager) {
+                window.soundManager.playSound('unequip');
+              }
             } catch (err) {
               try {
                 const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
@@ -2041,6 +2055,10 @@
                 form.append('slot', slot);
                 try {
                   await apiCall('/equipment/unequip', { method: 'POST', body: form });
+                  // Play unequip sound
+                  if (window.soundManager) {
+                    window.soundManager.playSound('unequip');
+                  }
                 } catch (err) {
                   const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
                   if (window.addLogMessage) window.addLogMessage(msg, 'error');
@@ -2072,6 +2090,10 @@
                 form.append('inventoryId', data.inventoryId);
                 try {
                   await apiCall('/equipment/equip', { method: 'POST', body: form });
+                  // Play equip sound
+                  if (window.soundManager) {
+                    window.soundManager.playSound('equip');
+                  }
                 } catch (err) {
                   try {
                     const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
@@ -2256,6 +2278,16 @@
 
         // Start polling for superbosses
         startSuperbossesPolling();
+
+        // Load and apply player settings
+        try {
+          const settingsData = await apiCall('/settings');
+          if (settingsData && settingsData.settings && window.soundManager) {
+            window.soundManager.applySettings(settingsData.settings);
+          }
+        } catch (e) {
+          console.debug('Failed to load settings, using defaults:', e);
+        }
 
         // Do not load screenshots automatically on page load.
         // Screenshots will be loaded and displayed when the Screenshot Manager is opened.
@@ -2604,6 +2636,45 @@
       });
     }
 
+    function updateRegionMusic(x, y) {
+      try {
+        if (!window.soundManager || !gameState.regionsData) return;
+        
+        // Find which region the player is in
+        let currentRegion = null;
+        for (const r of gameState.regionsData) {
+          const poly = r.coordinates || r.positions || [];
+          if (!poly || poly.length === 0) continue;
+          
+          // Check if player position is within this region polygon
+          let inside = false;
+          for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+            const xi = poly[i][0], yi = poly[i][1];
+            const xj = poly[j][0], yj = poly[j][1];
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            if (intersect) inside = !inside;
+          }
+          
+          if (inside) {
+            currentRegion = r;
+            break;
+          }
+        }
+        
+        // Determine music based on region
+        if (currentRegion) {
+          // Use region owner/realm if available, otherwise use region type
+          const regionRealm = currentRegion.owner || currentRegion.realm;
+          window.soundManager.updateRegionMusic({ realm: regionRealm, name: currentRegion.name, type: currentRegion.type });
+        } else {
+          // Default music if not in a specific region
+          window.soundManager.updateRegionMusic({ realm: gameState.realm });
+        }
+      } catch (e) {
+        console.debug('Failed to update region music:', e);
+      }
+    }
+
     function startPlayerPolling() {
       // Poll every 1 second
       gameState.pollInterval = setInterval(async () => {
@@ -2631,6 +2702,15 @@
           if (posData.position) {
             const px = parseInt(posData.position.x, 10);
             const py = parseInt(posData.position.y, 10);
+            
+            // Play walking sound if position changed and player is actively walking
+            const prevX = gameState.position.x;
+            const prevY = gameState.position.y;
+            const moved = (px !== prevX || py !== prevY);
+            if (moved && posData.walker && window.soundManager) {
+              window.soundManager.playWalkSound();
+            }
+            
             gameState.position = { x: px, y: py };
             if (gameState.playerMarker) {
               try { gameState.playerMarker.setLatLng([totalH - py, px]); } catch (e) {}
@@ -2638,6 +2718,12 @@
 
                 // Build path rendering moved to public/build-path.js
             updatePlayerCoords(px, py);
+            
+            // Update region-based music
+            if (window.soundManager && gameState.regionsData) {
+              updateRegionMusic(px, py);
+            }
+            
             // Show or update server-provided destination marker
             if (posData.walker) {
               // show destination marker
@@ -2799,6 +2885,15 @@
         const latLng = [totalH - territory.y, territory.x];
         const isContested = territory.contested;
         
+        // Check if owner changed (for sound notification)
+        const existingMarker = gameState.territories.get(territory.territoryId);
+        const ownerChanged = existingMarker && existingMarker._territoryData && 
+                            existingMarker._territoryData.ownerRealm !== territory.ownerRealm;
+        
+        if (ownerChanged && window.soundManager) {
+          window.soundManager.playSound('fort_captured');
+        }
+        
         // Prefer server-provided icon URLs; fall back to marker map
         const iconUrl = isContested
           ? (territory.iconUrlContested || (territory.iconNameContested ? `/assets/markers/${territory.iconNameContested}` : null))
@@ -2842,6 +2937,7 @@
             map.removeLayer(oldMarker);
             
             const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+            marker._territoryData = { ownerRealm: territory.ownerRealm };
             const statusText = isContested ? '<div class="status-contested">⚔️ Contested!</div>' : '';
             const ttHtml = `
               <div class="tooltip-title">${territory.name}</div>
@@ -2853,6 +2949,7 @@
           } else {
             // Create new marker with custom icon
             const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+            marker._territoryData = { ownerRealm: territory.ownerRealm };
             const statusText = isContested ? '<div class="status-contested">⚔️ Contested!</div>' : '';
             const ttHtml = `
               <div class="tooltip-title">${territory.name}</div>
