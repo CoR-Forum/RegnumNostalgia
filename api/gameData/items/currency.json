@@ -21,6 +21,18 @@
     "stackable": 1,
     "level": 0,
     "equipment_slot": null,
-    "icon_name": "item-gold-coin.png"
+    "icon_name": "item-magnanite.png"
+  },
+  {
+    "template_key": "magnanite_ingot",
+    "name": "Magnanite Ingot",
+    "type": "currency",
+    "description": "A refined ingot of magnanite",
+    "stats": { "value": 2500 },
+    "rarity": "rare",
+    "stackable": 1,
+    "level": 0,
+    "equipment_slot": null,
+    "icon_name": "item-magnanite-ingot.png"
   }
 ]
