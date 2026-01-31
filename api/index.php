@@ -675,9 +675,34 @@ function handleGetOnlinePlayers() {
 function handleGetTerritories() {
     $session = validateSession();
 
+    // Get optional viewport bounds from query parameters
+    $minX = isset($_GET['minX']) ? floatval($_GET['minX']) : null;
+    $maxX = isset($_GET['maxX']) ? floatval($_GET['maxX']) : null;
+    $minY = isset($_GET['minY']) ? floatval($_GET['minY']) : null;
+    $maxY = isset($_GET['maxY']) ? floatval($_GET['maxY']) : null;
+
     $db = getDB();
-    $stmt = $db->prepare('SELECT territory_id, realm, name, type, health, max_health, x, y, owner_realm, owner_players, contested, contested_since, icon_name, icon_name_contested FROM territories');
-    $stmt->execute();
+    
+    // Build query with optional bounds filtering
+    $sql = 'SELECT territory_id, realm, name, type, health, max_health, x, y, owner_realm, owner_players, contested, contested_since, icon_name, icon_name_contested FROM territories';
+    $params = [];
+    
+    if ($minX !== null && $maxX !== null && $minY !== null && $maxY !== null) {
+        // Validate bounds make logical sense
+        if ($minX > $maxX || $minY > $maxY) {
+            respondError('Invalid bounds: minX must be <= maxX and minY must be <= maxY', 400);
+        }
+        $sql .= ' WHERE x >= :minX AND x <= :maxX AND y >= :minY AND y <= :maxY';
+        $params = [
+            ':minX' => $minX,
+            ':maxX' => $maxX,
+            ':minY' => $minY,
+            ':maxY' => $maxY
+        ];
+    }
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $territories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $result = [];
@@ -726,9 +751,34 @@ function handleGetTerritories() {
 function handleGetSuperbosses() {
     $session = validateSession();
 
+    // Get optional viewport bounds from query parameters
+    $minX = isset($_GET['minX']) ? floatval($_GET['minX']) : null;
+    $maxX = isset($_GET['maxX']) ? floatval($_GET['maxX']) : null;
+    $minY = isset($_GET['minY']) ? floatval($_GET['minY']) : null;
+    $maxY = isset($_GET['maxY']) ? floatval($_GET['maxY']) : null;
+
     $db = getDB();
-    $stmt = $db->prepare('SELECT boss_id, name, icon_name, health, max_health, x, y, last_attacked, respawn_time FROM superbosses WHERE health > 0');
-    $stmt->execute();
+    
+    // Build query with optional bounds filtering
+    $sql = 'SELECT boss_id, name, icon_name, health, max_health, x, y, last_attacked, respawn_time FROM superbosses WHERE health > 0';
+    $params = [];
+    
+    if ($minX !== null && $maxX !== null && $minY !== null && $maxY !== null) {
+        // Validate bounds make logical sense
+        if ($minX > $maxX || $minY > $maxY) {
+            respondError('Invalid bounds: minX must be <= maxX and minY must be <= maxY', 400);
+        }
+        $sql .= ' AND x >= :minX AND x <= :maxX AND y >= :minY AND y <= :maxY';
+        $params = [
+            ':minX' => $minX,
+            ':maxX' => $maxX,
+            ':minY' => $minY,
+            ':maxY' => $maxY
+        ];
+    }
+    
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
     $bosses = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $result = [];

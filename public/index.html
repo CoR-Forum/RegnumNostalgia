@@ -1976,6 +1976,9 @@
         // Start polling for superbosses
         startSuperbossesPolling();
 
+        // Refresh territories and superbosses when viewport changes (debounced)
+        map.on('moveend zoomend', onViewportChange);
+
         // Do not load screenshots automatically on page load.
         // Screenshots will be loaded and displayed when the Screenshot Manager is opened.
 
@@ -2492,11 +2495,59 @@
       }
     }
 
+    // Helper function to get current viewport bounds in game coordinates
+    function getViewportBounds() {
+      const bounds = map.getBounds();
+      const sw = bounds.getSouthWest(); // bottom-left in Leaflet coords [lat, lng] = [y, x]
+      const ne = bounds.getNorthEast(); // top-right in Leaflet coords
+      
+      // Convert Leaflet coordinates back to game coordinates
+      // Leaflet: [totalH - y, x], so game y = totalH - leaflet_lat
+      const minX = Math.floor(sw.lng);
+      const maxX = Math.ceil(ne.lng);
+      const minY = Math.floor(totalH - ne.lat); // ne.lat is top in Leaflet, which is min Y in game
+      const maxY = Math.ceil(totalH - sw.lat);  // sw.lat is bottom in Leaflet, which is max Y in game
+      
+      return { minX, maxX, minY, maxY };
+    }
+
+    // Helper function to build URL with bounds parameters
+    function buildBoundsUrl(endpoint, bounds) {
+      const params = new URLSearchParams({
+        minX: bounds.minX,
+        maxX: bounds.maxX,
+        minY: bounds.minY,
+        maxY: bounds.maxY
+      });
+      return `${endpoint}?${params.toString()}`;
+    }
+
+    // Debounced function to refresh map data on viewport changes
+    let viewportChangeTimeout = null;
+    function onViewportChange() {
+      if (viewportChangeTimeout) {
+        clearTimeout(viewportChangeTimeout);
+      }
+      viewportChangeTimeout = setTimeout(async () => {
+        try {
+          const bounds = getViewportBounds();
+          const territoriesData = await apiCall(buildBoundsUrl('/territories', bounds));
+          updateTerritories(territoriesData.territories);
+          
+          const superbossesData = await apiCall(buildBoundsUrl('/superbosses', bounds));
+          updateSuperbosses(superbossesData.superbosses);
+        } catch (error) {
+          console.error('Failed to refresh map data on viewport change:', error);
+        }
+      }, 300); // 300ms debounce
+    }
+
     function startTerritoriesPolling() {
       // Poll every 5 seconds
       gameState.territoriesPollInterval = setInterval(async () => {
         try {
-          const data = await apiCall('/territories');
+          const bounds = getViewportBounds();
+          const data = await apiCall(buildBoundsUrl('/territories', bounds));
           updateTerritories(data.territories);
         } catch (error) {
           console.error('Failed to fetch territories:', error);
@@ -2504,9 +2555,15 @@
       }, 5000);
 
       // Initial fetch
-      apiCall('/territories').then(data => {
-        updateTerritories(data.territories);
-      });
+      (async () => {
+        try {
+          const bounds = getViewportBounds();
+          const data = await apiCall(buildBoundsUrl('/territories', bounds));
+          updateTerritories(data.territories);
+        } catch (error) {
+          console.error('Failed to fetch initial territories:', error);
+        }
+      })();
     }
 
     function updateTerritories(territories) {
@@ -2597,7 +2654,8 @@
       // Poll every 5 seconds
       gameState.superbossesPollInterval = setInterval(async () => {
         try {
-          const data = await apiCall('/superbosses');
+          const bounds = getViewportBounds();
+          const data = await apiCall(buildBoundsUrl('/superbosses', bounds));
           updateSuperbosses(data.superbosses);
         } catch (error) {
           console.error('Failed to fetch superbosses:', error);
@@ -2605,9 +2663,15 @@
       }, 5000);
 
       // Initial fetch
-      apiCall('/superbosses').then(data => {
-        updateSuperbosses(data.superbosses);
-      });
+      (async () => {
+        try {
+          const bounds = getViewportBounds();
+          const data = await apiCall(buildBoundsUrl('/superbosses', bounds));
+          updateSuperbosses(data.superbosses);
+        } catch (error) {
+          console.error('Failed to fetch initial superbosses:', error);
+        }
+      })();
     }
 
     function updateSuperbosses(bosses) {
