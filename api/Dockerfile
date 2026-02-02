@@ -1,16 +1,28 @@
-FROM php:8.2-fpm-alpine
+FROM node:18-alpine
 
-# Install system dependencies
-RUN apk add --no-cache \
-    sqlite-dev \
-    mariadb-client \
-    mariadb-dev \
-    busybox-extras \
-    $PHPIZE_DEPS
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_sqlite mysqli pdo_mysql
+# Create app directory
+WORKDIR /app
 
-WORKDIR /var/www/api
+# Copy package files
+COPY package*.json ./
 
-# Keep default php-fpm entrypoint; custom entrypoint is provided by docker-compose
+# Install dependencies (include dev dependencies for nodemon)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# Copy application code
+COPY . .
+
+# Create logs directory
+RUN mkdir -p /app/logs && chown -R node:node /app
+
+# Switch to non-root user
+USER node
+
+# Expose port
+EXPOSE 3000
+
+# Start application with nodemon for hot reload
+CMD ["npx", "nodemon", "src/server.js"]

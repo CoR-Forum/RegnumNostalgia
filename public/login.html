@@ -159,6 +159,7 @@
             body: formData
           });
 
+          // Realm is now stored in database, no need to update token
           gameState.realm = data.realm;
           gameState.position = data.position;
 

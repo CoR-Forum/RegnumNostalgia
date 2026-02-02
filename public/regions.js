@@ -113,9 +113,19 @@
         gameStateRef.regionsLayer = null;
       }
 
-      const data = await apiCallRef('/regions');
-      const regions = data.regions || [];
-      try { if (typeof gameStateRef !== 'undefined') gameStateRef.regionsData = regions; } catch(e){}
+      // Use cached regions data from WebSocket
+      const regions = gameStateRef.regionsData || [];
+      if (regions.length === 0) {
+        console.warn('No regions data available yet, waiting for WebSocket...');
+        // Wait a bit for WebSocket data to arrive
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const regionsRetry = gameStateRef.regionsData || [];
+        if (regionsRetry.length === 0) {
+          console.error('Regions data still not available');
+          return [];
+        }
+        return loadAndRenderRegions(); // Try again now that data might be loaded
+      }
 
       const layers = [];
       for (const r of regions) {
@@ -162,18 +172,12 @@
 
   async function isLatLngWalkAllowedAsync(latlng) {
     try {
-      if ((!gameStateRef.regionsData || gameStateRef.regionsData.length === 0) && !gameStateRef._regionsLoading) {
-        try {
-          gameStateRef._regionsLoading = true;
-          const d = await apiCallRef('/regions');
-          gameStateRef.regionsData = d.regions || [];
-        } catch (e) {
-          console.debug('Failed to load regions for permission check', e);
-          gameStateRef._regionsLoading = false;
-          return false;
-        }
-        gameStateRef._regionsLoading = false;
+      // Regions loaded via WebSocket on connection
+      if (!gameStateRef.regionsData || gameStateRef.regionsData.length === 0) {
+        console.debug('Regions not loaded yet, allowing walk');
+        return true;
       }
+      
       return isLatLngWalkAllowed(latlng);
     } catch (e) { console.debug('isLatLngWalkAllowedAsync error', e); return false; }
   }
@@ -188,12 +192,7 @@
       let allowed = false;
       let foundRegion = null;
       const regions = (gameStateRef && gameStateRef.regionsData) ? gameStateRef.regionsData : [];
-      if ((!regions || regions.length === 0) && !gameStateRef._regionsLoading) {
-        try {
-          gameStateRef._regionsLoading = true;
-          apiCallRef('/regions').then(d => { try { gameStateRef.regionsData = d.regions || []; } catch(e){} gameStateRef._regionsLoading = false; }).catch(() => { gameStateRef._regionsLoading = false; });
-        } catch (e) { gameStateRef._regionsLoading = false; }
-      }
+      // Regions loaded via WebSocket on connection
 
       for (const r of (gameStateRef.regionsData || [])) {
         const poly = r.coordinates || r.positions || [];
@@ -260,9 +259,12 @@
             if (isMinZoom) {
               if (!gameStateRef.regionsLayer) {
                 try {
-                  const data = await apiCallRef('/regions');
-                  const regions = data.regions || [];
-                  gameStateRef.regionsData = regions;
+                  // Use cached regions data from WebSocket
+                  const regions = gameStateRef.regionsData || [];
+                  if (regions.length === 0) {
+                    console.warn('No regions data available yet');
+                    return;
+                  }
                   const layers = [];
                   for (const r of regions) {
                     const pos = r.coordinates || r.positions || [];

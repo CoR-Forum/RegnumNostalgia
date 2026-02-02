@@ -25,7 +25,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Rsync to $SSH_PATH"
-          rsync -avz --delete --exclude '.git' --exclude '.env' -e "ssh -o StrictHostKeyChecking=no" ./ "$SSH_PATH"
+          rsync -avzP --delete --exclude '.git' --exclude '.env' -e "ssh -o StrictHostKeyChecking=no" ./ "$SSH_PATH"
 
       - name: Create .env file on remote
         env:

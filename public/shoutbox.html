@@ -75,37 +75,45 @@
       sbMessages.scrollTop = sbMessages.scrollHeight;
     }
 
-    async function fetchMessages(){
-      try{
-        const headers = {};
-        if (gameState && gameState.sessionToken) headers['X-Session-Token'] = gameState.sessionToken;
-        const res = await fetch('/api/shoutbox', { method: 'GET', headers, credentials: 'same-origin' });
-        const data = await res.json();
-        if(!(data && data.success && Array.isArray(data.messages))) return;
+    function fetchMessages(){
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        console.warn('WebSocket not connected, will retry when connected');
+        return;
+      }
 
-        const msgs = data.messages;
-        if(msgs.length === 0){
-          if(sbMessages.children.length > 0){
-            renderMessages(msgs);
-            lastMessageId = 0; lastMessageTime = 0;
+      console.log('Fetching shoutbox messages via WebSocket...');
+      socket.emit('shoutbox:get', {}, (response) => {
+        console.log('Shoutbox response:', response);
+        if (response && response.success && Array.isArray(response.messages)) {
+          const msgs = response.messages;
+          
+          if(msgs.length === 0){
+            if(sbMessages.children.length > 0){
+              renderMessages(msgs);
+              lastMessageId = 0; 
+              lastMessageTime = 0;
+            }
+            return;
           }
-          return;
+
+          const maxId = Math.max(...msgs.map(m => Number(m.entryID) || 0));
+          const maxTime = Math.max(...msgs.map(m => Number(m.time) || 0));
+
+          if(maxId > 0){
+            if(maxId <= lastMessageId) return;
+            lastMessageId = maxId;
+            lastMessageTime = Math.max(lastMessageTime, maxTime);
+          }else{
+            if(maxTime <= lastMessageTime) return;
+            lastMessageTime = maxTime;
+          }
+
+          renderMessages(msgs);
+        } else {
+          console.warn('Failed to fetch messages:', response?.error);
         }
-
-        const maxId = Math.max(...msgs.map(m => Number(m.id) || 0));
-        const maxTime = Math.max(...msgs.map(m => Number(m.time) || 0));
-
-        if(maxId > 0){
-          if(maxId <= lastMessageId) return;
-          lastMessageId = maxId;
-          lastMessageTime = Math.max(lastMessageTime, maxTime);
-        }else{
-          if(maxTime <= lastMessageTime) return;
-          lastMessageTime = maxTime;
-        }
-
-        renderMessages(msgs);
-      }catch(e){ console.warn('shoutbox fetch failed', e); }
+      });
     }
 
     async function postMessage(){
@@ -113,28 +121,111 @@
       const username = (currentUsername && currentUsername.trim()) ? currentUsername.trim() : 'anon';
       if(!message) return alert('Please enter a message');
 
-      const form = new URLSearchParams(); form.append('message', message);
-      try{
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        alert('WebSocket not connected. Please refresh the page.');
+        return;
+      }
+
+      try {
         sbSend.disabled = true;
-        const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
-        if(gameState && gameState.sessionToken){ headers['X-Session-Token'] = gameState.sessionToken; }
-        const res = await fetch('/api/shoutbox', { method: 'POST', body: form, headers, credentials: 'same-origin' });
-        const data = await res.json();
-        if(data && data.success){ sbMessage.value = ''; fetchMessages(); }
-        else alert(data.error || 'Failed to post');
-      }catch(e){ alert('Failed to post message'); }
-      finally{ sbSend.disabled = false; }
+        socket.emit('shoutbox:send', { message }, (response) => {
+          if (response && response.success) {
+            sbMessage.value = '';
+            // Display the sent message immediately
+            if (response.message && window.onShoutboxMessage) {
+              window.onShoutboxMessage(response.message);
+            }
+          } else {
+            alert(response?.error || 'Failed to post message');
+          }
+          sbSend.disabled = false;
+        });
+      } catch (e) {
+        console.error('Failed to send message:', e);
+        alert('Failed to send message');
+        sbSend.disabled = false;
+      }
     }
 
     sbSend.addEventListener('click', postMessage);
     sbMessage.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); postMessage(); } });
 
-    let _shoutboxPoll = null;
+    // WebSocket event handler for incoming shoutbox messages
+    window.onShoutboxMessage = function(data) {
+      if (data && data.message) {
+        const msg = {
+          entryID: data.entryID || 0,
+          time: data.time || Math.floor(Date.now() / 1000),
+          username: data.username || 'anon',
+          message: data.message
+        };
+        
+        // Update last message tracking
+        if (msg.entryID > lastMessageId) lastMessageId = msg.entryID;
+        if (msg.time > lastMessageTime) lastMessageTime = msg.time;
+        
+        // Append new message
+        const el = document.createElement('div');
+        el.style.marginBottom = '2px';
+        el.style.wordWrap = 'break-word';
+        el.style.overflowWrap = 'break-word';
+        
+        let timeStr = '';
+        if(msg.time) {
+          try{ 
+            const d = new Date(msg.time * 1000);
+            timeStr = d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: false});
+          }catch(e){}
+        }
+        
+        let message = msg.message || '';
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = message;
+        const imgs = tempDiv.querySelectorAll('img');
+        imgs.forEach(img => {
+          img.style.maxWidth = '16px';
+          img.style.maxHeight = '16px';
+          img.style.verticalAlign = 'middle';
+          img.style.display = 'inline';
+        });
+        const blockEls = tempDiv.querySelectorAll('div, p, br');
+        blockEls.forEach(b => {
+          if(b.tagName === 'BR') b.replaceWith(' ');
+          else { const span = document.createElement('span'); span.innerHTML = b.innerHTML; b.replaceWith(span); }
+        });
+        message = tempDiv.innerHTML;
+        
+        el.innerHTML = `<span style="opacity:0.7; font-size:11px;">[${timeStr}]</span> <span style="font-weight:700; color:#ffd27a;">${msg.username}</span>: <span style="display:inline;">${message}</span>`;
+        sbMessages.appendChild(el);
+        sbMessages.scrollTop = sbMessages.scrollHeight;
+      }
+    };
+
     function startShoutboxPolling(){
-      if(_shoutboxPoll) return;
-      fetchMessages();
-      _shoutboxPoll = setInterval(fetchMessages, 5000);
-      window.addEventListener('beforeunload', ()=>{ if(_shoutboxPoll) clearInterval(_shoutboxPoll); });
+      const socket = window.getSocket && window.getSocket();
+      if (socket && socket.connected) {
+        console.log('Using WebSocket for shoutbox');
+        fetchMessages();
+      } else {
+        console.warn('WebSocket not available for shoutbox, will wait for connection');
+        // Retry after a short delay
+        setTimeout(() => {
+          const retrySocket = window.getSocket && window.getSocket();
+          if (retrySocket && retrySocket.connected) {
+            console.log('WebSocket now connected, fetching messages');
+            fetchMessages();
+          }
+        }, 1000);
+      }
+    }
+
+    // Listen for WebSocket connection if initializeWebSocket exposes an event
+    if (window.addEventListener) {
+      window.addEventListener('websocket:connected', () => {
+        console.log('WebSocket connected event received in shoutbox');
+        fetchMessages();
+      });
     }
 
     if(document.body.classList && document.body.classList.contains('authenticated')){

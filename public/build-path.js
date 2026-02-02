@@ -87,8 +87,12 @@
         gameState.pathsLayer = null;
       }
 
-      const data = await apiCall('/paths');
-      const paths = data.paths || [];
+      // Use cached paths data from WebSocket
+      const paths = gameState.pathsData || [];
+      if (paths.length === 0) {
+        console.warn('No paths data available yet');
+        return;
+      }
 
       const layers = [];
       for (const p of paths) {
