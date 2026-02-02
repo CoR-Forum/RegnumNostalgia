@@ -59,6 +59,11 @@
 
     document.addEventListener('mouseup', () => {
       isDragging = false;
+      try {
+        const left = parseInt(modal.style.left, 10);
+        const top = parseInt(modal.style.top, 10);
+        if (!isNaN(left) && !isNaN(top) && window.saveWindowState) saveWindowState('screenshots-window', { left, top });
+      } catch (e) {}
     });
   }
 
@@ -184,6 +189,7 @@
     clearForm();
     await loadScreenshots();
     modal.style.display = 'flex';
+    try { if (window.saveWindowState) saveWindowState('screenshots-window', { open: true, display: 'flex', contextX: x, contextY: y }); } catch (e) {}
 
     // Display screenshot markers on the map when the manager is opened
     if (typeof window.loadAndDisplayScreenshots === 'function') {
@@ -198,6 +204,7 @@
   function closeModal() {
     modal.style.display = 'none';
     clearForm();
+    try { if (window.saveWindowState) saveWindowState('screenshots-window', { open: false, display: 'none' }); } catch (e) {}
   }
 
   // File preview

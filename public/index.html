@@ -1872,6 +1872,7 @@
     async function openInventory() {
       const inventoryWindow = document.getElementById('inventory-window');
       inventoryWindow.style.display = 'flex';
+      try { saveWindowState('inventory-window', { open: true, display: 'flex' }); } catch (e) {}
       // Mark HUD inventory button as pressed while the window is open
       try { setHudPressed && setHudPressed('inventory', true); } catch (e) {}
       document.getElementById('inventory-loading').style.display = 'block';
@@ -1960,6 +1961,7 @@
           // Open character window (may be defined in character.html) and set pressed
           try { if (typeof openCharacter === 'function') openCharacter(); } catch (e) {}
           setHudPressed('character', true);
+          try { saveWindowState('character-window', { open: true, display: 'flex' }); } catch (e) {}
           return;
         }
 
@@ -1982,6 +1984,7 @@
       } else {
         try { if (typeof openCharacter === 'function') openCharacter(); } catch (e) {}
         setHudPressed('character', true);
+        try { saveWindowState('character-window', { open: true, display: 'flex' }); } catch (e) {}
       }
     });
 
@@ -1989,6 +1992,65 @@
     function setTranslate(xPos, yPos, el) {
       if (!el) return;
       el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
+    }
+
+    // Persisted window state helpers
+    function _getWindowsState() {
+      try {
+        const raw = localStorage.getItem('uiWindows');
+        return raw ? JSON.parse(raw) : {};
+      } catch (e) { return {}; }
+    }
+    function _saveWindowsState(state) {
+      try { localStorage.setItem('uiWindows', JSON.stringify(state)); } catch (e) {}
+    }
+    function saveWindowState(id, patch) {
+      if (!id) return;
+      const s = _getWindowsState();
+      s[id] = Object.assign({}, s[id] || {}, patch || {});
+      _saveWindowsState(s);
+    }
+    function getWindowState(id) {
+      const s = _getWindowsState();
+      return s[id] || null;
+    }
+
+    // Try to call the window's open function after restore; retry until module loaded
+    function tryRestoreOpen(id, saved) {
+      if (!saved || !saved.open) return;
+      const maxAttempts = 25; // ~5s at 200ms
+      let attempts = 0;
+      const tryOnce = () => {
+        attempts++;
+        try {
+          if (id === 'inventory-window' && typeof openInventory === 'function') {
+            // Only open inventory when WebSocket is connected to avoid timeouts
+            const sock = (window.getSocket && window.getSocket()) || window.socket;
+            if (sock && sock.connected) { openInventory(); return true; }
+            return false;
+          }
+
+          if (id === 'character-window' && typeof openCharacter === 'function') {
+            // Only open character when WebSocket is connected to ensure data loads
+            const sock = (window.getSocket && window.getSocket()) || window.socket;
+            if (sock && sock.connected) { openCharacter(); return true; }
+            return false;
+          }
+
+          if (id === 'screenshots-window' && window.screenshotManager && typeof window.screenshotManager.openModal === 'function') {
+            // pass saved context coords if available
+            try { window.screenshotManager.openModal(saved.contextX ?? null, saved.contextY ?? null); } catch (e) { window.screenshotManager.openModal(null, null); }
+            return true;
+          }
+          // Add more window mappings here if needed
+        } catch (e) { /* ignore and retry */ }
+        return false;
+      };
+
+      if (tryOnce()) return;
+      const iv = setInterval(() => {
+        if (tryOnce() || attempts >= maxAttempts) clearInterval(iv);
+      }, 200);
     }
 
     function makeDraggable(winEl, handleEl) {
@@ -2052,6 +2114,12 @@
       const dragEnd = () => {
         isDragging = false;
         document.body.style.userSelect = '';
+        // Persist final position
+        try {
+          const left = parseInt(winEl.style.left, 10);
+          const top = parseInt(winEl.style.top, 10);
+          if (!isNaN(left) && !isNaN(top)) saveWindowState(winEl.id, { left, top });
+        } catch (e) {}
       };
 
       handleEl.addEventListener('mousedown', dragStart);
@@ -2062,6 +2130,26 @@
     function initWindow({ id, headerId, closeId, onClose, draggable = true }) {
       const win = document.getElementById(id);
       if (!win) return;
+      // Apply saved state (position + open/closed)
+      try {
+        const saved = getWindowState(id);
+        if (saved) {
+          if (typeof saved.left !== 'undefined' && typeof saved.top !== 'undefined') {
+            try { if (win.style.right && win.style.right !== 'auto') win.style.right = 'auto'; } catch(e){}
+            try { if (win.style.bottom && win.style.bottom !== 'auto') win.style.bottom = 'auto'; } catch(e){}
+            win.style.left = (saved.left) + 'px';
+            win.style.top = (saved.top) + 'px';
+            win.style.transform = '';
+          }
+          if (saved.open) {
+            win.style.display = saved.display || 'flex';
+            try { if (id === 'inventory-window') setHudPressed && setHudPressed('inventory', true); if (id === 'character-window') setHudPressed && setHudPressed('character', true); } catch(e){}
+            tryRestoreOpen(id, saved);
+          } else {
+            win.style.display = 'none';
+          }
+        }
+      } catch (e) { /* ignore state load errors */ }
       const header = headerId ? document.getElementById(headerId) : null;
       const closeBtn = closeId ? document.getElementById(closeId) : null;
       // Ensure a global window z-index tracker exists and that windows
@@ -2091,6 +2179,8 @@
             if (id === 'inventory-window') setHudPressed && setHudPressed('inventory', false);
             if (id === 'character-window') setHudPressed && setHudPressed('character', false);
           } catch (e) {}
+          // Persist closed state
+          try { saveWindowState(id, { open: false, display: 'none' }); } catch (e) {}
           if (typeof onClose === 'function') onClose();
           else win.style.display = 'none';
         });
@@ -2140,6 +2230,7 @@
     async function openInventory() {
       const inventoryWindow = document.getElementById('inventory-window');
       inventoryWindow.style.display = 'flex';
+      try { saveWindowState('inventory-window', { open: true, display: 'flex' }); } catch (e) {}
       // mark HUD button as pressed while inventory is open
       try { setHudPressed && setHudPressed('inventory', true); } catch (e) {}
       document.getElementById('inventory-loading').style.display = 'block';
@@ -2190,11 +2281,13 @@
     function closeInventory() {
       document.getElementById('inventory-window').style.display = 'none';
       try { setHudPressed && setHudPressed('inventory', false); } catch (e) {}
+      try { saveWindowState('inventory-window', { open: false, display: 'none' }); } catch (e) {}
     }
 
     function closeCharacter() {
       document.getElementById('character-window').style.display = 'none';
       try { setHudPressed && setHudPressed('character', false); } catch (e) {}
+      try { saveWindowState('character-window', { open: false, display: 'none' }); } catch (e) {}
     }
 
     // Character window functions moved to public/character.html
