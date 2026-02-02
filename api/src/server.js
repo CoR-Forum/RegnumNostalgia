@@ -17,14 +17,8 @@ const { importItems } = require('../scripts/import-items');
 const authRoutes = require('./routes/auth');
 const playerRoutes = require('./routes/player');
 const moveRoutes = require('./routes/move');
-// const inventoryRoutes = require('./routes/inventory'); // Moved to WebSocket
-// const equipmentRoutes = require('./routes/equipment'); // Moved to WebSocket
 const territoriesRoutes = require('./routes/territories');
-// app.use('/superbosses', superbossesRoutes); // Moved to WebSocket
 const itemsRoutes = require('./routes/items');
-// const pathsRoutes = require('./routes/paths'); // Moved to WebSocket
-// const regionsRoutes = require('./routes/regions'); // Moved to WebSocket
-// const shoutboxRoutes = require('./routes/shoutbox'); // Moved to WebSocket
 const screenshotsRoutes = require('./routes/screenshots');
 
 const PORT = process.env.PORT || 3000;
