@@ -113,7 +113,7 @@
         div.style.borderColor = '#2a3f5f';
       });
 
-      const name = s.name?.en || s.name?.de || s.name?.es || 'Unnamed';
+      const name = s.nameEn || s.nameDe || s.nameEs || 'Unnamed';
       const coords = `[${s.x}, ${s.y}]`;
       
       div.innerHTML = `
@@ -135,12 +135,12 @@
   function loadScreenshotToForm(s) {
     currentScreenshot = s;
     
-    nameEnInput.value = s.name?.en || '';
-    nameDeInput.value = s.name?.de || '';
-    nameEsInput.value = s.name?.es || '';
-    descEnInput.value = s.description?.en || '';
-    descDeInput.value = s.description?.de || '';
-    descEsInput.value = s.description?.es || '';
+    nameEnInput.value = s.nameEn || '';
+    nameDeInput.value = s.nameDe || '';
+    nameEsInput.value = s.nameEs || '';
+    descEnInput.value = s.descriptionEn || '';
+    descDeInput.value = s.descriptionDe || '';
+    descEsInput.value = s.descriptionEs || '';
     locationInput.value = s.location || '';
     charactersInput.value = s.visibleCharacters || '';
     xInput.value = s.x;
@@ -240,14 +240,14 @@
       if (currentScreenshot) {
         // Update existing screenshot
         const formData = new URLSearchParams();
-        formData.append('name_en', nameEnInput.value);
-        formData.append('name_de', nameDeInput.value);
-        formData.append('name_es', nameEsInput.value);
-        formData.append('description_en', descEnInput.value);
-        formData.append('description_de', descDeInput.value);
-        formData.append('description_es', descEsInput.value);
+        formData.append('nameEn', nameEnInput.value);
+        formData.append('nameDe', nameDeInput.value);
+        formData.append('nameEs', nameEsInput.value);
+        formData.append('descriptionEn', descEnInput.value);
+        formData.append('descriptionDe', descDeInput.value);
+        formData.append('descriptionEs', descEsInput.value);
         formData.append('location', locationInput.value);
-        formData.append('visible_characters', charactersInput.value);
+        formData.append('visibleCharacters', charactersInput.value);
         formData.append('x', x);
         formData.append('y', y);
 
@@ -284,14 +284,14 @@
 
         const formData = new FormData();
         formData.append('file', fileInput.files[0]);
-        formData.append('name_en', nameEnInput.value);
-        formData.append('name_de', nameDeInput.value);
-        formData.append('name_es', nameEsInput.value);
-        formData.append('description_en', descEnInput.value);
-        formData.append('description_de', descDeInput.value);
-        formData.append('description_es', descEsInput.value);
+        formData.append('nameEn', nameEnInput.value);
+        formData.append('nameDe', nameDeInput.value);
+        formData.append('nameEs', nameEsInput.value);
+        formData.append('descriptionEn', descEnInput.value);
+        formData.append('descriptionDe', descDeInput.value);
+        formData.append('descriptionEs', descEsInput.value);
         formData.append('location', locationInput.value);
-        formData.append('visible_characters', charactersInput.value);
+        formData.append('visibleCharacters', charactersInput.value);
         formData.append('x', x);
         formData.append('y', y);
 
@@ -333,7 +333,7 @@
   deleteBtn.addEventListener('click', async () => {
     if (!currentScreenshot) return;
     
-    if (!confirm(`Delete screenshot "${currentScreenshot.name?.en || currentScreenshot.name?.de || currentScreenshot.name?.es || 'Unnamed'}"?`)) {
+    if (!confirm(`Delete screenshot "${currentScreenshot.nameEn || currentScreenshot.nameDe || currentScreenshot.nameEs || 'Unnamed'}"?`)) {
       return;
     }
 

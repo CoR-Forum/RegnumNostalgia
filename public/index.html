@@ -1452,7 +1452,6 @@
         // Real-time health/mana updates
         if (data.userId === gameState.userId) {
           gameState.health = data.health ?? gameState.health;
-          // Use camelCase fields from WebSocket payload
           gameState.maxHealth = data.maxHealth ?? gameState.maxHealth;
           gameState.mana = data.mana ?? gameState.mana;
           gameState.maxMana = data.maxMana ?? gameState.maxMana;
@@ -1640,7 +1639,7 @@
 
       // Time events
       socket.on('time:current', (data) => {
-        if (data && typeof data.ingame_hour !== 'undefined') {
+        if (data && typeof data.ingameHour !== 'undefined') {
           try {
             if (typeof window.updateServerTimeUI === 'function') {
               window.updateServerTimeUI({ serverTime: data });
@@ -1793,7 +1792,7 @@
       })();
 
       socket.on('time:update', (data) => {
-        if (data && typeof data.ingame_hour !== 'undefined') {
+        if (data && typeof data.ingameHour !== 'undefined') {
           try {
             if (typeof window.updateServerTimeUI === 'function') {
               window.updateServerTimeUI({ serverTime: data });
@@ -1818,7 +1817,7 @@
           if (data.userId !== undefined) gameState.userId = data.userId;
           if (data.username !== undefined) gameState.username = data.username;
           if (data.realm !== undefined) gameState.realm = data.realm;
-          // Handle nested position object and flat x/y properties (camelCase)
+          // Handle nested position object and flat x/y properties
           if (data.position !== undefined) {
             if (data.position.x !== undefined) gameState.position.x = data.position.x;
             if (data.position.y !== undefined) gameState.position.y = data.position.y;
@@ -1826,7 +1825,6 @@
           if (data.x !== undefined) gameState.position.x = data.x;
           if (data.y !== undefined) gameState.position.y = data.y;
           if (data.health !== undefined) gameState.health = data.health;
-          // Prefer camelCase fields from server
           if (data.maxHealth !== undefined) gameState.maxHealth = data.maxHealth;
           if (data.mana !== undefined) gameState.mana = data.mana;
           if (data.maxMana !== undefined) gameState.maxMana = data.maxMana;
@@ -2300,7 +2298,7 @@
             gameState.armor = typeof posData.armor !== 'undefined' ? posData.armor : (gameState.armor || 0);
             gameState.username = typeof posData.username !== 'undefined' ? posData.username : gameState.username;
             gameState.realm = typeof posData.realm !== 'undefined' ? posData.realm : gameState.realm;
-            gameState.className = typeof posData.className !== 'undefined' ? posData.className : (typeof posData.class !== 'undefined' ? posData.class : gameState.className);
+            gameState.className = typeof posData.className !== 'undefined' ? posData.className : gameState.className;
           }
         } catch (err) { console.error('Failed to load character data:', err); }
 
@@ -2820,7 +2818,6 @@
         gameState.realm = data.realm ?? gameState.realm;
         gameState.username = typeof data.username !== 'undefined' ? data.username : gameState.username;
         gameState.health = data.health ?? gameState.health;
-        // Expect camelCase fields from server
         gameState.maxHealth = data.maxHealth ?? gameState.maxHealth;
         gameState.mana = data.mana ?? gameState.mana;
         gameState.maxMana = data.maxMana ?? gameState.maxMana;
@@ -3325,7 +3322,6 @@
       const currentTerritoryIds = new Set();
 
       territories.forEach(territory => {
-        // Expect camelCase fields from server
         const territoryId = territory.territoryId;
         const iconName = territory.iconName;
         const iconNameContested = territory.iconNameContested;
@@ -3417,7 +3413,6 @@
       const currentBossIds = new Set();
 
       bosses.forEach(boss => {
-        // Expect camelCase fields from server
         const bossId = boss.bossId;
         const iconName = boss.iconName;
         const maxHealth = boss.maxHealth;
@@ -3676,9 +3671,9 @@
         try {
           if (!data) return;
           // data may be a full /player/position response or a simple serverTime object
-          const st = data.serverTime || data.server_time || data;
-          const hour = Number(st && (st.ingame_hour || st.hour)) || 0;
-          const minute = Number(st && (st.ingame_minute || st.minute)) || 0;
+          const st = data.serverTime || data;
+          const hour = Number(st && st.ingameHour) || 0;
+          const minute = Number(st && st.ingameMinute) || 0;
 
           // prefer daytimeIcon from position API, fall back to icon
           if (data.daytimeIcon) ICON.src = data.daytimeIcon;

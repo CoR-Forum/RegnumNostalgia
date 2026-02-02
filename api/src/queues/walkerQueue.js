@@ -149,8 +149,8 @@ walkerQueue.process('process-walkers', async (job) => {
               // Play new music only if user enabled music
               try {
                 const settings = targetSocket.user && targetSocket.user.settings ? targetSocket.user.settings : null;
-                if (matched && matched.music && settings && settings.music_enabled) {
-                  const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+                if (matched && matched.music && settings && settings.musicEnabled) {
+                  const vol = typeof settings.musicVolume === 'number' ? settings.musicVolume : parseFloat(settings.musicVolume) || 0.6;
                   targetSocket.emit('audio:play', {
                     type: 'music',
                     file: matched.music,

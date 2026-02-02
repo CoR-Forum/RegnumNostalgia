@@ -53,26 +53,26 @@ async function authenticateSocket(socket, next) {
     
     // Load user settings (if present)
     let settings = {
-      music_enabled: 1,
-      music_volume: 0.6,
-      sounds_enabled: 1,
-      sound_volume: 1.0,
-      capture_sounds_enabled: 1,
-      capture_sounds_volume: 1.0,
-      map_version: 'v1'
+      musicEnabled: 1,
+      musicVolume: 0.6,
+      soundsEnabled: 1,
+      soundVolume: 1.0,
+      captureSoundsEnabled: 1,
+      captureSoundsVolume: 1.0,
+      mapVersion: 'v1'
     };
 
     try {
       const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version FROM user_settings WHERE user_id = ?', [decoded.userId]);
       if (rows && rows.length > 0) {
         settings = {
-          music_enabled: rows[0].music_enabled === 1 ? 1 : 0,
-          music_volume: typeof rows[0].music_volume === 'number' ? rows[0].music_volume : parseFloat(rows[0].music_volume) || 0.6,
-          sounds_enabled: rows[0].sounds_enabled === 1 ? 1 : 0,
-          sound_volume: typeof rows[0].sound_volume === 'number' ? rows[0].sound_volume : parseFloat(rows[0].sound_volume) || 1.0,
-          capture_sounds_enabled: rows[0].capture_sounds_enabled === 1 ? 1 : 0,
-          capture_sounds_volume: typeof rows[0].capture_sounds_volume === 'number' ? rows[0].capture_sounds_volume : parseFloat(rows[0].capture_sounds_volume) || 1.0,
-          map_version: rows[0].map_version || 'v1'
+          musicEnabled: rows[0].music_enabled === 1 ? 1 : 0,
+          musicVolume: typeof rows[0].music_volume === 'number' ? rows[0].music_volume : parseFloat(rows[0].music_volume) || 0.6,
+          soundsEnabled: rows[0].sounds_enabled === 1 ? 1 : 0,
+          soundVolume: typeof rows[0].sound_volume === 'number' ? rows[0].sound_volume : parseFloat(rows[0].sound_volume) || 1.0,
+          captureSoundsEnabled: rows[0].capture_sounds_enabled === 1 ? 1 : 0,
+          captureSoundsVolume: typeof rows[0].capture_sounds_volume === 'number' ? rows[0].capture_sounds_volume : parseFloat(rows[0].capture_sounds_volume) || 1.0,
+          mapVersion: rows[0].map_version || 'v1'
         };
       }
     } catch (e) {

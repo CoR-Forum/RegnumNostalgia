@@ -70,27 +70,29 @@
       if (res && res.json) data = await res.json();
       const r = (data && data.success) ? data : (res && res.success ? res : null);
       if (r && r.settings) {
-        document.getElementById('setting-music-enabled').checked = !!r.settings.music_enabled;
-        document.getElementById('setting-music-volume').value = (typeof r.settings.music_volume === 'number' ? r.settings.music_volume : parseFloat(r.settings.music_volume)) || 0.6;
-        document.getElementById('setting-sounds-enabled').checked = !!r.settings.sounds_enabled;
-        document.getElementById('setting-sound-volume').value = (typeof r.settings.sound_volume === 'number' ? r.settings.sound_volume : parseFloat(r.settings.sound_volume)) || 1.0;
-        document.getElementById('setting-capture-enabled').checked = !!r.settings.capture_sounds_enabled;
-        document.getElementById('setting-map-version').value = r.settings.map_version || 'v1';
+        document.getElementById('setting-music-enabled').checked = !!r.settings.musicEnabled;
+        document.getElementById('setting-music-volume').value = (typeof r.settings.musicVolume === 'number' ? r.settings.musicVolume : parseFloat(r.settings.musicVolume)) || 0.6;
+        document.getElementById('setting-sounds-enabled').checked = !!r.settings.soundsEnabled;
+        document.getElementById('setting-sound-volume').value = (typeof r.settings.soundVolume === 'number' ? r.settings.soundVolume : parseFloat(r.settings.soundVolume)) || 1.0;
+        document.getElementById('setting-capture-enabled').checked = !!r.settings.captureSoundsEnabled;
+        document.getElementById('setting-capture-volume').value = (typeof r.settings.captureSoundsVolume === 'number' ? r.settings.captureSoundsVolume : parseFloat(r.settings.captureSoundsVolume)) || 1.0;
+        document.getElementById('setting-map-version').value = r.settings.mapVersion || 'v1';
         // Apply to AudioManager immediately
-        try { window.AudioManager && window.AudioManager.setMusicEnabled(!!r.settings.music_enabled); } catch (e) {}
-        try { window.AudioManager && window.AudioManager.setMusicVolume(parseFloat(r.settings.music_volume) || 0.6); } catch (e) {}
-        try { window.AudioManager && window.AudioManager.setSoundsEnabled(!!r.settings.sounds_enabled); } catch (e) {}
-        try { window.AudioManager && window.AudioManager.setSoundVolume(parseFloat(r.settings.sound_volume) || 1.0); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setMusicEnabled(!!r.settings.musicEnabled); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setMusicVolume(parseFloat(r.settings.musicVolume) || 0.6); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setSoundsEnabled(!!r.settings.soundsEnabled); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setSoundVolume(parseFloat(r.settings.soundVolume) || 1.0); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setCaptureSoundVolume(parseFloat(r.settings.captureSoundsVolume) || 1.0); } catch (e) {}
         // Apply map version immediately (update tiles)
         try {
-          const v = r.settings.map_version || 'v1';
+          const v = r.settings.mapVersion || 'v1';
           try { localStorage.setItem('tileVersion', v); } catch (e) {}
           if (typeof currentTileVersion !== 'undefined') {
             currentTileVersion = v;
             try { if (typeof loadTiles === 'function') loadTiles(); } catch (e) {}
           }
         } catch (e) {}
-          try { const d = document.getElementById('settings-map-version-display'); if (d) d.textContent = `Map: ${r.settings.map_version || 'v1'}`; } catch (e) {}
+          try { const d = document.getElementById('settings-map-version-display'); if (d) d.textContent = `Map: ${r.settings.mapVersion || 'v1'}`; } catch (e) {}
       }
     } catch (e) { console.debug('Failed to load settings', e); }
   }
@@ -112,12 +114,13 @@
       emitTimer = null;
       try {
         const payload = {
-          music_enabled: document.getElementById('setting-music-enabled').checked ? 1 : 0,
-          music_volume: parseFloat(document.getElementById('setting-music-volume').value),
-          sounds_enabled: document.getElementById('setting-sounds-enabled').checked ? 1 : 0,
-          sound_volume: parseFloat(document.getElementById('setting-sound-volume').value),
-          capture_sounds_enabled: document.getElementById('setting-capture-enabled').checked ? 1 : 0
-          , map_version: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1'
+          musicEnabled: document.getElementById('setting-music-enabled').checked ? 1 : 0,
+          musicVolume: parseFloat(document.getElementById('setting-music-volume').value),
+          soundsEnabled: document.getElementById('setting-sounds-enabled').checked ? 1 : 0,
+          soundVolume: parseFloat(document.getElementById('setting-sound-volume').value),
+          captureSoundsEnabled: document.getElementById('setting-capture-enabled').checked ? 1 : 0,
+          captureSoundsVolume: parseFloat(document.getElementById('setting-capture-volume').value),
+          mapVersion: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1'
         };
         if (window.socket && window.socket.emit) window.socket.emit('user:settings:update', payload);
       } catch (e) { /* ignore */ }
@@ -136,6 +139,7 @@
   const soundsEnabledEl = document.getElementById('setting-sounds-enabled');
   const soundVolEl = document.getElementById('setting-sound-volume');
   const captureEnabledEl = document.getElementById('setting-capture-enabled');
+  const captureVolEl = document.getElementById('setting-capture-volume');
   const mapVersionEl = document.getElementById('setting-map-version');
 
   if (musicEnabledEl) {
@@ -172,6 +176,14 @@
 
   if (captureEnabledEl) {
     captureEnabledEl.addEventListener('change', (e) => {
+      scheduleEmitSettings();
+    });
+  }
+
+  if (captureVolEl) {
+    captureVolEl.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      try { window.AudioManager && window.AudioManager.setCaptureSoundVolume(v); } catch (err) {}
       scheduleEmitSettings();
     });
   }

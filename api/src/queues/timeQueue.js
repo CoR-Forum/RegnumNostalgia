@@ -74,11 +74,11 @@ timeQueue.process('update-server-time', async (job) => {
     // Emit time update event
     if (io) {
       io.emit('time:update', {
-        ingame_hour: ingameHour,
-        ingame_minute: ingameMinute,
+        ingameHour,
+        ingameMinute,
         icon: daytimeIcon,
-        real_time: now,
-        started_at: startedAt
+        realTime: now,
+        startedAt
       });
     }
 

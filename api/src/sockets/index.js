@@ -62,25 +62,25 @@ function initializeSocketHandlers(io) {
         const s = socket.user || {};
         s.settings = s.settings || {};
         // Merge known keys
-        if (typeof data.music_enabled !== 'undefined') s.settings.music_enabled = data.music_enabled ? 1 : 0;
-        if (typeof data.music_volume !== 'undefined') s.settings.music_volume = parseFloat(data.music_volume) || 0.6;
-        if (typeof data.sounds_enabled !== 'undefined') s.settings.sounds_enabled = data.sounds_enabled ? 1 : 0;
-        if (typeof data.sound_volume !== 'undefined') s.settings.sound_volume = parseFloat(data.sound_volume) || 1.0;
-        if (typeof data.capture_sounds_enabled !== 'undefined') s.settings.capture_sounds_enabled = data.capture_sounds_enabled ? 1 : 0;
-        if (typeof data.capture_sounds_volume !== 'undefined') s.settings.capture_sounds_volume = typeof data.capture_sounds_volume === 'number' ? data.capture_sounds_volume : parseFloat(data.capture_sounds_volume) || 1.0;
-        if (typeof data.map_version !== 'undefined') s.settings.map_version = ('' + data.map_version) || 'v1';
+        if (typeof data.musicEnabled !== 'undefined') s.settings.musicEnabled = data.musicEnabled ? 1 : 0;
+        if (typeof data.musicVolume !== 'undefined') s.settings.musicVolume = parseFloat(data.musicVolume) || 0.6;
+        if (typeof data.soundsEnabled !== 'undefined') s.settings.soundsEnabled = data.soundsEnabled ? 1 : 0;
+        if (typeof data.soundVolume !== 'undefined') s.settings.soundVolume = parseFloat(data.soundVolume) || 1.0;
+        if (typeof data.captureSoundsEnabled !== 'undefined') s.settings.captureSoundsEnabled = data.captureSoundsEnabled ? 1 : 0;
+        if (typeof data.captureSoundsVolume !== 'undefined') s.settings.captureSoundsVolume = typeof data.captureSoundsVolume === 'number' ? data.captureSoundsVolume : parseFloat(data.captureSoundsVolume) || 1.0;
+        if (typeof data.mapVersion !== 'undefined') s.settings.mapVersion = ('' + data.mapVersion) || 'v1';
         socket.user = s;
         // Persist settings to DB so changes aren't lost on reconnect
         try {
           const userId = socket.user && socket.user.userId;
           if (userId) {
-            const music_enabled = s.settings.music_enabled ? 1 : 0;
-            const music_volume = typeof s.settings.music_volume === 'number' ? s.settings.music_volume : parseFloat(s.settings.music_volume) || 0.6;
-            const sounds_enabled = s.settings.sounds_enabled ? 1 : 0;
-            const sound_volume = typeof s.settings.sound_volume === 'number' ? s.settings.sound_volume : parseFloat(s.settings.sound_volume) || 1.0;
-            const capture_sounds_enabled = s.settings.capture_sounds_enabled ? 1 : 0;
-            const capture_sounds_volume = typeof s.settings.capture_sounds_volume === 'number' ? s.settings.capture_sounds_volume : parseFloat(s.settings.capture_sounds_volume) || 1.0;
-            const map_version = typeof s.settings.map_version === 'string' ? s.settings.map_version : (s.settings.map_version || 'v1');
+            const music_enabled = s.settings.musicEnabled ? 1 : 0;
+            const music_volume = typeof s.settings.musicVolume === 'number' ? s.settings.musicVolume : parseFloat(s.settings.musicVolume) || 0.6;
+            const sounds_enabled = s.settings.soundsEnabled ? 1 : 0;
+            const sound_volume = typeof s.settings.soundVolume === 'number' ? s.settings.soundVolume : parseFloat(s.settings.soundVolume) || 1.0;
+            const capture_sounds_enabled = s.settings.captureSoundsEnabled ? 1 : 0;
+            const capture_sounds_volume = typeof s.settings.captureSoundsVolume === 'number' ? s.settings.captureSoundsVolume : parseFloat(s.settings.captureSoundsVolume) || 1.0;
+            const map_version = typeof s.settings.mapVersion === 'string' ? s.settings.mapVersion : (s.settings.mapVersion || 'v1');
             const updatedAt = Math.floor(Date.now() / 1000);
             await gameDb.query(
               `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version, updated_at)
@@ -103,7 +103,7 @@ function initializeSocketHandlers(io) {
         // If music was just enabled, immediately start music for current region
         try {
           const settings = socket.user && socket.user.settings ? socket.user.settings : null;
-          if (settings && settings.music_enabled) {
+          if (settings && settings.musicEnabled) {
             // Determine player's current position and region
             const [playerRows] = await gameDb.query('SELECT x,y FROM players WHERE user_id = ?', [user.userId]);
             if (playerRows && playerRows.length > 0) {
@@ -112,7 +112,7 @@ function initializeSocketHandlers(io) {
               const regions = require('../../gameData/regions.json');
               const matched = regions.find(r => r.music && Array.isArray(r.coordinates) && pointInPolygon(px, py, r.coordinates));
               if (matched && matched.music) {
-                const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+                const vol = typeof settings.musicVolume === 'number' ? settings.musicVolume : parseFloat(settings.musicVolume) || 0.6;
                 socket.emit('audio:play', { type: 'music', file: matched.music, volume: vol, loop: true, regionId: matched.id || null });
                 userRegions.set(user.userId, matched.id || null);
               }
@@ -176,8 +176,8 @@ function initializeSocketHandlers(io) {
             if (matched && matched.music) {
               try {
                 const settings = socket.user && socket.user.settings ? socket.user.settings : null;
-                if (settings && settings.music_enabled) {
-                  const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+                if (settings && settings.musicEnabled) {
+                  const vol = typeof settings.musicVolume === 'number' ? settings.musicVolume : parseFloat(settings.musicVolume) || 0.6;
                   socket.emit('audio:play', {
                     type: 'music',
                     file: matched.music,
@@ -382,12 +382,12 @@ function initializeSocketHandlers(io) {
     });
 
         /**
-         * Fetch details for a single inventory item by inventory_id
+         * Fetch details for a single inventory item by inventoryId
          * Used by clients to lazy-load item tooltips on hover.
          */
         socket.on('item:details', async (data, callback) => {
           try {
-            const inventoryId = (data && (data.inventoryId || data.inventory_id)) || data;
+            const inventoryId = (data && data.inventoryId) || data;
             if (!inventoryId) {
               if (callback) callback({ success: false, error: 'Inventory ID required' });
               return;
@@ -858,8 +858,8 @@ async function sendInitialGameState(socket, user) {
           if (matched && matched.music) {
             try {
               const settings = socket.user && socket.user.settings ? socket.user.settings : null;
-              if (settings && settings.music_enabled) {
-                const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+              if (settings && settings.musicEnabled) {
+                const vol = typeof settings.musicVolume === 'number' ? settings.musicVolume : parseFloat(settings.musicVolume) || 0.6;
                 socket.emit('audio:play', {
                   type: 'music',
                   file: matched.music,

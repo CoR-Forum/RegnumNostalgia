@@ -82,9 +82,9 @@ router.post('/', authenticateJWT, upload.single('file'), async (req, res) => {
   }
 
   const {
-    name_en, name_de, name_es,
-    description_en, description_de, description_es,
-    location, visible_characters, x, y
+    nameEn, nameDe, nameEs,
+    descriptionEn, descriptionDe, descriptionEs,
+    location, visibleCharacters, x, y
   } = req.body;
 
   try {
@@ -121,9 +121,9 @@ router.post('/', authenticateJWT, upload.single('file'), async (req, res) => {
         location, visible_characters, x, y, uploaded_by, uploaded_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       [
-        filename, name_en, name_de, name_es,
-        description_en, description_de, description_es,
-        location, visible_characters,
+        filename, nameEn, nameDe, nameEs,
+        descriptionEn, descriptionDe, descriptionEs,
+        location, visibleCharacters,
         x ? parseFloat(x) : null,
         y ? parseFloat(y) : null,
         req.user.username
@@ -164,9 +164,9 @@ router.post('/', authenticateJWT, upload.single('file'), async (req, res) => {
 router.put('/:id', authenticateJWT, async (req, res) => {
   const { id } = req.params;
   const {
-    name_en, name_de, name_es,
-    description_en, description_de, description_es,
-    location, visible_characters, x, y
+    nameEn, nameDe, nameEs,
+    descriptionEn, descriptionDe, descriptionEs,
+    location, visibleCharacters, x, y
   } = req.body;
 
   try {
@@ -180,9 +180,9 @@ router.put('/:id', authenticateJWT, async (req, res) => {
            updated_at = datetime('now')
        WHERE id = ?`,
       [
-        name_en, name_de, name_es,
-        description_en, description_de, description_es,
-        location, visible_characters,
+        nameEn, nameDe, nameEs,
+        descriptionEn, descriptionDe, descriptionEs,
+        location, visibleCharacters,
         x ? parseFloat(x) : null,
         y ? parseFloat(y) : null,
         id

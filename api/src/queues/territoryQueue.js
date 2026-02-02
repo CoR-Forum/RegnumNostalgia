@@ -125,8 +125,8 @@ territoryQueue.process('sync-territories', async (job) => {
             const settings = user && user.settings ? user.settings : null;
             if (!settings) continue;
             // sfx should respect global sounds flag and capture specific flag
-            if (settings.sounds_enabled && settings.capture_sounds_enabled) {
-              const vol = typeof settings.capture_sounds_volume === 'number' ? settings.capture_sounds_volume : (typeof settings.sound_volume === 'number' ? settings.sound_volume : parseFloat(settings.sound_volume) || 1.0);
+            if (settings.soundsEnabled && settings.captureSoundsEnabled) {
+              const vol = typeof settings.captureSoundsVolume === 'number' ? settings.captureSoundsVolume : (typeof settings.soundVolume === 'number' ? settings.soundVolume : parseFloat(settings.soundVolume) || 1.0);
               s.emit('audio:play', {
                 type: 'sfx',
                 file: '53134-fort_captured.ogg',
@@ -152,7 +152,24 @@ territoryQueue.process('sync-territories', async (job) => {
          ORDER BY territory_id`
       );
       
-      io.emit('territories:update', { territories: allTerritories });
+      const territoriesPayload = allTerritories.map(t => ({
+        territoryId: t.territory_id,
+        realm: t.realm,
+        name: t.name,
+        type: t.type,
+        health: t.health,
+        maxHealth: t.max_health,
+        x: t.x,
+        y: t.y,
+        ownerRealm: t.owner_realm,
+        ownerPlayers: t.owner_players,
+        contested: !!t.contested,
+        contestedSince: t.contested_since,
+        iconName: t.icon_name,
+        iconNameContested: t.icon_name_contested
+      }));
+      
+      io.emit('territories:update', { territories: territoriesPayload });
     }
 
     return { updated: updatedCount, captures: captures.length };

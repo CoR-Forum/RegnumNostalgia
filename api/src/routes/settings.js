@@ -10,17 +10,26 @@ router.get('/', authenticateJWT, async (req, res) => {
     const userId = req.user.userId;
     const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version FROM user_settings WHERE user_id = ?', [userId]);
     if (rows && rows.length > 0) {
-      return res.json({ success: true, settings: rows[0] });
+      const row = rows[0];
+      return res.json({ success: true, settings: {
+        musicEnabled: row.music_enabled === 1 ? 1 : 0,
+        musicVolume: typeof row.music_volume === 'number' ? row.music_volume : parseFloat(row.music_volume) || 0.6,
+        soundsEnabled: row.sounds_enabled === 1 ? 1 : 0,
+        soundVolume: typeof row.sound_volume === 'number' ? row.sound_volume : parseFloat(row.sound_volume) || 1.0,
+        captureSoundsEnabled: row.capture_sounds_enabled === 1 ? 1 : 0,
+        captureSoundsVolume: typeof row.capture_sounds_volume === 'number' ? row.capture_sounds_volume : parseFloat(row.capture_sounds_volume) || 1.0,
+        mapVersion: row.map_version || 'v1'
+      }});
     }
     // return defaults
     return res.json({ success: true, settings: {
-      music_enabled: 1,
-      music_volume: 0.6,
-      sounds_enabled: 1,
-      sound_volume: 1.0,
-      capture_sounds_enabled: 1,
-      capture_sounds_volume: 1.0,
-      map_version: 'v1'
+      musicEnabled: 1,
+      musicVolume: 0.6,
+      soundsEnabled: 1,
+      soundVolume: 1.0,
+      captureSoundsEnabled: 1,
+      captureSoundsVolume: 1.0,
+      mapVersion: 'v1'
     }});
   } catch (err) {
     logger.error('Failed to get user settings', { error: err.message });
@@ -34,13 +43,13 @@ router.post('/', authenticateJWT, async (req, res) => {
     const userId = req.user.userId;
     const body = req.body || {};
 
-    const music_enabled = body.music_enabled ? 1 : 0;
-    const music_volume = typeof body.music_volume === 'number' ? body.music_volume : parseFloat(body.music_volume) || 0.6;
-    const sounds_enabled = body.sounds_enabled ? 1 : 0;
-    const sound_volume = typeof body.sound_volume === 'number' ? body.sound_volume : parseFloat(body.sound_volume) || 1.0;
-    const capture_sounds_enabled = body.capture_sounds_enabled ? 1 : 0;
-    const capture_sounds_volume = typeof body.capture_sounds_volume === 'number' ? body.capture_sounds_volume : parseFloat(body.capture_sounds_volume) || 1.0;
-    const map_version = typeof body.map_version === 'string' ? body.map_version : (body.map_version || 'v1');
+    const music_enabled = body.musicEnabled ? 1 : 0;
+    const music_volume = typeof body.musicVolume === 'number' ? body.musicVolume : parseFloat(body.musicVolume) || 0.6;
+    const sounds_enabled = body.soundsEnabled ? 1 : 0;
+    const sound_volume = typeof body.soundVolume === 'number' ? body.soundVolume : parseFloat(body.soundVolume) || 1.0;
+    const capture_sounds_enabled = body.captureSoundsEnabled ? 1 : 0;
+    const capture_sounds_volume = typeof body.captureSoundsVolume === 'number' ? body.captureSoundsVolume : parseFloat(body.captureSoundsVolume) || 1.0;
+    const map_version = typeof body.mapVersion === 'string' ? body.mapVersion : (body.mapVersion || 'v1');
     const updatedAt = Math.floor(Date.now() / 1000);
 
     await gameDb.query(

@@ -109,8 +109,8 @@ healthQueue.process('regenerate-health', async (job) => {
             contested: false,
             health: newHealth,
             maxHealth: territory.max_health,
-            icon_name: icons.icon_name,
-            icon_name_contested: icons.icon_name_contested
+            iconName: icons.icon_name,
+            iconNameContested: icons.icon_name_contested
           });
         }
       } else if (newHealth < territory.max_health && !territory.contested) {
@@ -134,8 +134,8 @@ healthQueue.process('regenerate-health', async (job) => {
             contested: true,
             health: newHealth,
             maxHealth: territory.max_health,
-            icon_name: icons.icon_name,
-            icon_name_contested: icons.icon_name_contested
+            iconName: icons.icon_name,
+            iconNameContested: icons.icon_name_contested
           });
         }
       }
@@ -155,12 +155,18 @@ healthQueue.process('regenerate-health', async (job) => {
       );
 
       // Emit superboss health updates
-      const [superbosses] = await gameDb.query(
+      const [superbossRows] = await gameDb.query(
         'SELECT boss_id, name, health, max_health FROM superbosses WHERE boss_id IN (?)',
         [bossesNeedingRegen.map(b => b.boss_id)]
       );
 
-      if (io && superbosses.length > 0) {
+      if (io && superbossRows.length > 0) {
+        const superbosses = superbossRows.map(b => ({
+          bossId: b.boss_id,
+          name: b.name,
+          health: b.health,
+          maxHealth: b.max_health
+        }));
         io.emit('superbosses:health', { superbosses });
       }
     }
