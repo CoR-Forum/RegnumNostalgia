@@ -140,6 +140,11 @@
       display: none !important;
     }
 
+    /* Show mini info window only on the login screen (when NOT authenticated).
+       Hide it when the user is authenticated / in-game. */
+    body.authenticated #mini-info-window { display: none !important; }
+    body:not(.authenticated) #mini-info-window { display: flex !important; }
+
     .modal-content{
       background: transparent;
       border: none;
