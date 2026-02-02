@@ -1001,7 +1001,7 @@
     // Configuration: 3 rows, 3 columns, tiles named `tiles/{row}-{col}.png`
     const rows = 3, cols = 3;
     let currentTileVersion = localStorage.getItem('tileVersion') || 'v1';
-    const tileUrl = (r, c) => `assets/tiles-v1/${r}-${c}.png`;
+    const tileUrl = (r, c) => `assets/tiles-${currentTileVersion}/${r}-${c}.png`;
 
     // Load first tile to determine tile pixel size at runtime
     const probe = new Image();
@@ -1013,13 +1013,14 @@
       const tileW = probe.width;
       const tileH = probe.height;
 
-      // Original stitched image pixel size (e.g. 3 * 1024 = 3072)
+      // Original stitched image pixel size (e.g. 3 * 1024 = 3072 or 3 * 2048 = 6144)
       const origTotalW = cols * tileW;
       const origTotalH = rows * tileH;
 
       // Desired raster coordinates size. The world should behave as 6144x6144
-      // while the actual stitched image is 3072x3072. scale = 6144/3072 = 2
-      const scale = 2;
+      // v1: tiles are 1024x1024 (3072x3072 total) → scale = 6144/3072 = 2
+      // v2: tiles are 2048x2048 (6144x6144 total) → scale = 6144/6144 = 1
+      const scale = 6144 / origTotalW;
 
       // Scaled world size used by Leaflet (map coordinate units)
       totalW = origTotalW * scale;
@@ -1031,7 +1032,7 @@
       map = L.map('map', {
         crs: L.CRS.Simple,
         minZoom: -3,
-        maxZoom: 0,
+        maxZoom: 2,
         maxBoundsViscosity: 0.5,
         zoomControl: false,
         scrollWheelZoom: true,
@@ -1093,32 +1094,16 @@
           tileLayer = null;
         }
         
-        if (currentTileVersion === 'v2') {
-          // v2 uses TMS format with zoom levels (18432x18432)
-          // TMS tiles are in format: assets/tiles-v2/{z}/{x}/{y}.png
-          // The coordinate system is 6144x6144, but v2 is 18432x18432, so scale is 3x
-          const v2Scale = 18432 / totalW; // Should be 3
-          tileLayer = L.tileLayer('assets/tiles-v2/{z}/{x}/{y}.png', {
-            tms: true,
-            minZoom: -3,
-            maxZoom: 0,
-            tileSize: 256,
-            bounds: [[0, 0], [totalH, totalW]],
-            noWrap: true,
-            attribution: ''
-          }).addTo(map);
-        } else {
-          // v1 uses simple 3x3 grid
-          for(let r=1; r<=rows; r++){
-            for(let c=1; c<=cols; c++){
-              const rowPos = rows - r; // invert row index
-              const y1 = rowPos * tileH * scale;
-              const x1 = (c-1) * tileW * scale;
-              const y2 = (rowPos + 1) * tileH * scale;
-              const x2 = c * tileW * scale;
-              const overlay = L.imageOverlay(tileUrl(r,c), [[y1,x1],[y2,x2]]).addTo(map);
-              tileOverlays.push(overlay);
-            }
+        // Both v1 and v2 use simple 3x3 grid
+        for(let r=1; r<=rows; r++){
+          for(let c=1; c<=cols; c++){
+            const rowPos = rows - r; // invert row index
+            const y1 = rowPos * tileH * scale;
+            const x1 = (c-1) * tileW * scale;
+            const y2 = (rowPos + 1) * tileH * scale;
+            const x2 = c * tileW * scale;
+            const overlay = L.imageOverlay(tileUrl(r,c), [[y1,x1],[y2,x2]]).addTo(map);
+            tileOverlays.push(overlay);
           }
         }
       }
