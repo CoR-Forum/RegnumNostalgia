@@ -28,7 +28,12 @@ module.exports = {
   // Starter Items (granted on realm selection)
   STARTER_ITEMS: [
     { template_key: 'gold_coin', quantity: 5000 },
-    { template_key: 'health_potion', quantity: 3 }
+    { template_key: 'health_potion', quantity: 3 },
+    { template_key: 'iron_swordddd', quantity: 2 },
+    { template_key: 'wooden_shield', quantity: 1 },
+    { template_key: 'iron_helmet', quantity: 1 },
+    { template_key: 'leather_pauldrons', quantity: 1 },
+    { template_key: 'silver_amulet', quantity: 1 }
   ],
   
   // Online Status

@@ -1272,6 +1272,29 @@
     // Socket.io connection management
     let socket = null;
     let reconnectAttempts = 0;
+    
+    // Helper to prefer WebSocket emits for equipment actions with HTTP fallback
+    async function emitOrApi(eventName, payload, fallbackPath, fallbackForm) {
+      if (socket && socket.connected) {
+        return new Promise((resolve, reject) => {
+          try {
+            socket.emit(eventName, payload, (resp) => {
+              if (!resp) return reject(new Error('No response from server'));
+              if (resp.success === false) {
+                const err = new Error(resp.error || 'Server error');
+                err.body = resp;
+                return reject(err);
+              }
+              resolve(resp);
+            });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
+      // Fallback to HTTP API
+      return apiCall(fallbackPath, { method: 'POST', body: fallbackForm });
+    }
     const MAX_RECONNECT_ATTEMPTS = 5;
 
     function initializeWebSocket() {
@@ -1939,7 +1962,7 @@
             const form = new URLSearchParams();
             form.append('inventoryId', id);
             try {
-              await apiCall('/equipment/equip', { method: 'POST', body: form });
+              await emitOrApi('equipment:equip', { inventoryId: id }, '/equipment/equip', form);
             } catch (err) {
               const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
               if (window.addLogMessage) window.addLogMessage(msg, 'error');
@@ -1972,7 +1995,7 @@
             const form = new URLSearchParams();
             form.append('slot', data.slot);
             try {
-              await apiCall('/equipment/unequip', { method: 'POST', body: form });
+              await emitOrApi('equipment:unequip', { slot: data.slot }, '/equipment/unequip', form);
             } catch (err) {
               try {
                 const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
@@ -2208,7 +2231,7 @@
                 const form = new URLSearchParams();
                 form.append('slot', slot);
                 try {
-                  await apiCall('/equipment/unequip', { method: 'POST', body: form });
+                  await emitOrApi('equipment:unequip', { slot }, '/equipment/unequip', form);
                 } catch (err) {
                   const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
                   if (window.addLogMessage) window.addLogMessage(msg, 'error');
@@ -2239,7 +2262,7 @@
                 const form = new URLSearchParams();
                 form.append('inventoryId', data.inventoryId);
                 try {
-                  await apiCall('/equipment/equip', { method: 'POST', body: form });
+                  await emitOrApi('equipment:equip', { inventoryId: data.inventoryId }, '/equipment/equip', form);
                 } catch (err) {
                   try {
                     const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';

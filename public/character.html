@@ -248,7 +248,7 @@
               const form = new URLSearchParams();
               form.append('slot', slot);
               try {
-                await apiCall('/equipment/unequip', { method: 'POST', body: form });
+                await emitOrApi('equipment:unequip', { slot }, '/equipment/unequip', form);
               } catch (err) {
                 const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
                 if (window.addLogMessage) window.addLogMessage(msg, 'error');
@@ -276,7 +276,7 @@
               const form = new URLSearchParams();
               form.append('inventoryId', data.inventoryId);
               try {
-                await apiCall('/equipment/equip', { method: 'POST', body: form });
+                await emitOrApi('equipment:equip', { inventoryId: data.inventoryId }, '/equipment/equip', form);
               } catch (err) {
                 try {
                   const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
