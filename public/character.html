@@ -107,7 +107,39 @@
     if (!win) return;
     win.style.display = 'flex';
     try{
-      const posData = await apiCall('/player/position');
+      // WebSocket-only: request player stats via socket. If not connected, set a one-time listener for connection.
+      const requestStats = () => new Promise((resolve) => {
+        if (window.socket && socket && socket.connected) {
+          socket.emit('player:stats:get', (resp) => {
+            if (resp && resp.success && resp.state) return resolve(resp.state);
+            resolve(null);
+          });
+          setTimeout(() => resolve(null), 1500);
+        } else {
+          resolve(null);
+        }
+      });
+
+      let posData = await requestStats();
+      if (!posData) {
+        // If we didn't get a response immediately, wait for server emission when socket connects
+        if (!(window.socket && socket && socket.connected)) {
+          await new Promise((resolve) => {
+            function onConnect() {
+              window.removeEventListener('websocket:connected', onConnect);
+              if (window.socket && socket) {
+                socket.emit('player:stats:get', (resp) => {
+                  resolve(resp && resp.success && resp.state ? resp.state : null);
+                });
+              } else resolve(null);
+            }
+            window.addEventListener('websocket:connected', onConnect);
+            // safety timeout
+            setTimeout(() => { window.removeEventListener('websocket:connected', onConnect); resolve(null); }, 10000);
+          }).then(r => { posData = r; });
+        }
+      }
+
       if (posData) {
         gameState.xp = typeof posData.xp !== 'undefined' ? posData.xp : gameState.xp;
         gameState.level = typeof posData.level !== 'undefined' ? posData.level : gameState.level;
@@ -118,6 +150,8 @@
         gameState.username = typeof posData.username !== 'undefined' ? posData.username : gameState.username;
         gameState.realm = typeof posData.realm !== 'undefined' ? posData.realm : gameState.realm;
         gameState.className = typeof posData.className !== 'undefined' ? posData.className : (typeof posData.class !== 'undefined' ? posData.class : gameState.className);
+      } else {
+        console.warn('No player stats received via WebSocket when opening character window');
       }
     }catch(err){ console.error('Failed to load character data:', err); }
     updateCharacterStats();

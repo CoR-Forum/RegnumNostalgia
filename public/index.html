@@ -1359,10 +1359,11 @@
       socket.on('player:health', (data) => {
         // Real-time health/mana updates
         if (data.userId === gameState.userId) {
-          gameState.health = data.health;
-          gameState.maxHealth = data.maxHealth;
-          gameState.mana = data.mana;
-          gameState.maxMana = data.maxMana;
+          gameState.health = data.health ?? gameState.health;
+          // Accept either camelCase or snake_case from different server payloads
+          gameState.maxHealth = data.maxHealth ?? data.max_health ?? gameState.maxHealth;
+          gameState.mana = data.mana ?? gameState.mana;
+          gameState.maxMana = data.maxMana ?? data.max_mana ?? gameState.maxMana;
           try { 
             if (window.updatePlayerStats) {
               window.updatePlayerStats();
@@ -1580,23 +1581,25 @@
 
     function updatePlayerFromState(data) {
       if (data.user_id !== undefined) gameState.userId = data.user_id;
+      if (data.userId !== undefined) gameState.userId = data.userId;
       if (data.username !== undefined) gameState.username = data.username;
       if (data.realm !== undefined) gameState.realm = data.realm;
       if (data.x !== undefined) gameState.position.x = data.x;
       if (data.y !== undefined) gameState.position.y = data.y;
       if (data.health !== undefined) gameState.health = data.health;
-      if (data.max_health !== undefined) gameState.maxHealth = data.max_health;
+      // support both snake_case and camelCase from different API payloads
+      if (data.max_health !== undefined || data.maxHealth !== undefined) gameState.maxHealth = data.maxHealth ?? data.max_health;
       if (data.mana !== undefined) gameState.mana = data.mana;
-      if (data.max_mana !== undefined) gameState.maxMana = data.max_mana;
-      if (data.xp !== undefined) gameState.xp = data.xp;
-      if (data.level !== undefined) gameState.level = data.level;
-      if (data.intelligence !== undefined || data.strength !== undefined) {
+      if (data.max_mana !== undefined || data.maxMana !== undefined) gameState.maxMana = data.maxMana ?? data.max_mana;
+      if (data.xp !== undefined || data.xp !== undefined) gameState.xp = data.xp ?? gameState.xp;
+      if (data.level !== undefined || data.level !== undefined) gameState.level = data.level ?? gameState.level;
+      if (data.intelligence !== undefined || data.strength !== undefined || data.intelligence !== undefined) {
         gameState.stats = {
-          intelligence: data.intelligence || gameState.stats?.intelligence || 20,
-          dexterity: data.dexterity || gameState.stats?.dexterity || 20,
-          concentration: data.concentration || gameState.stats?.concentration || 20,
-          strength: data.strength || gameState.stats?.strength || 20,
-          constitution: data.constitution || gameState.stats?.constitution || 20
+          intelligence: data.intelligence ?? gameState.stats?.intelligence ?? 20,
+          dexterity: data.dexterity ?? gameState.stats?.dexterity ?? 20,
+          concentration: data.concentration ?? gameState.stats?.concentration ?? 20,
+          strength: data.strength ?? gameState.stats?.strength ?? 20,
+          constitution: data.constitution ?? gameState.stats?.constitution ?? 20
         };
       }
       try { showPlayerInfo(); updateCharacterStats(); updatePlayerStats(); } catch (e) {}
@@ -2353,18 +2356,31 @@
     // Initialize game after login/realm selection
     async function initGame() {
       try {
-        // Get current position
-        const data = await apiCall('/player/position');
-        if (!data || !data.position) {
-          throw new Error('Invalid /player/position response');
-        }
-        gameState.position = data.position;
-        gameState.realm = data.realm;
+        // WebSocket-only: request initial player state via socket.
+        let data = null;
+        const requestPlayerState = () => new Promise((resolve) => {
+          if (window.socket && socket && socket.connected) {
+            socket.emit('player:stats:get', (resp) => {
+              if (resp && resp.success && resp.state) return resolve(resp.state);
+              resolve(null);
+            });
+            // Also rely on server-emitted 'player:state' which will update via updatePlayerFromState
+            setTimeout(() => resolve(null), 1500);
+          } else {
+            resolve(null);
+          }
+        });
+
+        data = await requestPlayerState();
+        if (data && data.position) {
+          gameState.position = data.position;
+        gameState.realm = data.realm ?? gameState.realm;
         gameState.username = typeof data.username !== 'undefined' ? data.username : gameState.username;
-        gameState.health = data.health;
-        gameState.maxHealth = data.maxHealth;
-        gameState.mana = data.mana;
-        gameState.maxMana = data.maxMana;
+        gameState.health = data.health ?? gameState.health;
+        // Accept both snake_case and camelCase shapes from different API routes
+        gameState.maxHealth = data.maxHealth ?? data.max_health ?? gameState.maxHealth;
+        gameState.mana = data.mana ?? gameState.mana;
+        gameState.maxMana = data.maxMana ?? data.max_mana ?? gameState.maxMana;
         gameState.damage = typeof data.damage !== 'undefined' ? data.damage : 0;
         gameState.armor = typeof data.armor !== 'undefined' ? data.armor : 0;
         // XP / level / stats
@@ -2372,6 +2388,10 @@
         gameState.level = typeof data.level !== 'undefined' ? data.level : 1;
         gameState.xpToNext = typeof data.xpToNext !== 'undefined' ? data.xpToNext : 0;
         gameState.stats = data.stats || { intelligence:20, dexterity:20, concentration:20, strength:20, constitution:20 };
+        } else {
+          // No socket response yet — rely on server-emitted 'player:state' or existing `gameState` defaults.
+          console.warn('No initial player state received via WebSocket; waiting for server emission');
+        }
 
         // Reveal main UI now that session is validated
         try { document.body.classList.add('authenticated'); } catch(e){}
@@ -2666,18 +2686,18 @@
       if (x < 0 || x > 6144 || y < 0 || y > 6144) return;
 
       try {
-        const formData = new URLSearchParams();
-        formData.append('x', x);
-        formData.append('y', y);
-
-        await apiCall('/player/position', {
-          method: 'POST',
-          body: formData
-        });
-
-        gameState.position = { x, y };
-        if (gameState.playerMarker) gameState.playerMarker.setLatLng([totalH - y, x]);
-        updatePlayerCoords(x, y);
+        // WebSocket-only: send position update via socket. Do not call REST.
+        if (window.socket && socket && socket.connected) {
+          socket.emit('position:update', { x, y }, (resp) => {
+            if (resp && resp.success) {
+              gameState.position = { x, y };
+              if (gameState.playerMarker) gameState.playerMarker.setLatLng([totalH - y, x]);
+              updatePlayerCoords(x, y);
+            }
+          });
+        } else {
+          console.warn('WebSocket not connected — cannot update position without REST fallback');
+        }
       } catch (error) {
         console.error('Failed to update position:', error);
       }
@@ -3229,12 +3249,16 @@
           if (typeof gameState !== 'undefined' && gameState && gameState.sessionToken) {
             headers['X-Session-Token'] = gameState.sessionToken;
           }
-          const res = await fetch('/api/player/position', { credentials: 'same-origin', headers, cache: 'no-store' });
-          if(!res.ok) return;
-          const data = await res.json();
-          if(!data || !data.success) return;
-          // Reuse the same update helper so behavior is consistent
-          if (window.updateServerTimeUI) window.updateServerTimeUI(data);
+          // WebSocket-only: request server time/player state via socket
+          if (window.socket && socket && socket.connected) {
+            socket.emit('player:stats:get', (resp) => {
+              if (resp && resp.success && resp.state) {
+                if (window.updateServerTimeUI) window.updateServerTimeUI(resp.state);
+              }
+            });
+          } else {
+            console.warn('WebSocket not connected — skipping server time fetch');
+          }
         }catch(e){ console.warn('Failed to fetch server time', e); }
       }
 

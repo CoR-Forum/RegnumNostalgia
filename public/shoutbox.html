@@ -25,10 +25,22 @@
     let lastMessageTime = 0;
 
     try{
-      const res = await fetch('/api/player/position', { method: 'GET', credentials: 'same-origin' });
-      if (res.ok) {
-        const pd = await res.json();
-        if (pd && pd.success && pd.username) currentUsername = pd.username;
+      const socket = window.getSocket && window.getSocket();
+      if (socket && socket.connected) {
+        socket.emit('player:stats:get', (resp) => {
+          if (resp && resp.success && resp.state && resp.state.username) currentUsername = resp.state.username;
+        });
+      } else {
+        // Do not call REST; wait for WebSocket connection if needed
+        window.addEventListener('websocket:connected', function onConn() {
+          window.removeEventListener('websocket:connected', onConn);
+          const s = window.getSocket && window.getSocket();
+          if (s && s.connected) {
+            s.emit('player:stats:get', (resp) => {
+              if (resp && resp.success && resp.state && resp.state.username) currentUsername = resp.state.username;
+            });
+          }
+        });
       }
     }catch(e){}
 

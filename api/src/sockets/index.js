@@ -53,11 +53,13 @@ function initializeSocketHandlers(io) {
     /**
      * Handle position updates from client
      */
-    socket.on('position:update', async (data) => {
-      const { x, y } = data;
+    socket.on('position:update', async (data, callback) => {
+      const { x, y } = data || {};
 
       if (typeof x !== 'number' || typeof y !== 'number') {
-        return socket.emit('error', { message: 'Invalid coordinates' });
+        const err = { message: 'Invalid coordinates' };
+        if (callback) return callback({ success: false, error: err.message });
+        return socket.emit('error', err);
       }
 
       try {
@@ -75,11 +77,14 @@ function initializeSocketHandlers(io) {
           realm: user.realm
         }]);
 
+        if (callback) callback({ success: true, x, y });
+
       } catch (error) {
         logger.error('Failed to update position', { 
           error: error.message,
           userId: user.userId 
         });
+        if (callback) callback({ success: false, error: 'Failed to update position' });
       }
     });
 
@@ -163,6 +168,17 @@ function initializeSocketHandlers(io) {
         if (callback) callback({ success: false, error: 'Failed to load inventory' });
       }
     });
+
+      // Provide full player stats on-demand via WebSocket
+      socket.on('player:stats:get', async (callback) => {
+        try {
+          const state = await buildPlayerState(user.userId);
+          if (callback) callback({ success: true, state });
+        } catch (err) {
+          logger.error('Failed to get player stats via socket', { error: err.message, userId: user.userId });
+          if (callback) callback({ success: false, error: 'Failed to load player stats' });
+        }
+      });
 
     /**
      * Handle equipment requests
@@ -372,6 +388,14 @@ function initializeSocketHandlers(io) {
           });
         }
 
+        // Emit updated player stats to the player who equipped the item
+        try {
+          const updatedState = await buildPlayerState(user.userId);
+          if (updatedState) socket.emit('player:state', updatedState);
+        } catch (err) {
+          logger.error('Failed to emit updated player state after equip', { error: err.message, userId: user.userId });
+        }
+
       } catch (error) {
         logger.error('Failed to equip item', { 
           error: error.message, 
@@ -428,6 +452,14 @@ function initializeSocketHandlers(io) {
             slot,
             unequippedInventoryId: inventoryId
           });
+        }
+
+        // Emit updated player stats to the player who unequipped the item
+        try {
+          const updatedState = await buildPlayerState(user.userId);
+          if (updatedState) socket.emit('player:state', updatedState);
+        } catch (err) {
+          logger.error('Failed to emit updated player state after unequip', { error: err.message, userId: user.userId });
         }
 
       } catch (error) {
@@ -570,18 +602,9 @@ function initializeSocketHandlers(io) {
  */
 async function sendInitialGameState(socket, user) {
   try {
-    // Get player's current state
-    const [playerRows] = await gameDb.query(
-      `SELECT user_id, username, realm, x, y, health, max_health, mana, max_mana,
-              xp, level, intelligence, dexterity, concentration, strength, constitution
-       FROM players
-       WHERE user_id = ?`,
-      [user.userId]
-    );
-
-    if (playerRows.length > 0) {
-      socket.emit('player:state', playerRows[0]);
-    }
+    // Emit full player state using helper (keeps logic consistent with HTTP endpoint)
+    const state = await buildPlayerState(user.userId);
+    if (state) socket.emit('player:state', state);
 
     // Get all online players
     const [onlinePlayers] = await gameDb.query(
@@ -666,6 +689,115 @@ async function sendInitialGameState(socket, user) {
     });
   }
 }
+
+/**
+ * Build the full player state (same fields as /player/position)
+ */
+async function buildPlayerState(userId) {
+  const [playerRows] = await gameDb.query(
+    `SELECT p.*, 
+      COALESCE(e.head, 0) as eq_head,
+      COALESCE(e.body, 0) as eq_body,
+      COALESCE(e.hands, 0) as eq_hands,
+      COALESCE(e.shoulders, 0) as eq_shoulders,
+      COALESCE(e.legs, 0) as eq_legs,
+      COALESCE(e.weapon_right, 0) as eq_weapon_right,
+      COALESCE(e.weapon_left, 0) as eq_weapon_left,
+      COALESCE(e.ring_right, 0) as eq_ring_right,
+      COALESCE(e.ring_left, 0) as eq_ring_left,
+      COALESCE(e.amulet, 0) as eq_amulet
+    FROM players p
+    LEFT JOIN equipment e ON p.user_id = e.user_id
+    WHERE p.user_id = ?`,
+    [userId]
+  );
+
+  if (playerRows.length === 0) return null;
+  const player = playerRows[0];
+
+  const equipmentIds = [
+    player.eq_head, player.eq_body, player.eq_hands, player.eq_shoulders,
+    player.eq_legs, player.eq_weapon_right, player.eq_weapon_left,
+    player.eq_ring_right, player.eq_ring_left, player.eq_amulet
+  ].filter(id => id > 0);
+
+  let totalDamageBonus = 0;
+  let totalArmorBonus = 0;
+
+  if (equipmentIds.length > 0) {
+    const [itemRows] = await gameDb.query(
+      `SELECT i.stats FROM inventory inv
+       JOIN items i ON inv.item_id = i.item_id
+       WHERE inv.inventory_id IN (?)`,
+      [equipmentIds]
+    );
+
+    itemRows.forEach(row => {
+      if (row.stats) {
+        const stats = typeof row.stats === 'string' ? JSON.parse(row.stats) : row.stats;
+        totalDamageBonus += stats.damage || 0;
+        totalArmorBonus += stats.armor || 0;
+      }
+    });
+  }
+
+  const baseDamage = player.strength * 0.5 + player.intelligence * 0.3;
+  const baseArmor = player.constitution * 0.5 + player.dexterity * 0.3;
+
+  // Get walker status
+  const [walkerRows] = await gameDb.query(
+    `SELECT walker_id, current_index, positions, status 
+     FROM walkers 
+     WHERE user_id = ? AND status = 'walking' 
+     ORDER BY started_at DESC LIMIT 1`,
+    [userId]
+  );
+
+  let walkerStatus = null;
+  if (walkerRows.length > 0) {
+    const walker = walkerRows[0];
+    const positions = typeof walker.positions === 'string' ? JSON.parse(walker.positions) : walker.positions;
+    walkerStatus = {
+      walkerId: walker.walker_id,
+      currentIndex: walker.current_index,
+      totalSteps: positions.length,
+      destination: positions[positions.length - 1]
+    };
+  }
+
+  // Get server time
+  const [timeRows] = await gameDb.query('SELECT * FROM server_time WHERE id = 1');
+  const serverTime = timeRows.length > 0 ? {
+    ingameHour: timeRows[0].ingame_hour,
+    ingameMinute: timeRows[0].ingame_minute,
+    startedAt: timeRows[0].started_at
+  } : null;
+
+  return {
+    userId: player.user_id,
+    username: player.username,
+    realm: player.realm,
+    position: { x: player.x, y: player.y },
+    health: player.health,
+    maxHealth: player.max_health,
+    mana: player.mana,
+    maxMana: player.max_mana,
+    xp: player.xp,
+    level: player.level,
+    stats: {
+      intelligence: player.intelligence,
+      dexterity: player.dexterity,
+      concentration: player.concentration,
+      strength: player.strength,
+      constitution: player.constitution
+    },
+    damage: Math.round(baseDamage + totalDamageBonus),
+    armor: Math.round(baseArmor + totalArmorBonus),
+    walker: walkerStatus,
+    serverTime
+  };
+}
+
 
 /**
  * Broadcast online players list every 2 seconds
