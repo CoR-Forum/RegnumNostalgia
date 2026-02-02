@@ -1987,6 +1987,7 @@
     })();
 
     let currentTooltip = null;
+    let pendingTooltipTimer = null;
 
     function positionTooltip(tooltip, anchorEl) {
       if (!tooltip || !anchorEl) return;
@@ -2005,109 +2006,87 @@
     function showTooltip(event, item) {
       hideTooltip();
 
-      const tooltip = document.createElement('div');
-      tooltip.className = 'item-tooltip';
+      // Clear any previously scheduled tooltip creation
+      try { if (pendingTooltipTimer) { clearTimeout(pendingTooltipTimer.timer); pendingTooltipTimer = null; } } catch(e){}
 
+      const anchorEl = event.currentTarget || event.target;
       const tooltipIconName = item.iconName || item.icon_name;
       const tooltipIconSrc = tooltipIconName ? `assets/v1/items/${tooltipIconName}` : '';
-
-      // Format stats
-      let statsHtml = '';
-      if (item.stats && Object.keys(item.stats).length > 0) {
-        const statsParts = Object.entries(item.stats).map(([key, value]) => {
-          return `+${value} ${key.replace('_', ' ')}`;
-        });
-        statsHtml = `<div class="tooltip-stats">${statsParts.join('<br>')}</div>`;
-      }
-
       const rarityClass = (item.rarity || 'common');
 
-      // Initial placeholder content — details may be lazy-loaded via WebSocket
-      tooltip.innerHTML = `
-        <div class="tooltip-header">
-          <div class="tooltip-icon">${tooltipIconSrc ? `<img src="${tooltipIconSrc}" alt="${getItemName(item)}">` : ''}</div>
-          <div class="tooltip-title">
-            <div class="tooltip-name ${rarityClass}">${getItemName(item)} ${typeof item.level !== 'undefined' ? `<span class="tooltip-level">Lv ${item.level}</span>` : ''}</div>
+      // Schedule tooltip creation after 200ms. If the pointer moves away
+      // before this timer fires, the tooltip will not be shown.
+      const timer = setTimeout(() => {
+        // Create and append tooltip now
+        const tooltip = document.createElement('div');
+        tooltip.className = 'item-tooltip';
+
+        // Basic header (name + icon) shown after 200ms; detailed fields
+        // will be filled in when the server responds.
+        tooltip.innerHTML = `
+          <div class="tooltip-header">
+            <div class="tooltip-icon">${tooltipIconSrc ? `<img src="${tooltipIconSrc}" alt="${getItemName(item)}">` : ''}</div>
+            <div class="tooltip-title">
+              <div class="tooltip-name ${rarityClass}">${getItemName(item)} ${typeof item.level !== 'undefined' ? `<span class="tooltip-level">Lv ${item.level}</span>` : ''}</div>
+            </div>
           </div>
-        </div>
-        <div class="tooltip-type">${getItemTypeLabel(item)}</div>
-        <div class="tooltip-description" style="opacity:0.8;font-style:italic;">${(item.description ? `"${item.description}"` : 'Loading item details...')}</div>
-        ${statsHtml}
-        <div class="tooltip-rarity ${rarityClass}">${rarityClass}</div>
-      `;
+          <div class="tooltip-type">${getItemTypeLabel(item)}</div>
+          <div class="tooltip-rarity ${rarityClass}">${rarityClass}</div>
+        `;
 
-      document.body.appendChild(tooltip);
-      // Ensure tooltip appears above movable windows by using
-      // the shared window z-index tracker (initWindow sets this).
-      if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
-      try { tooltip.style.zIndex = String(++window.__windowTopZ); } catch (e) { tooltip.style.zIndex = '40000'; }
-      currentTooltip = tooltip;
+        document.body.appendChild(tooltip);
+        if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
+        try { tooltip.style.zIndex = String(++window.__windowTopZ); } catch (e) { tooltip.style.zIndex = '40000'; }
+        currentTooltip = tooltip;
+        tooltip.__anchorEl = anchorEl;
+        requestAnimationFrame(() => positionTooltip(tooltip, anchorEl));
 
-      // Always request full details via WebSocket using its inventory id
-      // on every hover (do not cache server-provided details client-side).
-      const invId = item.inventoryId || item.inventory_id || item.inventoryId || null;
-      if (invId && window.getSocket) {
-        try {
-          const sock = window.getSocket();
-          if (sock && sock.connected) {
-            // Debounce requests to avoid spamming the server when mouse moves quickly.
-            if (tooltip.__detailsTimer) clearTimeout(tooltip.__detailsTimer);
-            tooltip.__detailsTimer = setTimeout(() => {
-              try {
-                // Ensure tooltip is still active
-                if (!currentTooltip || currentTooltip !== tooltip) return;
-                // Tag tooltip with the requested inventory id so late responses
-                // don't overwrite a newer tooltip instance.
-                tooltip.__requestInventoryId = String(invId);
-                sock.emit('item:details', { inventoryId: invId }, (resp) => {
-                  try {
-                    if (!resp || !resp.success) return;
-                    const det = resp.item || {};
-                    // Only apply if tooltip still exists and matches this request
-                    if (!currentTooltip || currentTooltip !== tooltip) return;
-                    if (String(tooltip.__requestInventoryId) !== String(invId)) return;
+        // After showing tooltip, fetch fresh details with a request
+        const invId = item.inventoryId || item.inventory_id || item.inventoryId || null;
+        if (invId && window.getSocket) {
+          try {
+            const sock = window.getSocket();
+            if (sock && sock.connected) {
+              tooltip.__requestInventoryId = String(invId);
+              sock.emit('item:details', { inventoryId: invId }, (resp) => {
+                try {
+                  if (!resp || !resp.success) return;
+                  const det = resp.item || {};
+                  if (!currentTooltip || currentTooltip !== tooltip) return;
+                  if (String(tooltip.__requestInventoryId) !== String(invId)) return;
 
-                    // Rebuild stats HTML
-                    let newStatsHtml = '';
-                    if (det.stats && Object.keys(det.stats || {}).length > 0) {
-                      const parts = Object.entries(det.stats).map(([k,v]) => `+${v} ${k.replace('_',' ')}`);
-                      newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
-                    }
+                  let newStatsHtml = '';
+                  if (det.stats && Object.keys(det.stats || {}).length > 0) {
+                    const parts = Object.entries(det.stats).map(([k,v]) => `+${v} ${k.replace('_',' ')}`);
+                    newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
+                  }
 
-                    const newIconName = det.icon_name || det.iconName || null;
-                    const newIconSrc = newIconName ? `assets/v1/items/${newIconName}` : (tooltipIconSrc || '');
+                  const newIconName = det.icon_name || det.iconName || null;
+                  const newIconSrc = newIconName ? `assets/v1/items/${newIconName}` : (tooltipIconSrc || '');
+                  const newRarity = det.rarity || rarityClass;
 
-                    const newRarity = det.rarity || rarityClass;
-
-                    tooltip.innerHTML = `
-                      <div class="tooltip-header">
-                        <div class="tooltip-icon">${newIconSrc ? `<img src="${newIconSrc}" alt="${getItemName(det)}">` : ''}</div>
-                        <div class="tooltip-title">
-                          <div class="tooltip-name ${newRarity}">${getItemName(det)} ${typeof det.level !== 'undefined' ? `<span class="tooltip-level">Lv ${det.level}</span>` : ''}</div>
-                        </div>
+                  tooltip.innerHTML = `
+                    <div class="tooltip-header">
+                      <div class="tooltip-icon">${newIconSrc ? `<img src="${newIconSrc}" alt="${getItemName(det)}">` : ''}</div>
+                      <div class="tooltip-title">
+                        <div class="tooltip-name ${newRarity}">${getItemName(det)} ${typeof det.level !== 'undefined' ? `<span class="tooltip-level">Lv ${det.level}</span>` : ''}</div>
                       </div>
-                      <div class="tooltip-type">${getItemTypeLabel(det)}</div>
-                      ${det.description ? `<div class="tooltip-description">"${det.description}"</div>` : ''}
-                      ${newStatsHtml}
-                      <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
-                    `;
+                    </div>
+                    <div class="tooltip-type">${getItemTypeLabel(det)}</div>
+                    ${det.description ? `<div class="tooltip-description">"${det.description}"</div>` : ''}
+                    ${newStatsHtml}
+                    <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
+                  `;
 
-                    // Reposition after content update
-                    requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
-                  } catch (e) { console.error('Failed to apply item details to tooltip', e); }
-                });
-              } catch (e) { /* ignore socket errors */ }
-            }, 200);
-          }
-        } catch (e) { /* ignore socket errors */ }
-      }
+                  requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
+                } catch (e) { console.error('Failed to apply item details to tooltip', e); }
+              });
+            }
+          } catch (e) { /* ignore socket errors */ }
+        }
+      }, 200);
 
-      // Anchor tooltip to the hovered inventory/equipment element
-      const anchorEl = event.currentTarget || event.target;
-      tooltip.__anchorEl = anchorEl;
-
-      // Position after next frame so layout/measurements are accurate
-      requestAnimationFrame(() => positionTooltip(tooltip, anchorEl));
+      pendingTooltipTimer = { timer, anchorEl };
     }
 
     function moveTooltip(event) {
@@ -2131,6 +2110,7 @@
         currentTooltip.remove();
         currentTooltip = null;
       }
+      try { if (pendingTooltipTimer) { clearTimeout(pendingTooltipTimer.timer); pendingTooltipTimer = null; } } catch(e){}
     }
 
     // Equipment rendering and drag/drop handlers
