@@ -17,7 +17,7 @@
 <div id="settings-window" class="ui-window" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px; height: 360px; z-index: 10000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
   <div id="settings-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
     <h2 style="margin: 0; flex: 1; font-size: 10px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Settings</h2>
-    <button id="settings-close-btn" class="ui-window-close-btn"></button>
+    <button id="settings-close-btn" class="ui-window-close-btn" onclick="(function(){const w=document.getElementById('settings-window'); if (w) w.style.display='none';})();"></button>
   </div>
   <div class="ui-window-body" style="padding: 10px 12px; color: #ddd; overflow: auto; height: 200px; font-size: 11px;">
     <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-top:20px;">
