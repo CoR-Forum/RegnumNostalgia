@@ -1667,7 +1667,7 @@
             if (musicAudio) {
               musicAudio.pause();
             }
-            musicAudio = new Audio(`/assets/music/${file}`);
+            musicAudio = new Audio('https://cor-forum.de/regnum/RegnumNostalgia/music/' + file);
             musicAudio.loop = !!loop;
             musicAudio.volume = typeof volume === 'number' ? volume : 0.6;
             return musicAudio.play().then(() => {
@@ -1736,7 +1736,7 @@
         function playSfx(file, volume = 1.0) {
           if (!file) return;
           try {
-            const s = new Audio(`/assets/sounds/${file}`);
+            const s = new Audio('https://cor-forum.de/regnum/RegnumNostalgia/sounds/' + file);
             s.volume = typeof volume === 'number' ? volume : 1.0;
             s.play().catch(() => {});
           } catch (e) {
