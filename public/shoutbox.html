@@ -1,3 +1,15 @@
+<style>
+/* Dark scrollbar for shoutbox messages */
+#sbMessages {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(0,0,0,0.6) rgba(0,0,0,0.08);
+}
+#sbMessages::-webkit-scrollbar { width: 8px; height: 8px; }
+#sbMessages::-webkit-scrollbar-track { background: rgba(0,0,0,0.08); border-radius: 6px; }
+#sbMessages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); border-radius: 6px; border: 2px solid rgba(0,0,0,0); background-clip: padding-box; }
+#sbMessages::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.75); }
+</style>
+
 <div id="shoutbox-window" class="ui-window" style="position: absolute; left: 0px; bottom: 52px; width: 300px; z-index: 20005; display: flex; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
   <div id="shoutbox-header" class="ui-window-titlebar" style="display:flex; justify-content: space-between; align-items: center; user-select: none;">
     <h2 style="margin:0; flex:1; font-size:11px; font-weight:700; color:#ffffff; text-align: center;">Chat</h2>
@@ -8,8 +20,8 @@
     <div id="sbMessages" style="height:140px; overflow-y:auto; overflow-x:hidden; padding:4px; background: transparent; color: #e6e6e6; font-size:13px; word-wrap: break-word; overflow-wrap: break-word;"></div>
 
     <div style="display:flex; gap:4px; align-items:center;">
-      <input id="sbMessage" type="text" placeholder="Message" style="flex:1; background:#171717; border:1px solid #333; color:#e6e6e6; padding:4px; font-size:13px; border-radius:4px" />
-      <button id="sbSend" class="btn" style="flex:0 0 auto; width:64px">Send</button>
+      <input id="sbMessage" type="text" placeholder="Message" style="flex:1; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.22); color:#e6e6e6; padding:6px; font-size:13px; border-radius:4px" />
+      <button id="sbSend" class="btn" style="flex:0 0 auto; width:64px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.16); color:#e6e6e6; padding:6px 8px; border-radius:4px">Send</button>
     </div>
   </div>
 </div>
@@ -278,5 +290,48 @@
       });
       try{ ob.observe(document.body, { attributes: true, attributeFilter: ['class'] }); }catch(e){}
     }
+
+    // Ensure close button creates a small open button so users can reopen the shoutbox
+    try {
+      const shoutboxCloseBtn = document.getElementById('shoutbox-close-btn');
+      function createOpenButton() {
+        if (document.getElementById('shoutbox-open-btn')) return;
+        const openBtn = document.createElement('button');
+        openBtn.id = 'shoutbox-open-btn';
+        openBtn.title = 'Open Chat';
+        openBtn.textContent = 'Chat';
+        openBtn.style.position = 'absolute';
+        openBtn.style.left = '0px';
+        openBtn.style.bottom = '52px';
+        openBtn.style.width = '64px';
+        openBtn.style.zIndex = '20005';
+        openBtn.style.cursor = 'pointer';
+        openBtn.style.padding = '6px';
+        openBtn.style.background = 'linear-gradient(180deg, #1b2b44, #11202f)';
+        openBtn.style.color = '#e6e6e6';
+        openBtn.style.border = '1px solid #25446a';
+        openBtn.style.borderRadius = '4px';
+        openBtn.addEventListener('click', () => {
+          try { sbWin.style.display = 'flex'; } catch (e) {}
+          try { fetchMessages(); } catch (e) {}
+          openBtn.remove();
+        });
+        (document.body || document.documentElement).appendChild(openBtn);
+      }
+
+      if (shoutboxCloseBtn) {
+        shoutboxCloseBtn.addEventListener('click', (e) => {
+          try { sbWin.style.display = 'none'; } catch (err) {}
+          try { createOpenButton(); } catch (err) {}
+        });
+      }
+
+      // Expose a global helper so other parts of the app can reopen the shoutbox
+      window.openShoutbox = function() {
+        try { sbWin.style.display = 'flex'; } catch (e) {}
+        try { fetchMessages(); } catch (e) {}
+        const b = document.getElementById('shoutbox-open-btn'); if (b) b.remove();
+      };
+    } catch (e) {}
   })();
 </script>
