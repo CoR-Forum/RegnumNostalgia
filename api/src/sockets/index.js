@@ -277,8 +277,16 @@ function initializeSocketHandlers(io) {
 
         const [items] = await gameDb.query(query, params);
 
-        // Return rows as-is (no stats parsing) — minimal payload
-        const inventory = items.map(item => ({ ...item }));
+        // Map DB snake_case fields to camelCase payload for clients
+        const inventory = items.map(item => ({
+          inventoryId: item.inventory_id,
+          itemId: item.item_id,
+          quantity: item.quantity,
+          acquiredAt: item.acquired_at,
+          templateKey: item.template_key,
+          name: item.name,
+          iconName: item.icon_name
+        }));
 
         if (callback) callback({ success: true, items: inventory });
       } catch (error) {
@@ -350,7 +358,12 @@ function initializeSocketHandlers(io) {
           );
 
           itemRows.forEach(item => {
-            itemDetails[item.inventory_id] = { ...item };
+            itemDetails[item.inventory_id] = {
+              inventoryId: item.inventory_id,
+              templateKey: item.template_key,
+              name: item.name,
+              iconName: item.icon_name
+            };
           });
         }
 
@@ -393,10 +406,24 @@ function initializeSocketHandlers(io) {
               return;
             }
 
-            const item = rows[0];
-            item.stats = typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats;
+            const it = rows[0];
+            it.stats = typeof it.stats === 'string' ? JSON.parse(it.stats) : it.stats;
 
-            if (callback) callback({ success: true, item });
+            const detail = {
+              inventoryId: it.inventory_id,
+              quantity: it.quantity,
+              templateKey: it.template_key,
+              name: it.name,
+              type: it.type,
+              description: it.description,
+              stats: it.stats,
+              rarity: it.rarity,
+              level: it.level,
+              equipmentSlot: it.equipment_slot,
+              iconName: it.icon_name
+            };
+
+            if (callback) callback({ success: true, item: detail });
           } catch (error) {
             logger.error('Failed to fetch item details', { error: error.message, userId: user.userId });
             if (callback) callback({ success: false, error: 'Failed to load item details' });
@@ -607,8 +634,17 @@ function initializeSocketHandlers(io) {
         // Reverse to get chronological order (oldest first)
         const chronological = messages.reverse();
 
+        // Normalize keys to camelCase
+        const msgs = chronological.map(m => ({
+          entryId: m.entryID,
+          userId: m.userID,
+          username: m.username,
+          time: m.time,
+          message: m.message
+        }));
+
         if (callback) {
-          callback({ success: true, messages: chronological });
+          callback({ success: true, messages: msgs });
         }
 
         logger.info('Shoutbox messages retrieved', { 
@@ -651,8 +687,8 @@ function initializeSocketHandlers(io) {
         );
 
         const messageData = {
-          entryID: result.insertId,
-          userID: user.userId,
+          entryId: result.insertId,
+          userId: user.userId,
           username: user.username,
           time: timestamp,
           message: message.trim()
@@ -735,7 +771,18 @@ async function sendInitialGameState(socket, user) {
       [ONLINE_THRESHOLD_SECONDS]
     );
 
-    socket.emit('players:online', { players: onlinePlayers });
+    const playersPayload = onlinePlayers.map(p => ({
+      userId: p.user_id,
+      username: p.username,
+      realm: p.realm,
+      x: p.x,
+      y: p.y,
+      level: p.level,
+      health: p.health,
+      maxHealth: p.max_health
+    }));
+
+    socket.emit('players:online', { players: playersPayload });
 
     // Get territories
     const [territories] = await gameDb.query(
@@ -745,7 +792,22 @@ async function sendInitialGameState(socket, user) {
        ORDER BY territory_id`
     );
 
-    socket.emit('territories:list', { territories });
+    const territoriesPayload = territories.map(t => ({
+      territoryId: t.territory_id,
+      realm: t.realm,
+      name: t.name,
+      type: t.type,
+      health: t.health,
+      maxHealth: t.max_health,
+      x: t.x,
+      y: t.y,
+      ownerRealm: t.owner_realm,
+      contested: !!t.contested,
+      iconName: t.icon_name,
+      iconNameContested: t.icon_name_contested
+    }));
+
+    socket.emit('territories:list', { territories: territoriesPayload });
 
     // Get superbosses
     const [superbosses] = await gameDb.query(
@@ -754,7 +816,17 @@ async function sendInitialGameState(socket, user) {
        ORDER BY boss_id`
     );
 
-    socket.emit('superbosses:list', { superbosses });
+    const superbossesPayload = superbosses.map(b => ({
+      bossId: b.boss_id,
+      name: b.name,
+      iconName: b.icon_name,
+      health: b.health,
+      maxHealth: b.max_health,
+      x: b.x,
+      y: b.y
+    }));
+
+    socket.emit('superbosses:list', { superbosses: superbossesPayload });
 
     // Get server time
     const [timeRows] = await gameDb.query(
@@ -762,7 +834,12 @@ async function sendInitialGameState(socket, user) {
     );
 
     if (timeRows.length > 0) {
-      socket.emit('time:current', timeRows[0]);
+      const tr = timeRows[0];
+      socket.emit('time:current', {
+        ingameHour: tr.ingame_hour,
+        ingameMinute: tr.ingame_minute,
+        startedAt: tr.started_at
+      });
     }
 
     // Send paths and regions data (load directly from gameData JSON)
@@ -976,7 +1053,18 @@ function startOnlinePlayersBroadcast(io) {
         [ONLINE_THRESHOLD_SECONDS]
       );
 
-      io.emit('players:online', { players });
+      const playersPayload = players.map(p => ({
+        userId: p.user_id,
+        username: p.username,
+        realm: p.realm,
+        x: p.x,
+        y: p.y,
+        level: p.level,
+        health: p.health,
+        maxHealth: p.max_health
+      }));
+
+      io.emit('players:online', { players: playersPayload });
 
     } catch (error) {
       logger.error('Failed to broadcast online players', { error: error.message });
@@ -1022,8 +1110,8 @@ async function startShoutboxPolling(io) {
         // Broadcast each new message to all clients
         messages.forEach(msg => {
           io.emit('shoutbox:message', {
-            entryID: msg.entryID,
-            userID: msg.userID,
+            entryId: msg.entryID,
+            userId: msg.userID,
             username: msg.username,
             time: msg.time,
             message: msg.message

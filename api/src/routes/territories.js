@@ -18,7 +18,24 @@ router.get('/', authenticateJWT, async (req, res) => {
        ORDER BY territory_id`
     );
 
-    res.json({ territories });
+    const payload = territories.map(t => ({
+      territoryId: t.territory_id,
+      realm: t.realm,
+      name: t.name,
+      type: t.type,
+      health: t.health,
+      maxHealth: t.max_health,
+      x: t.x,
+      y: t.y,
+      ownerRealm: t.owner_realm,
+      ownerPlayers: t.owner_players,
+      contested: !!t.contested,
+      contestedSince: t.contested_since,
+      iconName: t.icon_name,
+      iconNameContested: t.icon_name_contested
+    }));
+
+    res.json({ territories: payload });
 
   } catch (error) {
     logger.error('Failed to get territories', { error: error.message });

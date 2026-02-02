@@ -184,7 +184,18 @@ router.get('/online', authenticateJWT, async (req, res) => {
       [ONLINE_THRESHOLD_SECONDS]
     );
 
-    res.json({ players });
+    const playersPayload = players.map(p => ({
+      userId: p.user_id,
+      username: p.username,
+      realm: p.realm,
+      x: p.x,
+      y: p.y,
+      level: p.level,
+      health: p.health,
+      maxHealth: p.max_health
+    }));
+
+    res.json({ players: playersPayload });
 
   } catch (error) {
     logger.error('Failed to get online players', { error: error.message });

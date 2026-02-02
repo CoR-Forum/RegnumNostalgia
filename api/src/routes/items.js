@@ -17,10 +17,19 @@ router.get('/', optionalAuth, async (req, res) => {
        ORDER BY type, level, name`
     );
 
-    // Parse stats JSON
+    // Parse stats JSON and normalize keys to camelCase
     const parsedItems = items.map(item => ({
-      ...item,
-      stats: typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats
+      itemId: item.item_id,
+      templateKey: item.template_key,
+      name: item.name,
+      type: item.type,
+      description: item.description,
+      stats: typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats,
+      rarity: item.rarity,
+      stackable: !!item.stackable,
+      level: item.level,
+      equipmentSlot: item.equipment_slot,
+      iconName: item.icon_name
     }));
 
     res.json({ items: parsedItems });

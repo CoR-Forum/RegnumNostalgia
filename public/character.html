@@ -152,12 +152,12 @@
   }
 
   function getEquipIconSrc(item){
-    const iconName = item.iconName || item.icon_name;
+    const iconName = item.iconName;
     return iconName ? `assets/v1/items/${iconName}` : '';
   }
 
   function getItemTypeLabel(item){
-    const slot = item.equipmentSlot || item.equipment_slot || null;
+    const slot = item.equipmentSlot || null;
     if(slot){
       switch(slot){
         case 'head': return 'Armor (Head)';
@@ -199,13 +199,13 @@
             const tooltipItem = {
               itemName: it.name || it.itemName || '',
               itemType: it.type || it.itemType || '',
-              equipmentSlot: it.equipmentSlot || it.equipment_slot || null,
+                equipmentSlot: it.equipmentSlot || null,
               description: it.description || '',
               stats: it.stats || {},
               rarity: it.rarity || 'common',
               quantity: it.quantity || 1,
               level: typeof it.level !== 'undefined' ? it.level : 1,
-              iconName: it.iconName || it.icon_name || null
+              iconName: it.iconName || null
             };
             showTooltip(e, tooltipItem);
           });

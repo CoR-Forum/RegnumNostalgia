@@ -1041,8 +1041,8 @@
     /**
      * @typedef {{x:number,y:number}} Coords
      * @typedef {{inventoryId?:number,item?:Object}} EquipmentSlotInfo
-     * @typedef {{itemName:string,iconName?:string,icon_name?:string,rarity?:string,level?:number,quantity?:number,equipmentSlot?:string,equipment_slot?:string,stats?:Object,description?:string,itemType?:string}} Item
-     * @typedef {{success?:boolean,position?:Coords,realm?:string,username?:string,health?:number,maxHealth?:number,mana?:number,maxMana?:number,damage?:number,armor?:number,xp?:number,xpToNext?:number,level?:number,stats?:Object,className?:string,class?:string}} PlayerPositionResponse
+    * @typedef {{itemName:string,iconName?:string,rarity?:string,level?:number,quantity?:number,equipmentSlot?:string,stats?:Object,description?:string,itemType?:string}} Item
+    * @typedef {{success?:boolean,position?:Coords,realm?:string,username?:string,health?:number,maxHealth?:number,mana?:number,maxMana?:number,damage?:number,armor?:number,xp?:number,xpToNext?:number,level?:number,stats?:Object,className?:string}} PlayerPositionResponse
      */
 
     // Configuration: 3 rows, 3 columns, tiles named `tiles/{row}-{col}.png`
@@ -1452,10 +1452,10 @@
         // Real-time health/mana updates
         if (data.userId === gameState.userId) {
           gameState.health = data.health ?? gameState.health;
-          // Accept either camelCase or snake_case from different server payloads
-          gameState.maxHealth = data.maxHealth ?? data.max_health ?? gameState.maxHealth;
+          // Use camelCase fields from WebSocket payload
+          gameState.maxHealth = data.maxHealth ?? gameState.maxHealth;
           gameState.mana = data.mana ?? gameState.mana;
-          gameState.maxMana = data.maxMana ?? data.max_mana ?? gameState.maxMana;
+          gameState.maxMana = data.maxMana ?? gameState.maxMana;
           try { 
             if (window.updatePlayerStats) {
               window.updatePlayerStats();
@@ -1463,7 +1463,7 @@
           } catch (e) {}
 
           // If server sent only current values but not max values, request full stats once
-          if (typeof data.maxHealth === 'undefined' && typeof data.max_health === 'undefined') {
+          if (typeof data.maxHealth === 'undefined') {
             try {
               const sock = window.getSocket && window.getSocket();
               if (sock && sock.connected) {
@@ -1815,33 +1815,32 @@
     }
 
     function updatePlayerFromState(data) {
-      if (data.user_id !== undefined) gameState.userId = data.user_id;
-      if (data.userId !== undefined) gameState.userId = data.userId;
-      if (data.username !== undefined) gameState.username = data.username;
-      if (data.realm !== undefined) gameState.realm = data.realm;
-      // Handle both nested position object and flat x/y properties
-      if (data.position !== undefined) {
-        if (data.position.x !== undefined) gameState.position.x = data.position.x;
-        if (data.position.y !== undefined) gameState.position.y = data.position.y;
-      }
-      if (data.x !== undefined) gameState.position.x = data.x;
-      if (data.y !== undefined) gameState.position.y = data.y;
-      if (data.health !== undefined) gameState.health = data.health;
-      // support both snake_case and camelCase from different API payloads
-      if (data.max_health !== undefined || data.maxHealth !== undefined) gameState.maxHealth = data.maxHealth ?? data.max_health;
-      if (data.mana !== undefined) gameState.mana = data.mana;
-      if (data.max_mana !== undefined || data.maxMana !== undefined) gameState.maxMana = data.maxMana ?? data.max_mana;
-      if (data.xp !== undefined || data.xp !== undefined) gameState.xp = data.xp ?? gameState.xp;
-      if (data.level !== undefined || data.level !== undefined) gameState.level = data.level ?? gameState.level;
-      if (data.intelligence !== undefined || data.strength !== undefined || data.intelligence !== undefined) {
-        gameState.stats = {
-          intelligence: data.intelligence ?? gameState.stats?.intelligence ?? 20,
-          dexterity: data.dexterity ?? gameState.stats?.dexterity ?? 20,
-          concentration: data.concentration ?? gameState.stats?.concentration ?? 20,
-          strength: data.strength ?? gameState.stats?.strength ?? 20,
-          constitution: data.constitution ?? gameState.stats?.constitution ?? 20
-        };
-      }
+          if (data.userId !== undefined) gameState.userId = data.userId;
+          if (data.username !== undefined) gameState.username = data.username;
+          if (data.realm !== undefined) gameState.realm = data.realm;
+          // Handle nested position object and flat x/y properties (camelCase)
+          if (data.position !== undefined) {
+            if (data.position.x !== undefined) gameState.position.x = data.position.x;
+            if (data.position.y !== undefined) gameState.position.y = data.position.y;
+          }
+          if (data.x !== undefined) gameState.position.x = data.x;
+          if (data.y !== undefined) gameState.position.y = data.y;
+          if (data.health !== undefined) gameState.health = data.health;
+          // Prefer camelCase fields from server
+          if (data.maxHealth !== undefined) gameState.maxHealth = data.maxHealth;
+          if (data.mana !== undefined) gameState.mana = data.mana;
+          if (data.maxMana !== undefined) gameState.maxMana = data.maxMana;
+          if (data.xp !== undefined) gameState.xp = data.xp;
+          if (data.level !== undefined) gameState.level = data.level;
+          if (data.intelligence !== undefined || data.strength !== undefined || data.dexterity !== undefined) {
+            gameState.stats = {
+              intelligence: data.intelligence ?? gameState.stats?.intelligence ?? 20,
+              dexterity: data.dexterity ?? gameState.stats?.dexterity ?? 20,
+              concentration: data.concentration ?? gameState.stats?.concentration ?? 20,
+              strength: data.strength ?? gameState.stats?.strength ?? 20,
+              constitution: data.constitution ?? gameState.stats?.constitution ?? 20
+            };
+          }
       // Update player marker position if coordinates changed
       if ((data.position || data.x !== undefined || data.y !== undefined) && gameState.playerMarker) {
         const latLng = [totalH - gameState.position.y, gameState.position.x];
@@ -2336,7 +2335,7 @@
         const itemDiv = document.createElement('div');
         itemDiv.className = 'inventory-item';
 
-        const iconName = item.iconName || item.icon_name;
+        const iconName = item.iconName;
         const iconSrc = iconName ? `assets/v1/items/${iconName}` : '';
         const iconHtml = iconSrc ? `<img src="${iconSrc}" alt="${getItemName(item)}">` : '';
 
@@ -2349,8 +2348,8 @@
         `;
 
         // Make draggable and attach dragstart payload (include equipmentSlot)
-        const invId = item.inventoryId ?? item.inventory_id ?? item.inventoryId ?? item.inventoryId;
-        const equipSlot = item.equipmentSlot ?? item.equipment_slot ?? null;
+        const invId = item.inventoryId;
+        const equipSlot = item.equipmentSlot ?? null;
         itemDiv.draggable = true;
         itemDiv.dataset.inventoryId = invId;
         itemDiv.dataset.equipmentSlot = equipSlot || '';
@@ -2454,7 +2453,7 @@
       try { if (pendingTooltipTimer) { clearTimeout(pendingTooltipTimer.timer); pendingTooltipTimer = null; } } catch(e){}
 
       const anchorEl = event.currentTarget || event.target;
-      const tooltipIconName = item.iconName || item.icon_name;
+      const tooltipIconName = item.iconName;
       const tooltipIconSrc = tooltipIconName ? `assets/v1/items/${tooltipIconName}` : '';
       const rarityClass = (item.rarity || 'common');
 
@@ -2486,7 +2485,7 @@
         requestAnimationFrame(() => positionTooltip(tooltip, anchorEl));
 
         // After showing tooltip, fetch fresh details with a request
-        const invId = item.inventoryId || item.inventory_id || item.inventoryId || null;
+        const invId = item.inventoryId || null;
         if (invId && window.getSocket) {
           try {
             const sock = window.getSocket();
@@ -2505,7 +2504,7 @@
                     newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
                   }
 
-                  const newIconName = det.icon_name || det.iconName || null;
+                  const newIconName = det.iconName || null;
                   const newIconSrc = newIconName ? `assets/v1/items/${newIconName}` : (tooltipIconSrc || '');
                   const newRarity = det.rarity || rarityClass;
 
@@ -2559,13 +2558,13 @@
 
     // Equipment rendering and drag/drop handlers
     function getEquipIconSrc(item){
-      const iconName = item.iconName || item.icon_name;
+      const iconName = item.iconName;
       return iconName ? `assets/v1/items/${iconName}` : '';
     }
 
     // Friendly label for item type + equipment slot
     function getItemTypeLabel(item){
-      const slot = item.equipmentSlot || item.equipment_slot || null;
+      const slot = item.equipmentSlot || null;
       if(slot){
         switch(slot){
           case 'head': return 'Armor (Head)';
@@ -2588,7 +2587,7 @@
     // Normalize item display name across different API shapes
     function getItemName(item){
       if(!item) return 'Unknown Item';
-      return item.itemName || item.name || item.item_name || item.displayName || item.display_name || 'Unknown Item';
+      return item.itemName || item.name || item.displayName || 'Unknown Item';
     }
 
     function displayEquipment(equipment){
@@ -2615,14 +2614,14 @@
               const tooltipItem = {
                 itemName: it.name || it.itemName || '',
                 itemType: it.type || it.itemType || '',
-                equipmentSlot: it.equipmentSlot || it.equipment_slot || null,
+                equipmentSlot: it.equipmentSlot || null,
                 description: it.description || '',
                 stats: it.stats || {},
                 rarity: it.rarity || 'common',
                 quantity: it.quantity || 1,
                 level: typeof it.level !== 'undefined' ? it.level : 1,
-                iconName: it.iconName || it.icon_name || null,
-                inventoryId: info.inventoryId || info.inventory_id || null
+                iconName: it.iconName || null,
+                inventoryId: info.inventoryId || null
               };
               showTooltip(e, tooltipItem);
             });
@@ -2796,9 +2795,9 @@
         gameState.username = typeof data.username !== 'undefined' ? data.username : gameState.username;
         gameState.health = data.health ?? gameState.health;
         // Accept both snake_case and camelCase shapes from different API routes
-        gameState.maxHealth = data.maxHealth ?? data.max_health ?? gameState.maxHealth;
+        gameState.maxHealth = data.maxHealth ?? gameState.maxHealth;
         gameState.mana = data.mana ?? gameState.mana;
-        gameState.maxMana = data.maxMana ?? data.max_mana ?? gameState.maxMana;
+        gameState.maxMana = data.maxMana ?? gameState.maxMana;
         gameState.damage = typeof data.damage !== 'undefined' ? data.damage : 0;
         gameState.armor = typeof data.armor !== 'undefined' ? data.armor : 0;
         // XP / level / stats
@@ -3300,12 +3299,12 @@
       const currentTerritoryIds = new Set();
 
       territories.forEach(territory => {
-        // Handle both camelCase and snake_case from different sources
-        const territoryId = territory.territory_id || territory.territoryId;
-        const iconName = territory.icon_name || territory.iconName;
-        const iconNameContested = territory.icon_name_contested || territory.iconNameContested;
-        const maxHealth = territory.max_health || territory.maxHealth;
-        const ownerRealm = territory.owner_realm || territory.ownerRealm;
+        // Expect camelCase fields from server
+        const territoryId = territory.territoryId;
+        const iconName = territory.iconName;
+        const iconNameContested = territory.iconNameContested;
+        const maxHealth = territory.maxHealth;
+        const ownerRealm = territory.ownerRealm;
         
         currentTerritoryIds.add(territoryId);
 
@@ -3392,10 +3391,10 @@
       const currentBossIds = new Set();
 
       bosses.forEach(boss => {
-        // Handle both camelCase and snake_case from different sources
-        const bossId = boss.boss_id || boss.bossId;
-        const iconName = boss.icon_name || boss.iconName;
-        const maxHealth = boss.max_health || boss.maxHealth;
+        // Expect camelCase fields from server
+        const bossId = boss.bossId;
+        const iconName = boss.iconName;
+        const maxHealth = boss.maxHealth;
         
         currentBossIds.add(bossId);
 

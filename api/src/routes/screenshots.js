@@ -43,7 +43,26 @@ router.get('/', authenticateJWT, async (req, res) => {
           return res.status(500).json({ error: 'Internal server error' });
         }
 
-        res.json({ screenshots: rows });
+        // Normalize screenshot fields to camelCase for API consumers
+        const payload = rows.map(r => ({
+          id: r.id,
+          filename: r.filename,
+          nameEn: r.name_en,
+          nameDe: r.name_de,
+          nameEs: r.name_es,
+          descriptionEn: r.description_en,
+          descriptionDe: r.description_de,
+          descriptionEs: r.description_es,
+          location: r.location,
+          visibleCharacters: r.visible_characters,
+          x: r.x,
+          y: r.y,
+          uploadedBy: r.uploaded_by,
+          uploadedAt: r.uploaded_at,
+          updatedAt: r.updated_at
+        }));
+
+        res.json({ screenshots: payload });
       }
     );
 
