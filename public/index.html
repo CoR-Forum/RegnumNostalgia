@@ -1053,9 +1053,7 @@
     // Load first tile to determine tile pixel size at runtime
     const probe = new Image();
     probe.src = tileUrl(1,1);
-    probe.onerror = () => {
-      console.error('Failed to load probe tile:', probe.src);
-    };
+    
     probe.onload = () => {
       const tileW = probe.width;
       const tileH = probe.height;
@@ -1247,7 +1245,7 @@
 
     probe.onerror = () => {
       console.error('Failed to load probe tile:', probe.src);
-      document.getElementById('map').innerText = 'Failed to load tiles. Check tiles/ filenames.';
+      try { document.getElementById('map').innerText = 'Failed to load tiles. Check tiles/ filenames.'; } catch(e) {}
     };
 
     // ============================================================
@@ -2227,56 +2225,7 @@
       location.reload();
     });
 
-    async function openInventory() {
-      const inventoryWindow = document.getElementById('inventory-window');
-      inventoryWindow.style.display = 'flex';
-      try { saveWindowState('inventory-window', { open: true, display: 'flex' }); } catch (e) {}
-      // mark HUD button as pressed while inventory is open
-      try { setHudPressed && setHudPressed('inventory', true); } catch (e) {}
-      document.getElementById('inventory-loading').style.display = 'block';
-      document.getElementById('inventory-items').style.display = 'none';
-      document.getElementById('inventory-empty').style.display = 'none';
-
-      try {
-        let socket = window.getSocket && window.getSocket();
-        
-        // Initialize WebSocket if not connected
-        if (!socket || !socket.connected) {
-          console.log('WebSocket not connected, initializing...');
-          if (window.initializeWebSocket) {
-            window.initializeWebSocket();
-            socket = window.getSocket && window.getSocket();
-            
-            // Wait for connection (max 3 seconds)
-            if (socket && !socket.connected) {
-              await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('WebSocket connection timeout')), 3000);
-                socket.once('connect', () => {
-                  clearTimeout(timeout);
-                  resolve();
-                });
-              });
-            }
-          }
-        }
-        
-        if (!socket || !socket.connected) {
-          throw new Error('WebSocket not available');
-        }
-        
-        // Use WebSocket only
-        socket.emit('equipment:get', (equipData) => {
-          if (equipData && equipData.success) displayEquipment(equipData.equipment);
-        });
-        socket.emit('inventory:get', (invData) => {
-          if (invData && invData.success) displayInventory(invData.items);
-        });
-      } catch (error) {
-        console.error('Failed to fetch inventory:', error);
-        alert('Failed to load inventory: ' + error.message);
-        closeInventory();
-      }
-    }
+    
 
     function closeInventory() {
       document.getElementById('inventory-window').style.display = 'none';
@@ -3169,15 +3118,6 @@
     }
 
     // Load and render paths from API
-    // Convert position objects/arrays (x,y) to Leaflet latlngs (global helper)
-    function positionsToLatLngs(positions){
-      return (positions||[]).map(p => {
-        if (Array.isArray(p)) {
-          return [totalH - p[1], p[0]];
-        }
-        return [totalH - (p.y ?? p[1] ?? 0), (p.x ?? p[0] ?? 0)];
-      });
-    }
 
     // loadAndRenderPaths moved into public/build-path.js
 
@@ -3204,11 +3144,7 @@
       });
     }
 
-    // Legacy polling function removed - now using WebSocket real-time updates
-    function startPlayerPolling() {
-      // No longer needed - WebSocket events handle player updates in real-time
-      console.log('Player polling disabled - using WebSocket events');
-    }
+    
 
     function updateOtherPlayers(players) {
       // Ensure we don't have an "other player" marker for the current user
@@ -3292,11 +3228,7 @@
       }
     }
 
-    // Legacy polling function removed - now using WebSocket real-time updates
-    function startTerritoriesPolling() {
-      // No longer needed - WebSocket events handle territory updates in real-time
-      console.log('Territories polling disabled - using WebSocket events');
-    }
+    
 
     function updateTerritories(territories) {
       const currentTerritoryIds = new Set();
@@ -3388,11 +3320,7 @@
       }
     }
 
-    // Legacy polling function removed - now using WebSocket real-time updates
-    function startSuperbossesPolling() {
-      // No longer needed - WebSocket events handle superboss updates in real-time
-      console.log('Superbosses polling disabled - using WebSocket events');
-    }
+    
 
     function updateSuperbosses(bosses) {
       const currentBossIds = new Set();
