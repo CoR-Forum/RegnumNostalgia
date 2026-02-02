@@ -12,10 +12,10 @@ async function loadPaths() { return pathsData; }
 async function loadRegions() { return regionsData; }
 
 const INF = Number.MAX_SAFE_INTEGER;
-const LINK_THRESHOLD = 40; // pixels - cross-path link threshold
-const DIRECT_THRESHOLD = 300; // pixels - use direct walking for short trips
-const MAX_NODE_DISTANCE = 300; // pixels - max distance to nearest node
-const STEP_SIZE = 40; // pixels per step for interpolation
+const LINK_THRESHOLD = 30; // pixels - cross-path link threshold
+const DIRECT_THRESHOLD = 1000; // pixels - use direct walking for short trips
+const MAX_NODE_DISTANCE = 1000; // pixels - max distance to nearest node
+const STEP_SIZE = 30; // pixels per step for interpolation
 
 /**
  * Calculate Euclidean distance between two points
