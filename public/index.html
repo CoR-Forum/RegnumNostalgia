@@ -1440,6 +1440,12 @@
           }
           updatePlayerCoords(data.position.x, data.position.y);
 
+          // update current index and refresh remaining path
+          if (typeof data.currentIndex === 'number') {
+            gameState.walkerCurrentIndex = data.currentIndex;
+            try { drawWalkPath(gameState.walkerPositions || []); } catch (e) { console.debug('refresh walk path failed', e); }
+          }
+
           if (data.completed) {
             // Walker finished
             if (gameState.walkDestinationMarker) {
@@ -1477,7 +1483,10 @@
           }
           gameState.walkingTarget = { x: dx, y: dy };
           if (data.positions) {
-            drawWalkPath(data.positions);
+            // store full path and set current index if provided
+            gameState.walkerPositions = data.positions;
+            gameState.walkerCurrentIndex = typeof data.currentIndex === 'number' ? data.currentIndex : 0;
+            drawWalkPath(gameState.walkerPositions);
           }
         }
       });
@@ -1496,7 +1505,9 @@
           }
           gameState.walkingTarget = { x: dx, y: dy };
           if (data.positions) {
-            drawWalkPath(data.positions);
+            gameState.walkerPositions = data.positions;
+            gameState.walkerCurrentIndex = typeof data.currentIndex === 'number' ? data.currentIndex : 0;
+            drawWalkPath(gameState.walkerPositions);
           }
         }
       });
@@ -2445,7 +2456,9 @@
         // waiting for the periodic poller.
         try {
           if (data.walker && data.walker.positions) {
-            drawWalkPath(data.walker.positions);
+            gameState.walkerPositions = data.walker.positions;
+            gameState.walkerCurrentIndex = typeof data.walker.currentIndex === 'number' ? data.walker.currentIndex : 0;
+            drawWalkPath(gameState.walkerPositions);
           }
         } catch (e) { console.debug('drawWalkPath on init failed', e); }
 
@@ -2761,13 +2774,29 @@
       });
     }
 
+    // Draw only the remaining walker steps. The server sends full positions
+    // on move start/restore; we keep them in `gameState.walkerPositions`
+    // and slice from `gameState.walkerCurrentIndex` when rendering.
     function drawWalkPath(positions) {
-      // positions: array of [x,y] in raster coords
-      const latlngs = positionsToLatLngs(positions || []);
+      // positions: full array of [x,y] in raster coords, or null to clear
+      if (!positions) {
+        if (gameState.walkPathPolyline) { try { map.removeLayer(gameState.walkPathPolyline); } catch (e) {} gameState.walkPathPolyline = null; }
+        gameState.walkerPositions = null;
+        gameState.walkerCurrentIndex = 0;
+        return;
+      }
+
+      // store full positions and reset currentIndex if not present
+      gameState.walkerPositions = positions;
+      if (typeof gameState.walkerCurrentIndex === 'undefined' || gameState.walkerCurrentIndex === null) gameState.walkerCurrentIndex = 0;
+
+      const remaining = (gameState.walkerPositions || []).slice(gameState.walkerCurrentIndex || 0);
+      const latlngs = positionsToLatLngs(remaining || []);
       if (!latlngs || latlngs.length === 0) {
         if (gameState.walkPathPolyline) { try { map.removeLayer(gameState.walkPathPolyline); } catch (e) {} gameState.walkPathPolyline = null; }
         return;
       }
+
       if (gameState.walkPathPolyline) {
         try { gameState.walkPathPolyline.setLatLngs(latlngs); } catch (e) {}
       } else {
