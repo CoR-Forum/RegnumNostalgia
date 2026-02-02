@@ -48,7 +48,11 @@ territoryQueue.process('sync-territories', async (job) => {
       }
       
       const territoryId = parseInt(match[1]);
-      const newOwner = fort.owner; // 'syrtis', 'alsius', 'ignis', or null
+      // Normalize and validate owner value from external API
+      const rawOwner = typeof fort.owner === 'string' ? fort.owner : null;
+      const normalizedOwner = rawOwner ? rawOwner.toLowerCase().trim() : null;
+      const VALID_REALMS = new Set(['alsius', 'syrtis', 'ignis']);
+      const newOwner = VALID_REALMS.has(normalizedOwner) ? normalizedOwner : null;
 
       // Get current territory from database
       const [rows] = await gameDb.query(
