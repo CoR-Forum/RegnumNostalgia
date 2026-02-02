@@ -36,6 +36,14 @@
       </div>
     </div>
 
+    <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-capture-enabled"> Enable Capture Sounds</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#ccc;">Capture Volume</span>
+        <input id="setting-capture-volume" type="range" min="0" max="1" step="0.01" value="1.0">
+      </div>
+    </div>
+
     <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <label style="font-size:11px;display:flex;align-items:center;gap:8px;">Map Version</label>
       <div style="display:flex;align-items:center;gap:8px;">
@@ -43,14 +51,6 @@
           <option value="v1">v1</option>
           <option value="v2">v2</option>
         </select>
-      </div>
-    </div>
-
-    <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-capture-enabled"> Enable Capture Sounds</label>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:11px;color:#ccc;">Capture Volume</span>
-        <input id="setting-capture-volume" type="range" min="0" max="1" step="0.01" value="1.0">
       </div>
     </div>
   </div>
