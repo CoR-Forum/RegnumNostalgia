@@ -96,9 +96,7 @@
         return;
       }
 
-      console.log('Fetching shoutbox messages via WebSocket...');
       socket.emit('shoutbox:get', {}, (response) => {
-        console.log('Shoutbox response:', response);
         if (response && response.success && Array.isArray(response.messages)) {
           const msgs = response.messages;
           
@@ -250,17 +248,15 @@
     function startShoutboxPolling(){
       const socket = window.getSocket && window.getSocket();
       if (socket && socket.connected) {
-        console.log('Using WebSocket for shoutbox');
         fetchMessages();
       } else {
         console.warn('WebSocket not available for shoutbox, will wait for connection');
         // Retry after a short delay
         setTimeout(() => {
           const retrySocket = window.getSocket && window.getSocket();
-          if (retrySocket && retrySocket.connected) {
-            console.log('WebSocket now connected, fetching messages');
-            fetchMessages();
-          }
+            if (retrySocket && retrySocket.connected) {
+              fetchMessages();
+            }
         }, 1000);
       }
     }
@@ -268,7 +264,6 @@
     // Listen for WebSocket connection if initializeWebSocket exposes an event
     if (window.addEventListener) {
       window.addEventListener('websocket:connected', () => {
-        console.log('WebSocket connected event received in shoutbox');
         fetchMessages();
       });
     }

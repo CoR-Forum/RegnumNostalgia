@@ -1,7 +1,15 @@
-const { loadPaths } = require('../routes/paths');
-const { loadRegions } = require('../routes/regions');
+// Load static game data directly from JSON so this service
+// doesn't depend on route modules that may be removed.
+// `pathfinding.js` lives in `api/src/services`, so go up two
+// levels to reach `api/gameData`.
+const pathsData = require('../../gameData/paths.json');
+const regionsData = require('../../gameData/regions.json');
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
+
+// Local loaders matching the old `loadPaths()` / `loadRegions()` API
+async function loadPaths() { return pathsData; }
+async function loadRegions() { return regionsData; }
 
 const INF = Number.MAX_SAFE_INTEGER;
 const LINK_THRESHOLD = 40; // pixels - cross-path link threshold

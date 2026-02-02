@@ -1317,10 +1317,11 @@
         reconnectionAttempts: MAX_RECONNECT_ATTEMPTS
       });
 
+      // Expose socket on window for legacy consumers that check `window.socket`
+      try { window.socket = socket; } catch (e) { /* ignore non-writable window */ }
+
       socket.on('connect', () => {
-        console.log('WebSocket connected');
         reconnectAttempts = 0;
-        
         // Dispatch custom event for other components
         const event = new CustomEvent('websocket:connected');
         window.dispatchEvent(event);
@@ -1328,6 +1329,7 @@
 
       socket.on('disconnect', (reason) => {
         console.log('WebSocket disconnected:', reason);
+        try { if (window.socket === socket) window.socket = null; } catch (e) {}
         if (reason === 'io server disconnect' || reason === 'io client disconnect') {
           // Server disconnected us or client intentionally disconnected
           // Don't auto-reload, let user retry
@@ -1369,6 +1371,18 @@
               window.updatePlayerStats();
             }
           } catch (e) {}
+
+          // If server sent only current values but not max values, request full stats once
+          if (typeof data.maxHealth === 'undefined' && typeof data.max_health === 'undefined') {
+            try {
+              const sock = window.getSocket && window.getSocket();
+              if (sock && sock.connected) {
+                sock.emit('player:stats:get', (resp) => {
+                  if (resp && resp.success && resp.state) updatePlayerFromState(resp.state);
+                });
+              }
+            } catch (e) { console.debug('requesting full player stats failed', e); }
+          }
         }
       });
 
@@ -1546,14 +1560,12 @@
       socket.on('paths:list', (data) => {
         if (data && data.paths) {
           gameState.pathsData = data.paths;
-          console.log('Loaded paths via WebSocket:', data.paths.length);
         }
       });
 
       socket.on('regions:list', (data) => {
         if (data && data.regions) {
           gameState.regionsData = data.regions;
-          console.log('Loaded regions via WebSocket:', data.regions.length);
         }
       });
 

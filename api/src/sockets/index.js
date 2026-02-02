@@ -645,18 +645,14 @@ async function sendInitialGameState(socket, user) {
       socket.emit('time:current', timeRows[0]);
     }
 
-    // Send paths and regions data
+    // Send paths and regions data (load directly from gameData JSON)
     try {
-      const { loadPaths } = require('../routes/paths');
-      const { loadRegions } = require('../routes/regions');
-      
-      const paths = await loadPaths();
+      const paths = require('../../gameData/paths.json');
+      const regions = require('../../gameData/regions.json');
       socket.emit('paths:list', { paths });
-      
-      const regions = await loadRegions();
       socket.emit('regions:list', { regions });
     } catch (error) {
-      logger.error('Failed to load paths/regions', { error: error.message });
+      logger.error('Failed to load paths/regions', { error: error && error.message ? error.message : String(error) });
     }
 
     // Get active walker for this player
