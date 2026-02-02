@@ -237,6 +237,41 @@ function initializeSocketHandlers(io) {
       }
     });
 
+        /**
+         * Fetch details for a single inventory item by inventory_id
+         * Used by clients to lazy-load item tooltips on hover.
+         */
+        socket.on('item:details', async (data, callback) => {
+          try {
+            const inventoryId = (data && (data.inventoryId || data.inventory_id)) || data;
+            if (!inventoryId) {
+              if (callback) callback({ success: false, error: 'Inventory ID required' });
+              return;
+            }
+
+            const [rows] = await gameDb.query(
+              `SELECT inv.inventory_id, inv.quantity, i.template_key, i.name, i.type, i.description, i.stats, i.rarity, i.level, i.equipment_slot, i.icon_name
+               FROM inventory inv
+               JOIN items i ON inv.item_id = i.item_id
+               WHERE inv.inventory_id = ?`,
+              [inventoryId]
+            );
+
+            if (!rows || rows.length === 0) {
+              if (callback) callback({ success: false, error: 'Item not found' });
+              return;
+            }
+
+            const item = rows[0];
+            item.stats = typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats;
+
+            if (callback) callback({ success: true, item });
+          } catch (error) {
+            logger.error('Failed to fetch item details', { error: error.message, userId: user.userId });
+            if (callback) callback({ success: false, error: 'Failed to load item details' });
+          }
+        });
+
     /**
      * Handle equipment equip
      */

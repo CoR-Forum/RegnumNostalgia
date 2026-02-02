@@ -2013,6 +2013,7 @@
 
       const rarityClass = (item.rarity || 'common');
 
+      // Initial placeholder content — details may be lazy-loaded via WebSocket
       tooltip.innerHTML = `
         <div class="tooltip-header">
           <div class="tooltip-icon">${tooltipIconSrc ? `<img src="${tooltipIconSrc}" alt="${getItemName(item)}">` : ''}</div>
@@ -2021,7 +2022,7 @@
           </div>
         </div>
         <div class="tooltip-type">${getItemTypeLabel(item)}</div>
-        ${item.description ? `<div class="tooltip-description">"${item.description}"</div>` : ''}
+        <div class="tooltip-description" style="opacity:0.8;font-style:italic;">${(item.description ? `"${item.description}"` : 'Loading item details...')}</div>
         ${statsHtml}
         <div class="tooltip-rarity ${rarityClass}">${rarityClass}</div>
       `;
@@ -2032,6 +2033,54 @@
       if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
       try { tooltip.style.zIndex = String(++window.__windowTopZ); } catch (e) { tooltip.style.zIndex = '40000'; }
       currentTooltip = tooltip;
+
+      // If the passed `item` is only a minimal record (no description/stats),
+      // request full details via WebSocket using its inventory id.
+      const invId = item.inventoryId || item.inventory_id || item.inventoryId || null;
+      const needsDetails = !(item.description || (item.stats && Object.keys(item.stats || {}).length > 0) || item.type || item.itemType);
+      if (needsDetails && invId && window.getSocket) {
+        try {
+          const sock = window.getSocket();
+          if (sock && sock.connected) {
+            sock.emit('item:details', { inventoryId: invId }, (resp) => {
+              try {
+                if (!resp || !resp.success) return;
+                const det = resp.item || {};
+                // Merge details into original item reference so other handlers see them
+                try { Object.assign(item, det); } catch (e) {}
+
+                // Rebuild stats HTML
+                let newStatsHtml = '';
+                if (det.stats && Object.keys(det.stats || {}).length > 0) {
+                  const parts = Object.entries(det.stats).map(([k,v]) => `+${v} ${k.replace('_',' ')}`);
+                  newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
+                }
+
+                const newIconName = det.icon_name || det.iconName || null;
+                const newIconSrc = newIconName ? `assets/v1/items/${newIconName}` : (tooltipIconSrc || '');
+
+                const newRarity = det.rarity || rarityClass;
+
+                tooltip.innerHTML = `
+                  <div class="tooltip-header">
+                    <div class="tooltip-icon">${newIconSrc ? `<img src="${newIconSrc}" alt="${getItemName(det)}">` : ''}</div>
+                    <div class="tooltip-title">
+                      <div class="tooltip-name ${newRarity}">${getItemName(det)} ${typeof det.level !== 'undefined' ? `<span class="tooltip-level">Lv ${det.level}</span>` : ''}</div>
+                    </div>
+                  </div>
+                  <div class="tooltip-type">${getItemTypeLabel(det)}</div>
+                  ${det.description ? `<div class="tooltip-description">"${det.description}"</div>` : ''}
+                  ${newStatsHtml}
+                  <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
+                `;
+
+                // Reposition after content update
+                requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
+              } catch (e) { console.error('Failed to apply item details to tooltip', e); }
+            });
+          }
+        } catch (e) { /* ignore socket errors */ }
+      }
 
       // Anchor tooltip to the hovered inventory/equipment element
       const anchorEl = event.currentTarget || event.target;
