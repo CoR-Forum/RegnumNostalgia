@@ -71,8 +71,8 @@
         // draw filled polygon for area mode
         gameState.buildPathPolyline = L.polygon(pts, { color: '#ffea00', weight: 2, opacity: 0.95, fillColor: '#ffea00', fillOpacity: 0.25 }).addTo(map);
       } else {
-        // default: polyline path
-        gameState.buildPathPolyline = L.polyline(pts, { color: '#ffff00', weight: 3, opacity: 0.9, dashArray: '6,6' }).addTo(map);
+        // default: polyline path (solid line)
+        gameState.buildPathPolyline = L.polyline(pts, { color: '#ffff00', weight: 3, opacity: 0.9 }).addTo(map);
       }
       try { gameState.buildPathPolyline.bringToFront(); } catch(e){}
     } catch (e) { console.error('build-path:updateBuildPathPolyline', e); }
@@ -118,6 +118,53 @@
   // regions loading/mount moved to public/regions.js
   // expose paths loader for backward compatibility
   window.loadAndRenderPaths = loadAndRenderPaths;
+
+  // Walk path rendering API - keep walker state here so build-path.js owns walk drawing
+  function internalDrawWalkPath(positions) {
+    try {
+      // positions: full array of [x,y] in raster coords, or null to clear
+      if (!positions) {
+        if (gameState.walkPathPolyline) { try { map.removeLayer(gameState.walkPathPolyline); } catch (e) {} gameState.walkPathPolyline = null; }
+        gameState.walkerPositions = null;
+        gameState.walkerCurrentIndex = 0;
+        return;
+      }
+
+      gameState.walkerPositions = positions;
+      if (typeof gameState.walkerCurrentIndex === 'undefined' || gameState.walkerCurrentIndex === null) gameState.walkerCurrentIndex = 0;
+
+      const remaining = (gameState.walkerPositions || []).slice(gameState.walkerCurrentIndex || 0);
+      const latlngs = (typeof positionsToLatLngs === 'function') ? positionsToLatLngs(remaining || []) : remaining.map(p => [ totalH - p[1], p[0] ]);
+
+      if (!latlngs || latlngs.length === 0) {
+        if (gameState.walkPathPolyline) { try { map.removeLayer(gameState.walkPathPolyline); } catch (e) {} gameState.walkPathPolyline = null; }
+        return;
+      }
+
+      if (gameState.walkPathPolyline) {
+        try { gameState.walkPathPolyline.setLatLngs(latlngs); } catch (e) {}
+      } else {
+        gameState.walkPathPolyline = L.polyline(latlngs, { color: '#ffd700', weight: 3, opacity: 0.9 }).addTo(map);
+        try { gameState.walkPathPolyline.bringToFront(); } catch (e) {}
+      }
+    } catch (e) { console.error('build-path:internalDrawWalkPath', e); }
+  }
+
+  function setWalkerPositions(positions, currentIndex) {
+    gameState.walkerPositions = positions || null;
+    gameState.walkerCurrentIndex = typeof currentIndex === 'number' ? currentIndex : (gameState.walkerCurrentIndex || 0);
+    internalDrawWalkPath(gameState.walkerPositions);
+  }
+
+  function updateWalkerCurrentIndex(idx) {
+    if (typeof idx !== 'number') return;
+    gameState.walkerCurrentIndex = idx;
+    internalDrawWalkPath(gameState.walkerPositions || []);
+  }
+
+  function clearWalkerPath() {
+    internalDrawWalkPath(null);
+  }
 
   function onMapClick(e) {
     try {
@@ -285,7 +332,12 @@
       showPanel,
       hidePanel,
       onMapClick,
-      updateBuildPathPolyline
+      updateBuildPathPolyline,
+      // Walk path API
+      drawWalkPath: internalDrawWalkPath,
+      setWalkerPositions,
+      updateWalkerCurrentIndex,
+      clearWalkerPath
     };
   }
 
