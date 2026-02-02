@@ -1601,6 +1601,11 @@
       if (data.userId !== undefined) gameState.userId = data.userId;
       if (data.username !== undefined) gameState.username = data.username;
       if (data.realm !== undefined) gameState.realm = data.realm;
+      // Handle both nested position object and flat x/y properties
+      if (data.position !== undefined) {
+        if (data.position.x !== undefined) gameState.position.x = data.position.x;
+        if (data.position.y !== undefined) gameState.position.y = data.position.y;
+      }
       if (data.x !== undefined) gameState.position.x = data.x;
       if (data.y !== undefined) gameState.position.y = data.y;
       if (data.health !== undefined) gameState.health = data.health;
@@ -1618,6 +1623,12 @@
           strength: data.strength ?? gameState.stats?.strength ?? 20,
           constitution: data.constitution ?? gameState.stats?.constitution ?? 20
         };
+      }
+      // Update player marker position if coordinates changed
+      if ((data.position || data.x !== undefined || data.y !== undefined) && gameState.playerMarker) {
+        const latLng = [totalH - gameState.position.y, gameState.position.x];
+        gameState.playerMarker.setLatLng(latLng);
+        updatePlayerCoords(gameState.position.x, gameState.position.y);
       }
       try { showPlayerInfo(); updateCharacterStats(); updatePlayerStats(); } catch (e) {}
     }
