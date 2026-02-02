@@ -1,3 +1,4 @@
 *.png
-tiles/
+tiles*/
 original-map/
+tilemapresource.xml
