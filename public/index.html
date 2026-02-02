@@ -793,6 +793,8 @@
   
   <!-- Build Path panel moved to public/build-path.js -->
 
+  <div id="settings-include"></div>
+
   <!-- Player info moved into the top-left character-status overlay -->
 
   <div id="map"></div>
@@ -825,6 +827,32 @@
 
         try { if (typeof initWindows === 'function') initWindows(); } catch (e) {}
       }).catch(err => console.error('Failed to load character window:', err));
+    })();
+  </script>
+
+  <script>
+    (function(){
+      fetch('settings.html').then(r => r.text()).then(html => {
+        const container = document.getElementById('settings-include');
+        if (!container) return;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+
+        // Move non-script nodes into container
+        Array.from(tmp.childNodes).forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
+          container.appendChild(node);
+        });
+
+        // Execute inline scripts and load external scripts (if any)
+        const scripts = tmp.querySelectorAll('script');
+        scripts.forEach(s => {
+          const ns = document.createElement('script');
+          if (s.src) ns.src = s.src;
+          else ns.textContent = s.textContent;
+          document.body.appendChild(ns);
+        });
+      }).catch(err => console.error('Failed to load settings include:', err));
     })();
   </script>
 
@@ -934,10 +962,11 @@
     <div class="ui-bar-repeat ui-bar-repeat-right"></div>
   </div>
   <!-- Top-right compass with interactive controls (map settings + logout) -->
-  <div id="ui-compass" aria-hidden="true">
+  <div id="ui-compass" aria-hidden="false">
     <img src="assets/v1/ui/ui-compass.png" alt="">
     <div class="compass-controls" aria-hidden="false">
       <button class="btn-logout" id="tile-version-btn">Map: v1</button>
+      <button class="btn-logout" id="settings-btn">Settings</button>
       <button class="btn-logout" id="logout-btn">Logout</button>
     </div>
   </div>
@@ -1081,10 +1110,10 @@
           }
           // object {x,y}
           return [totalH - (p.y ?? p[1] ?? 0), (p.x ?? p[0] ?? 0)];
-        });
-      }
+          });
+        }
 
-      // region display moved to public/regions.js (initRegionDisplay)
+        // region display moved to public/regions.js (initRegionDisplay)
       try {
         if (typeof initRegionDisplay === 'function') {
           initRegionDisplay(map, gameState, apiCall, positionsToLatLngs);
@@ -1619,6 +1648,134 @@
           gameState.regionsData = data.regions;
         }
       });
+
+      // Audio manager - handle music and sfx pushed by server
+      (function(){
+        let musicAudio = null;
+        let currentMusic = null;
+        let pendingMusic = null; // store {file, volume, loop} if playback blocked
+        let defaultSfxVolume = 1.0;
+        // capture-specific default volume
+        let defaultCaptureSfxVolume = 1.0;
+        let musicEnabled = true;
+        let soundsEnabled = true;
+
+        function tryPlayMusic(file, volume = 0.6, loop = true) {
+          if (!file) return Promise.resolve();
+          if (currentMusic === file && musicAudio) return Promise.resolve();
+          try {
+            if (musicAudio) {
+              musicAudio.pause();
+            }
+            musicAudio = new Audio(`/assets/music/${file}`);
+            musicAudio.loop = !!loop;
+            musicAudio.volume = typeof volume === 'number' ? volume : 0.6;
+            return musicAudio.play().then(() => {
+              currentMusic = file;
+              pendingMusic = null;
+            });
+          } catch (e) {
+            return Promise.reject(e);
+          }
+        }
+
+        function playMusic(file, volume = 0.6, loop = true) {
+          if (!file) return;
+          try {
+            tryPlayMusic(file, volume, loop).catch((err) => {
+              // Likely blocked by autoplay policy — queue and wait for first user interaction
+              pendingMusic = { file, volume, loop };
+            });
+          } catch (e) {
+            pendingMusic = { file, volume, loop };
+          }
+        }
+
+        function stopMusic() {
+          try {
+            if (musicAudio) {
+              musicAudio.pause();
+              musicAudio.currentTime = 0;
+            }
+            currentMusic = null;
+            pendingMusic = null;
+          } catch (e) {
+            console.debug('stopMusic failed', e);
+          }
+        }
+
+        // Expose simple runtime controls so UI can live-update settings
+        window.AudioManager = {
+          setMusicVolume(v){
+            try {
+              const vol = parseFloat(v) || 0;
+              if (musicAudio) musicAudio.volume = vol;
+            } catch(e){}
+          },
+          setSoundVolume(v){
+              try { defaultSfxVolume = parseFloat(v) || 0; } catch(e) {}
+          },
+            setCaptureSoundVolume(v){
+              try { defaultCaptureSfxVolume = parseFloat(v) || 0; } catch(e) {}
+            },
+          setMusicEnabled(enabled){
+            try { musicEnabled = !!enabled; if (!musicEnabled) stopMusic(); }
+            catch(e){}
+          },
+          setSoundsEnabled(enabled){
+            try { soundsEnabled = !!enabled; }
+            catch(e){}
+          },
+          // allow manual play/stop (used by server events)
+          _playMusicInternal(file, volume, loop){ if (musicEnabled) playMusic(file, volume, loop); },
+          _playSfxInternal(file, volume){ if (soundsEnabled) playSfx(file, typeof volume === 'number' ? volume : defaultSfxVolume); }
+        };
+
+        
+
+        function playSfx(file, volume = 1.0) {
+          if (!file) return;
+          try {
+            const s = new Audio(`/assets/sounds/${file}`);
+            s.volume = typeof volume === 'number' ? volume : 1.0;
+            s.play().catch(() => {});
+          } catch (e) {
+            console.debug('playSfx failed', e);
+          }
+        }
+
+        // If playback was blocked earlier, attempt to play on first user interaction
+        function resumePendingMusic() {
+          if (!pendingMusic) return;
+          tryPlayMusic(pendingMusic.file, pendingMusic.volume, pendingMusic.loop).catch(() => {});
+        }
+
+        // Listen once for user interaction to resume pending music
+        const resumeOnce = () => {
+          resumePendingMusic();
+          document.removeEventListener('click', resumeOnce);
+          document.removeEventListener('keydown', resumeOnce);
+        };
+        document.addEventListener('click', resumeOnce);
+        document.addEventListener('keydown', resumeOnce);
+
+        socket.on('audio:play', (data) => {
+          if (!data) return;
+          if (data.type === 'music') {
+            // use exposed API which respects musicEnabled
+            window.AudioManager && window.AudioManager._playMusicInternal(data.file, data.volume, data.loop);
+          } else if (data.type === 'sfx') {
+            // If server provides volume, use it. If not and it's a capture SFX, use capture default.
+            const vol = (typeof data.volume === 'number') ? data.volume : (data.file && data.file.indexOf('capture') !== -1 ? (window.AudioManager && window.AudioManager.setCaptureSoundVolume ? defaultCaptureSfxVolume : null) : null);
+            window.AudioManager && window.AudioManager._playSfxInternal(data.file, vol);
+          }
+        });
+
+        socket.on('audio:stop', (data) => {
+          if (!data) return;
+          if (data.type === 'music') stopMusic();
+        });
+      })();
 
       socket.on('time:update', (data) => {
         if (data && typeof data.ingame_hour !== 'undefined') {

@@ -115,7 +115,34 @@ territoryQueue.process('sync-territories', async (job) => {
     // Emit territory capture events
     if (io && captures.length > 0) {
       io.emit('territories:capture', { captures });
-      
+
+      // Emit capture sound only to users who have sounds enabled and capture sounds enabled
+      try {
+        const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+        for (const s of sockets) {
+          try {
+            const user = s && s.user ? s.user : null;
+            const settings = user && user.settings ? user.settings : null;
+            if (!settings) continue;
+            // sfx should respect global sounds flag and capture specific flag
+            if (settings.sounds_enabled && settings.capture_sounds_enabled) {
+              const vol = typeof settings.capture_sounds_volume === 'number' ? settings.capture_sounds_volume : (typeof settings.sound_volume === 'number' ? settings.sound_volume : parseFloat(settings.sound_volume) || 1.0);
+              s.emit('audio:play', {
+                type: 'sfx',
+                file: 'territory-capture.ogg',
+                volume: vol,
+                global: false,
+                captures
+              });
+            }
+          } catch (e) {
+            // ignore per-socket errors
+          }
+        }
+      } catch (e) {
+        logger.error('Failed to emit audio event for territory captures', { error: e && e.message ? e.message : String(e) });
+      }
+
       // Also emit full territory list update
       const [allTerritories] = await gameDb.query(
         `SELECT territory_id, realm, name, type, health, max_health, x, y,

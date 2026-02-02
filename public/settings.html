@@ -1,0 +1,183 @@
+<style>
+/* Smaller gray sliders for settings */
+#settings-window input[type=range]{
+  width: 160px;
+  height: 8px;
+  background: transparent;
+  -webkit-appearance: none;
+  margin-left: 8px;
+}
+#settings-window input[type=range]::-webkit-slider-runnable-track{ height:8px; background:#888; border-radius:6px; }
+#settings-window input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:12px; height:12px; margin-top:-2px; background:#bbb; border-radius:50%; }
+#settings-window input[type=range]::-moz-range-track{ height:8px; background:#888; border-radius:6px; }
+#settings-window input[type=range]::-moz-range-thumb{ width:12px; height:12px; background:#bbb; border-radius:50%; border:none; }
+#settings-window input[type=range]:focus{ outline:none; }
+</style>
+
+<div id="settings-window" class="ui-window" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px; height: 360px; z-index: 10000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+  <div id="settings-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+    <h2 style="margin: 0; flex: 1; font-size: 10px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Settings</h2>
+    <button id="settings-close-btn" class="ui-window-close-btn"></button>
+  </div>
+  <div class="ui-window-body" style="padding: 10px 12px; color: #ddd; overflow: auto; height: 200px; font-size: 11px;">
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding-top:20px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-music-enabled"> Enable Music</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#ccc;">Music Volume</span>
+        <input id="setting-music-volume" type="range" min="0" max="1" step="0.01" value="0.6">
+      </div>
+    </div>
+
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-sounds-enabled"> Enable Sounds</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#ccc;">Sound Volume</span>
+        <input id="setting-sound-volume" type="range" min="0" max="1" step="0.01" value="1.0">
+      </div>
+    </div>
+
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;">Map Version</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <select id="setting-map-version" style="background:rgba(0,0,0,0.4); color:#e0e0e0; border:1px solid #2a3f5f; padding:4px; font-size:11px;">
+          <option value="v1">v1</option>
+          <option value="v2">v2</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-capture-enabled"> Enable Capture Sounds</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#ccc;">Capture Volume</span>
+        <input id="setting-capture-volume" type="range" min="0" max="1" step="0.01" value="1.0">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  try { if (typeof initWindow === 'function') initWindow({ id: 'settings-window', headerId: 'settings-header', closeId: 'settings-close-btn', onClose: () => { const w = document.getElementById('settings-window'); if (w) w.style.display = 'none'; } }); } catch(e){}
+
+  async function loadSettingsToUI() {
+    try {
+      const res = await (window.apiCall ? window.apiCall('/user/settings', { method: 'GET' }) : fetch('/user/settings'));
+      let data = res;
+      if (res && res.json) data = await res.json();
+      const r = (data && data.success) ? data : (res && res.success ? res : null);
+      if (r && r.settings) {
+        document.getElementById('setting-music-enabled').checked = !!r.settings.music_enabled;
+        document.getElementById('setting-music-volume').value = (typeof r.settings.music_volume === 'number' ? r.settings.music_volume : parseFloat(r.settings.music_volume)) || 0.6;
+        document.getElementById('setting-sounds-enabled').checked = !!r.settings.sounds_enabled;
+        document.getElementById('setting-sound-volume').value = (typeof r.settings.sound_volume === 'number' ? r.settings.sound_volume : parseFloat(r.settings.sound_volume)) || 1.0;
+        document.getElementById('setting-capture-enabled').checked = !!r.settings.capture_sounds_enabled;
+        document.getElementById('setting-map-version').value = r.settings.map_version || 'v1';
+        // Apply to AudioManager immediately
+        try { window.AudioManager && window.AudioManager.setMusicEnabled(!!r.settings.music_enabled); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setMusicVolume(parseFloat(r.settings.music_volume) || 0.6); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setSoundsEnabled(!!r.settings.sounds_enabled); } catch (e) {}
+        try { window.AudioManager && window.AudioManager.setSoundVolume(parseFloat(r.settings.sound_volume) || 1.0); } catch (e) {}
+        // Apply map version immediately (update tiles)
+        try {
+          const v = r.settings.map_version || 'v1';
+          try { localStorage.setItem('tileVersion', v); } catch (e) {}
+          if (typeof currentTileVersion !== 'undefined') {
+            currentTileVersion = v;
+            try { if (typeof loadTiles === 'function') loadTiles(); } catch (e) {}
+          }
+        } catch (e) {}
+      }
+    } catch (e) { console.debug('Failed to load settings', e); }
+  }
+
+  function openSettings() {
+    const win = document.getElementById('settings-window');
+    if (!win) return;
+    win.style.display = 'flex';
+    loadSettingsToUI();
+  }
+
+  // Debounced emitter to avoid spamming socket while dragging sliders
+  let emitTimer = null;
+  const EMIT_DELAY = 300; // ms
+  function scheduleEmitSettings() {
+    if (emitTimer) clearTimeout(emitTimer);
+    emitTimer = setTimeout(() => {
+      emitTimer = null;
+      try {
+        const payload = {
+          music_enabled: document.getElementById('setting-music-enabled').checked ? 1 : 0,
+          music_volume: parseFloat(document.getElementById('setting-music-volume').value),
+          sounds_enabled: document.getElementById('setting-sounds-enabled').checked ? 1 : 0,
+          sound_volume: parseFloat(document.getElementById('setting-sound-volume').value),
+          capture_sounds_enabled: document.getElementById('setting-capture-enabled').checked ? 1 : 0
+          , map_version: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1'
+        };
+        if (window.socket && window.socket.emit) window.socket.emit('user:settings:update', payload);
+      } catch (e) { /* ignore */ }
+    }, EMIT_DELAY);
+  }
+
+  // Wire UI interactions
+  const btn = document.getElementById('settings-btn');
+  if (btn) btn.addEventListener('click', (e)=>{ e.preventDefault(); openSettings(); });
+
+  // Save/Cancel removed: settings auto-save on change via debounced emit
+
+  // Live-change handlers: update AudioManager immediately and schedule server emit (debounced)
+  const musicEnabledEl = document.getElementById('setting-music-enabled');
+  const musicVolEl = document.getElementById('setting-music-volume');
+  const soundsEnabledEl = document.getElementById('setting-sounds-enabled');
+  const soundVolEl = document.getElementById('setting-sound-volume');
+  const captureEnabledEl = document.getElementById('setting-capture-enabled');
+  const mapVersionEl = document.getElementById('setting-map-version');
+
+  if (musicEnabledEl) {
+    musicEnabledEl.addEventListener('change', (e) => {
+      const enabled = !!e.target.checked;
+      try { window.AudioManager && window.AudioManager.setMusicEnabled(enabled); } catch (err) {}
+      scheduleEmitSettings();
+    });
+  }
+
+  if (musicVolEl) {
+    musicVolEl.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      try { window.AudioManager && window.AudioManager.setMusicVolume(v); } catch (err) {}
+      scheduleEmitSettings();
+    });
+  }
+
+  if (soundsEnabledEl) {
+    soundsEnabledEl.addEventListener('change', (e) => {
+      const enabled = !!e.target.checked;
+      try { window.AudioManager && window.AudioManager.setSoundsEnabled(enabled); } catch (err) {}
+      scheduleEmitSettings();
+    });
+  }
+
+  if (soundVolEl) {
+    soundVolEl.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      try { window.AudioManager && window.AudioManager.setSoundVolume(v); } catch (err) {}
+      scheduleEmitSettings();
+    });
+  }
+
+  if (captureEnabledEl) {
+    captureEnabledEl.addEventListener('change', (e) => {
+      scheduleEmitSettings();
+    });
+  }
+
+  if (mapVersionEl) {
+    mapVersionEl.addEventListener('change', (e) => {
+      const v = e.target.value || 'v1';
+      try { localStorage.setItem('tileVersion', v); } catch (e) {}
+      try { if (typeof currentTileVersion !== 'undefined') { currentTileVersion = v; if (typeof loadTiles === 'function') loadTiles(); } } catch (e) {}
+      scheduleEmitSettings();
+    });
+  }
+})();
+</script>

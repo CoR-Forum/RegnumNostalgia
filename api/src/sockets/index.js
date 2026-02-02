@@ -6,6 +6,8 @@ const logger = require('../config/logger');
 
 // Store connected sockets by userId
 const connectedUsers = new Map();
+// Track last-known region id per user for region-change detection
+const userRegions = new Map();
 
 /**
  * Initialize Socket.io event handlers
@@ -26,6 +28,9 @@ function initializeSocketHandlers(io) {
 
     // Store socket reference
     connectedUsers.set(user.userId, socket);
+
+    // Initialize user's region entry (will be updated in sendInitialGameState)
+    userRegions.set(user.userId, null);
 
     // Update player's last_active
     try {
@@ -49,6 +54,81 @@ function initializeSocketHandlers(io) {
 
     // Send initial game state to connecting player
     await sendInitialGameState(socket, user);
+
+    // Allow client to notify server of settings changes so in-memory socket.user.settings stays in sync
+    socket.on('user:settings:update', async (data) => {
+      try {
+        if (!data) return;
+        const s = socket.user || {};
+        s.settings = s.settings || {};
+        // Merge known keys
+        if (typeof data.music_enabled !== 'undefined') s.settings.music_enabled = data.music_enabled ? 1 : 0;
+        if (typeof data.music_volume !== 'undefined') s.settings.music_volume = parseFloat(data.music_volume) || 0.6;
+        if (typeof data.sounds_enabled !== 'undefined') s.settings.sounds_enabled = data.sounds_enabled ? 1 : 0;
+        if (typeof data.sound_volume !== 'undefined') s.settings.sound_volume = parseFloat(data.sound_volume) || 1.0;
+        if (typeof data.capture_sounds_enabled !== 'undefined') s.settings.capture_sounds_enabled = data.capture_sounds_enabled ? 1 : 0;
+        if (typeof data.capture_sounds_volume !== 'undefined') s.settings.capture_sounds_volume = typeof data.capture_sounds_volume === 'number' ? data.capture_sounds_volume : parseFloat(data.capture_sounds_volume) || 1.0;
+        if (typeof data.map_version !== 'undefined') s.settings.map_version = ('' + data.map_version) || 'v1';
+        socket.user = s;
+        // Persist settings to DB so changes aren't lost on reconnect
+        try {
+          const userId = socket.user && socket.user.userId;
+          if (userId) {
+            const music_enabled = s.settings.music_enabled ? 1 : 0;
+            const music_volume = typeof s.settings.music_volume === 'number' ? s.settings.music_volume : parseFloat(s.settings.music_volume) || 0.6;
+            const sounds_enabled = s.settings.sounds_enabled ? 1 : 0;
+            const sound_volume = typeof s.settings.sound_volume === 'number' ? s.settings.sound_volume : parseFloat(s.settings.sound_volume) || 1.0;
+            const capture_sounds_enabled = s.settings.capture_sounds_enabled ? 1 : 0;
+            const capture_sounds_volume = typeof s.settings.capture_sounds_volume === 'number' ? s.settings.capture_sounds_volume : parseFloat(s.settings.capture_sounds_volume) || 1.0;
+            const map_version = typeof s.settings.map_version === 'string' ? s.settings.map_version : (s.settings.map_version || 'v1');
+            const updatedAt = Math.floor(Date.now() / 1000);
+            await gameDb.query(
+              `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE
+                 music_enabled = VALUES(music_enabled),
+                 music_volume = VALUES(music_volume),
+                 sounds_enabled = VALUES(sounds_enabled),
+                 sound_volume = VALUES(sound_volume),
+                 capture_sounds_enabled = VALUES(capture_sounds_enabled),
+                 capture_sounds_volume = VALUES(capture_sounds_volume),
+                 map_version = VALUES(map_version),
+                 updated_at = VALUES(updated_at)`,
+              [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version, updatedAt]
+            );
+          }
+        } catch (e) {
+          logger.error('Failed to persist user settings from socket', { error: e && e.message ? e.message : String(e), userId: socket.user && socket.user.userId });
+        }
+        // If music was just enabled, immediately start music for current region
+        try {
+          const settings = socket.user && socket.user.settings ? socket.user.settings : null;
+          if (settings && settings.music_enabled) {
+            // Determine player's current position and region
+            const [playerRows] = await gameDb.query('SELECT x,y FROM players WHERE user_id = ?', [user.userId]);
+            if (playerRows && playerRows.length > 0) {
+              const px = playerRows[0].x;
+              const py = playerRows[0].y;
+              const regions = require('../../gameData/regions.json');
+              const matched = regions.find(r => r.music && Array.isArray(r.coordinates) && pointInPolygon(px, py, r.coordinates));
+              if (matched && matched.music) {
+                const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+                socket.emit('audio:play', { type: 'music', file: matched.music, volume: vol, loop: true, regionId: matched.id || null });
+                userRegions.set(user.userId, matched.id || null);
+              }
+            }
+          } else {
+            // music disabled -> stop any playing music on client
+            socket.emit('audio:stop', { type: 'music' });
+            userRegions.set(user.userId, null);
+          }
+        } catch (e) {
+          logger.error('Failed to apply settings change immediately', { error: e && e.message ? e.message : String(e), userId: user.userId });
+        }
+      } catch (e) {
+        logger.error('Failed to update socket user settings', { error: e && e.message ? e.message : String(e), userId: user.userId });
+      }
+    });
 
     /**
      * Handle position updates from client
@@ -76,6 +156,44 @@ function initializeSocketHandlers(io) {
           y,
           realm: user.realm
         }]);
+
+        // Check for region change and play/stop music for this player only
+        try {
+          const regions = require('../../gameData/regions.json');
+          const prevRegionId = userRegions.get(user.userId) || null;
+          const matched = regions.find(r => Array.isArray(r.coordinates) && pointInPolygon(x, y, r.coordinates));
+          const newRegionId = matched ? (matched.id || null) : null;
+
+          if (newRegionId !== prevRegionId) {
+            userRegions.set(user.userId, newRegionId);
+
+            // Stop previous music if any
+            if (prevRegionId) {
+              socket.emit('audio:stop', { type: 'music', regionId: prevRegionId });
+            }
+
+            // Play new region music if configured
+            if (matched && matched.music) {
+              try {
+                const settings = socket.user && socket.user.settings ? socket.user.settings : null;
+                if (settings && settings.music_enabled) {
+                  const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+                  socket.emit('audio:play', {
+                    type: 'music',
+                    file: matched.music,
+                    volume: vol,
+                    loop: true,
+                    regionId: newRegionId
+                  });
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
+          }
+        } catch (e) {
+          logger.error('Failed to handle region change on position update', { error: e && e.message ? e.message : String(e), userId: user.userId });
+        }
 
         if (callback) callback({ success: true, x, y });
 
@@ -579,6 +697,8 @@ function initializeSocketHandlers(io) {
 
       // Remove from connected users
       connectedUsers.delete(user.userId);
+      // Remove region tracking
+      userRegions.delete(user.userId);
 
       // Broadcast disconnection
       io.emit('player:disconnected', {
@@ -651,6 +771,36 @@ async function sendInitialGameState(socket, user) {
       const regions = require('../../gameData/regions.json');
       socket.emit('paths:list', { paths });
       socket.emit('regions:list', { regions });
+      // If this player is inside a region that has music configured,
+      // instruct only the connecting socket to play that music.
+      try {
+        if (state && state.position && typeof state.position.x === 'number' && typeof state.position.y === 'number') {
+          const px = state.position.x;
+          const py = state.position.y;
+          const matched = regions.find(r => r.music && pointInPolygon(px, py, r.coordinates));
+          if (matched && matched.music) {
+            try {
+              const settings = socket.user && socket.user.settings ? socket.user.settings : null;
+              if (settings && settings.music_enabled) {
+                const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+                socket.emit('audio:play', {
+                  type: 'music',
+                  file: matched.music,
+                  volume: vol,
+                  loop: true,
+                  regionId: matched.id || null
+                });
+                // record initial region
+                userRegions.set(user.userId, matched.id || null);
+              }
+            } catch (e) {
+              logger.error('Failed to emit initial region music respecting settings', { error: e && e.message ? e.message : String(e), userId: user.userId });
+            }
+          }
+        }
+      } catch (e) {
+        logger.error('Failed to determine region music for player', { error: e && e.message ? e.message : String(e), userId: user.userId });
+      }
     } catch (error) {
       logger.error('Failed to load paths/regions', { error: error && error.message ? error.message : String(error) });
     }
@@ -798,6 +948,23 @@ async function buildPlayerState(userId) {
 /**
  * Broadcast online players list every 2 seconds
  */
+/**
+ * Simple point-in-polygon test (ray-casting)
+ * polygon: array of [x,y] points
+ */
+function pointInPolygon(px, py, polygon) {
+  if (!Array.isArray(polygon) || polygon.length === 0) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+
+    const intersect = ((yi > py) !== (yj > py)) &&
+      (px < (xj - xi) * (py - yi) / (yj - yi + 0.0) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
 function startOnlinePlayersBroadcast(io) {
   setInterval(async () => {
     try {

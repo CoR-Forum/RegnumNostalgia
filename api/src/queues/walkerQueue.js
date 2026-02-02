@@ -4,6 +4,25 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS } = require('../config/constants');
 const logger = require('../config/logger');
 
 let io = null; // Socket.io instance, injected later
+// Track last-known region id per user for walker-based movement
+const userRegions = new Map();
+
+/**
+ * Simple point-in-polygon test (ray-casting)
+ * polygon: array of [x,y] points
+ */
+function pointInPolygon(px, py, polygon) {
+  if (!Array.isArray(polygon) || polygon.length === 0) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    const intersect = ((yi > py) !== (yj > py)) &&
+      (px < (xj - xi) * (py - yi) / (yj - yi + 0.0) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
 
 /**
  * Set Socket.io instance for emitting events
@@ -96,6 +115,58 @@ walkerQueue.process('process-walkers', async (job) => {
           x: newPos[0],
           y: newPos[1]
         }]);
+
+        // Handle region change for this user (walker moved)
+        try {
+          const regions = require('../../gameData/regions.json');
+          const prevRegionId = userRegions.get(walker.user_id) || null;
+          const matched = regions.find(r => Array.isArray(r.coordinates) && pointInPolygon(newPos[0], newPos[1], r.coordinates));
+          const newRegionId = matched ? (matched.id || null) : null;
+
+          if (newRegionId !== prevRegionId) {
+            userRegions.set(walker.user_id, newRegionId);
+
+            // Find the socket for this user (if connected)
+            let targetSocket = null;
+            try {
+              const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+              for (const s of sockets) {
+                if (s && s.user && s.user.userId === walker.user_id) {
+                  targetSocket = s;
+                  break;
+                }
+              }
+            } catch (e) {
+              targetSocket = null;
+            }
+
+            if (targetSocket) {
+              // Always request stop for previous music to be safe
+              if (prevRegionId) {
+                try { targetSocket.emit('audio:stop', { type: 'music', regionId: prevRegionId }); } catch (e) {}
+              }
+
+              // Play new music only if user enabled music
+              try {
+                const settings = targetSocket.user && targetSocket.user.settings ? targetSocket.user.settings : null;
+                if (matched && matched.music && settings && settings.music_enabled) {
+                  const vol = typeof settings.music_volume === 'number' ? settings.music_volume : parseFloat(settings.music_volume) || 0.6;
+                  targetSocket.emit('audio:play', {
+                    type: 'music',
+                    file: matched.music,
+                    volume: vol,
+                    loop: true,
+                    regionId: newRegionId
+                  });
+                }
+              } catch (e) {
+                // ignore
+              }
+            }
+          }
+        } catch (e) {
+          logger.error('Failed to handle region change for walker', { error: e && e.message ? e.message : String(e), userId: walker.user_id });
+        }
       }
 
       processed++;

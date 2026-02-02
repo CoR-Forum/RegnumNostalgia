@@ -8,3 +8,5 @@ data/*
 READ.md
 itemTemplates.sqlite*
 original-map/
+public/assets/music/*
+public/assets/sounds/*

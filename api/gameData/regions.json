@@ -4,6 +4,7 @@
     "name": "Initiation Island",
     "type": "safe",
     "owner": "syrtis",
+    "music": "50206-regnum_ambient_forest.ogg",
     "walkable": true,
     "coordinates": [
       [1009, 5314],

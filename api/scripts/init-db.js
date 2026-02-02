@@ -274,6 +274,22 @@ async function initDatabase() {
       logger.info('Initialized server_time');
     }
 
+    // user_settings - persistent per-user preferences
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS user_settings (
+        user_id INT PRIMARY KEY,
+        music_enabled TINYINT(1) NOT NULL DEFAULT 1,
+        music_volume DOUBLE NOT NULL DEFAULT 0.6,
+        sounds_enabled TINYINT(1) NOT NULL DEFAULT 1,
+        sound_volume DOUBLE NOT NULL DEFAULT 1.0,
+        capture_sounds_enabled TINYINT(1) NOT NULL DEFAULT 1,
+        capture_sounds_volume DOUBLE NOT NULL DEFAULT 1.0,
+        map_version VARCHAR(8) NOT NULL DEFAULT 'v1',
+        updated_at INT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES players(user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     logger.info('Database initialization completed');
   } catch (err) {
     logger.error('Database initialization failed', { error: err.message });

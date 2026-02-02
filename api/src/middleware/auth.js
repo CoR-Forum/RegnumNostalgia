@@ -51,7 +51,35 @@ async function authenticateSocket(socket, next) {
     
     const realm = playerRows.length > 0 ? playerRows[0].realm : null;
     
-    socket.user = { ...decoded, realm }; // { userId, username, realm }
+    // Load user settings (if present)
+    let settings = {
+      music_enabled: 1,
+      music_volume: 0.6,
+      sounds_enabled: 1,
+      sound_volume: 1.0,
+      capture_sounds_enabled: 1,
+      capture_sounds_volume: 1.0,
+      map_version: 'v1'
+    };
+
+    try {
+      const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version FROM user_settings WHERE user_id = ?', [decoded.userId]);
+      if (rows && rows.length > 0) {
+        settings = {
+          music_enabled: rows[0].music_enabled === 1 ? 1 : 0,
+          music_volume: typeof rows[0].music_volume === 'number' ? rows[0].music_volume : parseFloat(rows[0].music_volume) || 0.6,
+          sounds_enabled: rows[0].sounds_enabled === 1 ? 1 : 0,
+          sound_volume: typeof rows[0].sound_volume === 'number' ? rows[0].sound_volume : parseFloat(rows[0].sound_volume) || 1.0,
+          capture_sounds_enabled: rows[0].capture_sounds_enabled === 1 ? 1 : 0,
+          capture_sounds_volume: typeof rows[0].capture_sounds_volume === 'number' ? rows[0].capture_sounds_volume : parseFloat(rows[0].capture_sounds_volume) || 1.0,
+          map_version: rows[0].map_version || 'v1'
+        };
+      }
+    } catch (e) {
+      logger.error('Failed to load user settings during socket auth', { error: e && e.message ? e.message : String(e), userId: decoded.userId });
+    }
+
+    socket.user = { ...decoded, realm, settings }; // { userId, username, realm, settings }
     next();
   } catch (error) {
     logger.error('Socket JWT verification failed', { error: error.message });
