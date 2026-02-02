@@ -143,7 +143,7 @@
     async function postMessage(){
       const message = (sbMessage.value || '').trim();
       const username = (currentUsername && currentUsername.trim()) ? currentUsername.trim() : 'anon';
-      if(!message) return alert('Please enter a message');
+      if(!message) return;
 
       const socket = window.getSocket && window.getSocket();
       if (!socket || !socket.connected) {
