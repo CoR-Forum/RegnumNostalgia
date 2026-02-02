@@ -1867,63 +1867,14 @@
       return out;
     }
 
-    async function openInventory() {
-      const inventoryWindow = document.getElementById('inventory-window');
-      inventoryWindow.style.display = 'flex';
-      try { saveWindowState('inventory-window', { open: true, display: 'flex' }); } catch (e) {}
-      // Mark HUD inventory button as pressed while the window is open
-      try { setHudPressed && setHudPressed('inventory', true); } catch (e) {}
-      document.getElementById('inventory-loading').style.display = 'block';
-      document.getElementById('inventory-items').style.display = 'none';
-      document.getElementById('inventory-empty').style.display = 'none';
-
-      try {
-        let socket = window.getSocket && window.getSocket();
-        
-        // Initialize WebSocket if not connected
-        if (!socket || !socket.connected) {
-          console.log('WebSocket not connected, initializing...');
-          if (window.initializeWebSocket) {
-            window.initializeWebSocket();
-            socket = window.getSocket && window.getSocket();
-            
-            // Wait for connection (max 3 seconds)
-            if (socket && !socket.connected) {
-              await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('WebSocket connection timeout')), 3000);
-                socket.once('connect', () => {
-                  clearTimeout(timeout);
-                  resolve();
-                });
-              });
-            }
-          }
-        }
-        
-        if (!socket || !socket.connected) {
-          throw new Error('WebSocket not available');
-        }
-        
-        // Use WebSocket only
-        socket.emit('equipment:get', (equipData) => {
-          if (equipData && equipData.success) displayEquipment(equipData.equipment);
-        });
-        socket.emit('inventory:get', (invData) => {
-          if (invData && invData.success) displayInventory(invData.items);
-        });
-      } catch (error) {
-        console.error('Failed to fetch inventory:', error);
-        alert('Failed to load inventory: ' + error.message);
-        closeInventory();
-      }
-    }
+    
 
     // Inventory button handler (legacy header button may be absent)
     const _inventoryBtn = document.getElementById('inventory-btn');
     if (_inventoryBtn) _inventoryBtn.addEventListener('click', () => {
       const inv = document.getElementById('inventory-window');
-      if (inv && inv.style.display && inv.style.display !== 'none') closeInventory();
-      else openInventory();
+      if (inv && inv.style.display && inv.style.display !== 'none') closeWindow('inventory-window');
+      else openWindow('inventory-window');
     });
 
     // Helper to toggle persistent pressed state on HUD buttons
@@ -1947,17 +1898,17 @@
         // Prefer explicit known handlers and toggle if already open
         if (action === 'inventory') {
           const inv = document.getElementById('inventory-window');
-          if (inv && inv.style.display && inv.style.display !== 'none') return closeInventory();
-          return openInventory();
+          if (inv && inv.style.display && inv.style.display !== 'none') return closeWindow('inventory-window');
+          return openWindow('inventory-window');
         }
         if (action === 'character') {
           const charWin = document.getElementById('character-window');
           if (charWin && charWin.style.display && charWin.style.display !== 'none') {
             setHudPressed('character', false);
-            return closeCharacter();
+            return closeWindow('character-window');
           }
           // Open character window (may be defined in character.html) and set pressed
-          try { if (typeof openCharacter === 'function') openCharacter(); } catch (e) {}
+          try { openWindow('character-window'); } catch (e) {}
           setHudPressed('character', true);
           try { saveWindowState('character-window', { open: true, display: 'flex' }); } catch (e) {}
           return;
@@ -1978,9 +1929,9 @@
       const charWin = document.getElementById('character-window');
       if (charWin && charWin.style.display && charWin.style.display !== 'none') {
         setHudPressed('character', false);
-        closeCharacter();
+        closeWindow('character-window');
       } else {
-        try { if (typeof openCharacter === 'function') openCharacter(); } catch (e) {}
+        try { openWindow('character-window'); } catch (e) {}
         setHudPressed('character', true);
         try { saveWindowState('character-window', { open: true, display: 'flex' }); } catch (e) {}
       }
@@ -2021,17 +1972,15 @@
       const tryOnce = () => {
         attempts++;
         try {
-          if (id === 'inventory-window' && typeof openInventory === 'function') {
-            // Only open inventory when WebSocket is connected to avoid timeouts
+          if (id === 'inventory-window') {
             const sock = (window.getSocket && window.getSocket()) || window.socket;
-            if (sock && sock.connected) { openInventory(); return true; }
+            if (sock && sock.connected) { openWindow('inventory-window'); return true; }
             return false;
           }
 
-          if (id === 'character-window' && typeof openCharacter === 'function') {
-            // Only open character when WebSocket is connected to ensure data loads
+          if (id === 'character-window') {
             const sock = (window.getSocket && window.getSocket()) || window.socket;
-            if (sock && sock.connected) { openCharacter(); return true; }
+            if (sock && sock.connected) { openWindow('character-window'); return true; }
             return false;
           }
 
@@ -2187,8 +2136,8 @@
     }
 
     function initWindows() {
-      initWindow({ id: 'inventory-window', headerId: 'inventory-header', closeId: 'inventory-close-btn', onClose: closeInventory });
-      initWindow({ id: 'character-window', headerId: 'character-header', closeId: 'character-close-btn', onClose: closeCharacter });
+      initWindow({ id: 'inventory-window', headerId: 'inventory-header', closeId: 'inventory-close-btn', onClose: () => closeWindow('inventory-window') });
+      initWindow({ id: 'character-window', headerId: 'character-header', closeId: 'character-close-btn', onClose: () => closeWindow('character-window') });
       initWindow({ id: 'shoutbox-window', headerId: 'shoutbox-header', closeId: 'shoutbox-close-btn' });
       initWindow({ id: 'mini-info-window', headerId: null, closeId: 'mini-info-close-btn', draggable: false });
     }
@@ -2227,16 +2176,133 @@
 
     
 
-    function closeInventory() {
-      document.getElementById('inventory-window').style.display = 'none';
-      try { setHudPressed && setHudPressed('inventory', false); } catch (e) {}
-      try { saveWindowState('inventory-window', { open: false, display: 'none' }); } catch (e) {}
+    // Generic open/close helpers that work across windows. These prefer
+    // per-window specialized functions (e.g. `openInventory`) when present,
+    // otherwise they perform a simple show/hide and persist state.
+    function _normalizeWindowId(id){
+      if(!id) return id;
+      if(document.getElementById(id)) return id;
+      // accept shorthand like 'inventory' -> 'inventory-window'
+      const winId = id.endsWith('-window') ? id : (id + '-window');
+      return document.getElementById(winId) ? winId : id;
     }
 
-    function closeCharacter() {
-      document.getElementById('character-window').style.display = 'none';
-      try { setHudPressed && setHudPressed('character', false); } catch (e) {}
-      try { saveWindowState('character-window', { open: false, display: 'none' }); } catch (e) {}
+    async function openWindow(id){
+      const winId = _normalizeWindowId(id);
+      const base = String(winId).replace(/-window$/, '');
+      const fnName = 'open' + base.charAt(0).toUpperCase() + base.slice(1);
+      const el = document.getElementById(winId);
+      if(!el) return Promise.resolve();
+      // Inventory: implement inventory-specific initialization inline
+      if (base === 'inventory') {
+        el.style.display = 'flex';
+        try { saveWindowState(winId, { open: true, display: el.style.display || 'flex' }); } catch(e){}
+        try { setHudPressed && setHudPressed('inventory', true); } catch(e){}
+        try { document.getElementById('inventory-loading').style.display = 'block'; } catch(e){}
+        try { document.getElementById('inventory-items').style.display = 'none'; } catch(e){}
+        try { document.getElementById('inventory-empty').style.display = 'none'; } catch(e){}
+
+        try {
+          let socket = window.getSocket && window.getSocket();
+          if (!socket || !socket.connected) {
+            if (window.initializeWebSocket) {
+              window.initializeWebSocket();
+              socket = window.getSocket && window.getSocket();
+              if (socket && !socket.connected) {
+                await new Promise((resolve, reject) => {
+                  const timeout = setTimeout(() => reject(new Error('WebSocket connection timeout')), 3000);
+                  socket.once('connect', () => { clearTimeout(timeout); resolve(); });
+                });
+              }
+            }
+          }
+          if (!socket || !socket.connected) throw new Error('WebSocket not available');
+          socket.emit('equipment:get', (equipData) => { if (equipData && equipData.success) displayEquipment(equipData.equipment); });
+          socket.emit('inventory:get', (invData) => { if (invData && invData.success) displayInventory(invData.items); });
+        } catch (error) {
+          console.error('Failed to fetch inventory:', error);
+          alert('Failed to load inventory: ' + (error && error.message ? error.message : 'Unknown error'));
+          // Hide window on failure
+          try { el.style.display = 'none'; } catch(e){}
+          try { setHudPressed && setHudPressed('inventory', false); } catch(e){}
+          try { saveWindowState(winId, { open: false, display: 'none' }); } catch(e){}
+        }
+        return Promise.resolve();
+      }
+
+      // Character: inline the previous openCharacter() flow
+      if (base === 'character') {
+        el.style.display = 'flex';
+        try { saveWindowState(winId, { open: true, display: el.style.display || 'flex' }); } catch(e){}
+        try { setHudPressed && setHudPressed('character', true); } catch(e){}
+
+        try{
+          const requestStats = () => new Promise((resolve) => {
+            if (window.socket && socket && socket.connected) {
+              socket.emit('player:stats:get', (resp) => {
+                if (resp && resp.success && resp.state) return resolve(resp.state);
+                resolve(null);
+              });
+              setTimeout(() => resolve(null), 1500);
+            } else {
+              resolve(null);
+            }
+          });
+
+          let posData = await requestStats();
+          if (!posData) {
+            if (!(window.socket && socket && socket.connected)) {
+              posData = await new Promise((resolve) => {
+                function onConnect() {
+                  window.removeEventListener('websocket:connected', onConnect);
+                  const s = window.getSocket && window.getSocket();
+                  if (s && s.connected) {
+                    s.emit('player:stats:get', (resp) => { resolve(resp && resp.success && resp.state ? resp.state : null); });
+                  } else resolve(null);
+                }
+                window.addEventListener('websocket:connected', onConnect);
+                setTimeout(() => { window.removeEventListener('websocket:connected', onConnect); resolve(null); }, 10000);
+              });
+            }
+          }
+
+          if (posData) {
+            gameState.xp = typeof posData.xp !== 'undefined' ? posData.xp : gameState.xp;
+            gameState.level = typeof posData.level !== 'undefined' ? posData.level : gameState.level;
+            gameState.xpToNext = typeof posData.xpToNext !== 'undefined' ? posData.xpToNext : gameState.xpToNext;
+            gameState.stats = posData.stats || gameState.stats;
+            gameState.damage = typeof posData.damage !== 'undefined' ? posData.damage : (gameState.damage || 0);
+            gameState.armor = typeof posData.armor !== 'undefined' ? posData.armor : (gameState.armor || 0);
+            gameState.username = typeof posData.username !== 'undefined' ? posData.username : gameState.username;
+            gameState.realm = typeof posData.realm !== 'undefined' ? posData.realm : gameState.realm;
+            gameState.className = typeof posData.className !== 'undefined' ? posData.className : (typeof posData.class !== 'undefined' ? posData.class : gameState.className);
+          }
+        } catch (err) { console.error('Failed to load character data:', err); }
+
+        try { if (typeof updateCharacterStats === 'function') updateCharacterStats(); } catch(e){}
+        return Promise.resolve();
+      }
+
+      // Fallback: show generic window
+      el.style.display = 'flex';
+      try { saveWindowState(winId, { open: true, display: el.style.display || 'flex' }); } catch(e){}
+      return Promise.resolve();
+    }
+
+    async function closeWindow(id){
+      const winId = _normalizeWindowId(id);
+      const base = String(winId).replace(/-window$/, '');
+      const fnName = 'close' + base.charAt(0).toUpperCase() + base.slice(1);
+      if(typeof window[fnName] === 'function'){
+        try { return await window[fnName](); } catch(e){ console.debug(fnName + ' failed', e); }
+      }
+
+      const el = document.getElementById(winId);
+      if(!el) return Promise.resolve();
+      el.style.display = 'none';
+      try { if(base === 'inventory') setHudPressed && setHudPressed('inventory', false); if(base === 'character') setHudPressed && setHudPressed('character', false); } catch(e){}
+      try { saveWindowState(winId, { open: false, display: 'none' }); } catch(e){}
+      return Promise.resolve();
     }
 
     // Character window functions moved to public/character.html
@@ -2322,8 +2388,8 @@
               const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
               if (window.addLogMessage) window.addLogMessage(msg, 'error');
             }
-            try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openCharacter(); } catch(e){}
-            try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openInventory(); } catch(e){}
+            try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openWindow('character-window'); } catch(e){}
+            try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openWindow('inventory-window'); } catch(e){}
           } catch (e) { console.error('inventory right-click equip failed', e); }
         });
 
@@ -2358,7 +2424,7 @@
               } catch (e) { console.error('Failed to log unequip error', e); }
             }
             // refresh inventory and equipment
-            try { await openInventory(); } catch(e){}
+            try { await openWindow('inventory-window'); } catch(e){}
           }
         } catch(err){ console.error('Failed to unequip:', err); }
       });
@@ -2591,8 +2657,8 @@
                   const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
                   if (window.addLogMessage) window.addLogMessage(msg, 'error');
                 }
-                try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openInventory(); } catch(e){}
-                try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openCharacter(); } catch(e){}
+                try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openWindow('inventory-window'); } catch(e){}
+                try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openWindow('character-window'); } catch(e){}
               } catch (e) { console.error('equipment right-click unequip failed', e); }
             });
           } else {
@@ -2627,12 +2693,12 @@
                 // Refresh equipment view and inventory if visible
                 try {
                   if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') {
-                    await openCharacter();
+                    await openWindow('character-window');
                   }
                 } catch(e){}
                 try {
                   if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') {
-                    await openInventory();
+                    await openWindow('inventory-window');
                   }
                 } catch(e){}
               }

@@ -101,67 +101,7 @@
 </style>
 
 <script>
-  // Character window JS moved from index.html. Depends on global `apiCall`, `gameState`, and tooltip helpers.
-  async function openCharacter(){
-    const win = document.getElementById('character-window');
-    if (!win) return;
-    win.style.display = 'flex';
-    try { setHudPressed && setHudPressed('character', true); } catch (e) {}
-    try{
-      // WebSocket-only: request player stats via socket. If not connected, set a one-time listener for connection.
-      const requestStats = () => new Promise((resolve) => {
-        if (window.socket && socket && socket.connected) {
-          socket.emit('player:stats:get', (resp) => {
-            if (resp && resp.success && resp.state) return resolve(resp.state);
-            resolve(null);
-          });
-          setTimeout(() => resolve(null), 1500);
-        } else {
-          resolve(null);
-        }
-      });
-
-      let posData = await requestStats();
-      if (!posData) {
-        // If we didn't get a response immediately, wait for server emission when socket connects
-        if (!(window.socket && socket && socket.connected)) {
-          await new Promise((resolve) => {
-            function onConnect() {
-              window.removeEventListener('websocket:connected', onConnect);
-              if (window.socket && socket) {
-                socket.emit('player:stats:get', (resp) => {
-                  resolve(resp && resp.success && resp.state ? resp.state : null);
-                });
-              } else resolve(null);
-            }
-            window.addEventListener('websocket:connected', onConnect);
-            // safety timeout
-            setTimeout(() => { window.removeEventListener('websocket:connected', onConnect); resolve(null); }, 10000);
-          }).then(r => { posData = r; });
-        }
-      }
-
-      if (posData) {
-        gameState.xp = typeof posData.xp !== 'undefined' ? posData.xp : gameState.xp;
-        gameState.level = typeof posData.level !== 'undefined' ? posData.level : gameState.level;
-        gameState.xpToNext = typeof posData.xpToNext !== 'undefined' ? posData.xpToNext : gameState.xpToNext;
-        gameState.stats = posData.stats || gameState.stats;
-        gameState.damage = typeof posData.damage !== 'undefined' ? posData.damage : (gameState.damage || 0);
-        gameState.armor = typeof posData.armor !== 'undefined' ? posData.armor : (gameState.armor || 0);
-        gameState.username = typeof posData.username !== 'undefined' ? posData.username : gameState.username;
-        gameState.realm = typeof posData.realm !== 'undefined' ? posData.realm : gameState.realm;
-        gameState.className = typeof posData.className !== 'undefined' ? posData.className : (typeof posData.class !== 'undefined' ? posData.class : gameState.className);
-      } else {
-        console.warn('No player stats received via WebSocket when opening character window');
-      }
-    }catch(err){ console.error('Failed to load character data:', err); }
-    updateCharacterStats();
-  }
-
-  function closeCharacter(){
-    const el = document.getElementById('character-window'); if(el) el.style.display = 'none';
-    try { setHudPressed && setHudPressed('character', false); } catch (e) {}
-  }
+  // Character window helpers remain; opening is handled by `openWindow()` in index.html.
 
   function updateCharacterStats(){
     try{
@@ -289,8 +229,8 @@
                 const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to unequip item';
                 if (window.addLogMessage) window.addLogMessage(msg, 'error');
               }
-              try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openInventory(); } catch(e){}
-              try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openCharacter(); } catch(e){}
+              try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openWindow('inventory-window'); } catch(e){}
+              try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openWindow('character-window'); } catch(e){}
             } catch (e) { console.error('equipment right-click unequip failed', e); }
           });
         } else {
@@ -319,8 +259,8 @@
                   if (window.addLogMessage) window.addLogMessage(msg, 'error');
                 } catch (e) { console.error('Failed to log equip error', e); }
               }
-              try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') { await openCharacter(); } } catch(e){}
-              try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') { await openInventory(); } } catch(e){}
+              try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') { await openWindow('character-window'); } } catch(e){}
+              try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') { await openWindow('inventory-window'); } } catch(e){}
             }
           }catch(err){ console.error('Equip failed', err); }
         });
