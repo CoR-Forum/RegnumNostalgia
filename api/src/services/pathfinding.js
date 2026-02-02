@@ -4,12 +4,14 @@
 // levels to reach `api/gameData`.
 const pathsData = require('../../gameData/paths.json');
 const regionsData = require('../../gameData/regions.json');
+const wallsData = require('../../gameData/walls.json');
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
 
 // Local loaders matching the old `loadPaths()` / `loadRegions()` API
 async function loadPaths() { return pathsData; }
 async function loadRegions() { return regionsData; }
+async function loadWalls() { return wallsData; }
 
 const INF = Number.MAX_SAFE_INTEGER;
 const LINK_THRESHOLD = 30; // pixels - cross-path link threshold
@@ -104,6 +106,104 @@ function pointInPolygon(x, y, polygon) {
   }
 
   return inside;
+}
+
+/**
+ * Check if a line segment (x1,y1)-(x2,y2) intersects with a line segment (x3,y3)-(x4,y4)
+ */
+function lineSegmentsIntersect(x1, y1, x2, y2, x3, y3, x4, y4) {
+  const denominator = ((y4 - y3) * (x2 - x1)) - ((x4 - x3) * (y2 - y1));
+  
+  // Lines are parallel
+  if (Math.abs(denominator) < 0.0001) {
+    return false;
+  }
+  
+  const ua = (((x4 - x3) * (y1 - y3)) - ((y4 - y3) * (x1 - x3))) / denominator;
+  const ub = (((x2 - x1) * (y1 - y3)) - ((y2 - y1) * (x1 - x3))) / denominator;
+  
+  // Check if intersection occurs within both line segments
+  return (ua >= 0 && ua <= 1) && (ub >= 0 && ub <= 1);
+}
+
+/**
+ * Check if a path segment crosses any wall and return wall info if it does
+ */
+async function pathCrossesWall(x1, y1, x2, y2) {
+  const walls = await loadWalls();
+  
+  for (const wall of walls) {
+    const positions = wall.positions || [];
+    
+    // Check if the segment crosses any segment of the wall
+    for (let i = 0; i < positions.length - 1; i++) {
+      const [wx1, wy1] = positions[i];
+      const [wx2, wy2] = positions[i + 1];
+      
+      if (lineSegmentsIntersect(x1, y1, x2, y2, wx1, wy1, wx2, wy2)) {
+        return { crosses: true, wall, intersectionSegment: i };
+      }
+    }
+  }
+  
+  return { crosses: false };
+}
+
+/**
+ * Find the best path through a wall
+ */
+async function findPathThroughWall(wall, fromX, fromY, toX, toY) {
+  const paths = await loadPaths();
+  const wallPositions = wall.positions || [];
+  
+  if (wallPositions.length < 2) return null;
+  
+  let bestPath = null;
+  let bestScore = INF;
+  
+  // Find paths that cross through this wall
+  for (const path of paths) {
+    const positions = path.positions || [];
+    if (positions.length < 2) continue;
+    
+    let crossesWall = false;
+    
+    // Check if this path crosses the wall
+    for (let i = 0; i < positions.length - 1; i++) {
+      const [px1, py1] = positions[i];
+      const [px2, py2] = positions[i + 1];
+      
+      for (let j = 0; j < wallPositions.length - 1; j++) {
+        const [wx1, wy1] = wallPositions[j];
+        const [wx2, wy2] = wallPositions[j + 1];
+        
+        if (lineSegmentsIntersect(px1, py1, px2, py2, wx1, wy1, wx2, wy2)) {
+          crossesWall = true;
+          break;
+        }
+      }
+      
+      if (crossesWall) break;
+    }
+    
+    // If this path crosses the wall, consider it as a passage
+    if (crossesWall) {
+      const firstPos = positions[0];
+      const lastPos = positions[positions.length - 1];
+      
+      // Calculate total distance: from -> path start -> path end -> to
+      const distToStart = distance(fromX, fromY, firstPos[0], firstPos[1]);
+      const distFromEnd = distance(lastPos[0], lastPos[1], toX, toY);
+      const score = distToStart + distFromEnd;
+      
+      if (score < bestScore) {
+        bestScore = score;
+        bestPath = path;
+      }
+    }
+  }
+  
+  return bestPath;
 }
 
 /**
@@ -219,8 +319,18 @@ async function buildPathGraph() {
           nodes[prevNodeId].x, nodes[prevNodeId].y,
           nodes[nodeId].x, nodes[nodeId].y
         );
-        adj[prevNodeId][nodeId] = d;
-        adj[nodeId][prevNodeId] = d;
+        
+        // Check if this edge crosses a wall
+        const wallCheck = await pathCrossesWall(
+          nodes[prevNodeId].x, nodes[prevNodeId].y,
+          nodes[nodeId].x, nodes[nodeId].y
+        );
+        
+        // Only add edge if it doesn't cross a wall
+        if (!wallCheck.crosses) {
+          adj[prevNodeId][nodeId] = d;
+          adj[nodeId][prevNodeId] = d;
+        }
       }
       prevNodeId = nodeId;
     }
@@ -235,8 +345,44 @@ async function buildPathGraph() {
       const d = distance(nodes[idA].x, nodes[idA].y, nodes[idB].x, nodes[idB].y);
       
       if (d <= LINK_THRESHOLD) {
-        adj[idA][idB] = d;
-        adj[idB][idA] = d;
+        // Check if this cross-path link crosses a wall
+        const wallCheck = await pathCrossesWall(
+          nodes[idA].x, nodes[idA].y,
+          nodes[idB].x, nodes[idB].y
+        );
+        
+        if (!wallCheck.crosses) {
+          // No wall, add direct link
+          adj[idA][idB] = d;
+          adj[idB][idA] = d;
+        } else {
+          // Wall blocks direct path, try to find a passage path
+          const passagePath = await findPathThroughWall(
+            wallCheck.wall,
+            nodes[idA].x, nodes[idA].y,
+            nodes[idB].x, nodes[idB].y
+          );
+          
+          if (passagePath && passagePath.positions && passagePath.positions.length > 0) {
+            // Calculate distance through the passage path
+            let pathDist = distance(nodes[idA].x, nodes[idA].y, passagePath.positions[0][0], passagePath.positions[0][1]);
+            
+            for (let k = 1; k < passagePath.positions.length; k++) {
+              pathDist += distance(
+                passagePath.positions[k-1][0], passagePath.positions[k-1][1],
+                passagePath.positions[k][0], passagePath.positions[k][1]
+              );
+            }
+            
+            const lastPos = passagePath.positions[passagePath.positions.length - 1];
+            pathDist += distance(lastPos[0], lastPos[1], nodes[idB].x, nodes[idB].y);
+            
+            // Add the connection with the passage path distance
+            adj[idA][idB] = pathDist;
+            adj[idB][idA] = pathDist;
+          }
+          // If no passage path, nodes remain disconnected
+        }
       }
     }
   }
@@ -269,11 +415,40 @@ async function findPath(userId, targetX, targetY, realm) {
 
   const tripDist = distance(playerX, playerY, targetX, targetY);
 
-  // For short trips, use direct walking
+  // For short trips, check if direct walking crosses a wall
   if (tripDist <= DIRECT_THRESHOLD) {
-    const positions = [[playerX, playerY]];
-    positions.push(...interpolateSteps(playerX, playerY, targetX, targetY));
-    return positions;
+    const wallCheck = await pathCrossesWall(playerX, playerY, targetX, targetY);
+    
+    if (!wallCheck.crosses) {
+      // Direct path is clear, use it
+      const positions = [[playerX, playerY]];
+      positions.push(...interpolateSteps(playerX, playerY, targetX, targetY));
+      return positions;
+    } else {
+      // Direct path crosses a wall, try to use a passage path through it
+      const passagePath = await findPathThroughWall(wallCheck.wall, playerX, playerY, targetX, targetY);
+      
+      if (passagePath && passagePath.positions) {
+        // Use the passage path to go through the wall
+        const positions = [[playerX, playerY]];
+        
+        // Walk to the start of the passage path
+        const pathStart = passagePath.positions[0];
+        positions.push(...interpolateSteps(playerX, playerY, pathStart[0], pathStart[1]));
+        
+        // Follow the passage path through the wall
+        passagePath.positions.forEach(pos => {
+          positions.push(pos);
+        });
+        
+        // Walk from the end of the passage path to the target
+        const pathEnd = passagePath.positions[passagePath.positions.length - 1];
+        positions.push(...interpolateSteps(pathEnd[0], pathEnd[1], targetX, targetY));
+        
+        return positions;
+      }
+      // If no passage path found, fall through to path network navigation
+    }
   }
 
   // For longer trips, use path network
@@ -289,43 +464,58 @@ async function findPath(userId, targetX, targetY, realm) {
   let minStartDist = INF;
   let minEndDist = INF;
 
+  // Find the best start node (closest to player that doesn't cross a wall)
   for (const nodeId in nodes) {
     const node = nodes[nodeId];
     const distToStart = distance(playerX, playerY, node.x, node.y);
+    
+    if (distToStart < minStartDist && distToStart <= MAX_NODE_DISTANCE) {
+      const wallCheck = await pathCrossesWall(playerX, playerY, node.x, node.y);
+      if (!wallCheck.crosses) {
+        minStartDist = distToStart;
+        startNode = nodeId;
+      }
+    }
+  }
+
+  // Find the best end node (closest to target that doesn't cross a wall)
+  for (const nodeId in nodes) {
+    const node = nodes[nodeId];
     const distToEnd = distance(targetX, targetY, node.x, node.y);
-
-    if (distToStart < minStartDist) {
-      minStartDist = distToStart;
-      startNode = nodeId;
+    
+    if (distToEnd < minEndDist && distToEnd <= MAX_NODE_DISTANCE) {
+      const wallCheck = await pathCrossesWall(node.x, node.y, targetX, targetY);
+      if (!wallCheck.crosses) {
+        minEndDist = distToEnd;
+        endNode = nodeId;
+      }
     }
+  }
 
-    if (distToEnd < minEndDist) {
-      minEndDist = distToEnd;
-      endNode = nodeId;
-    }
+  // If no suitable start or end nodes found, throw error
+  if (startNode === null) {
+    throw new Error('Cannot reach path network - all nearby paths are blocked by walls');
+  }
+  
+  if (endNode === null) {
+    throw new Error('Cannot reach destination - all nearby paths are blocked by walls');
   }
 
   const positions = [];
 
-  // If player is too far from any node, start directly from player position
-  if (minStartDist > MAX_NODE_DISTANCE) {
-    positions.push([playerX, playerY]);
-  } else {
-    // Use Dijkstra to find path through network
-    const pathNodeIds = endNode !== null ? dijkstra(adj, startNode, endNode) : null;
+  // Use Dijkstra to find path through network
+  const pathNodeIds = dijkstra(adj, startNode, endNode);
 
-    if (pathNodeIds === null) {
-      // No path found, just start from nearest node
-      positions.push([nodes[startNode].x, nodes[startNode].y]);
-    } else {
-      // Add path nodes
-      pathNodeIds.forEach(nodeId => {
-        positions.push([nodes[nodeId].x, nodes[nodeId].y]);
-      });
-    }
+  if (pathNodeIds === null) {
+    throw new Error('No path found through the network');
   }
 
-  // Prepend interpolated steps from player to first node if needed
+  // Add path nodes
+  pathNodeIds.forEach(nodeId => {
+    positions.push([nodes[nodeId].x, nodes[nodeId].y]);
+  });
+
+  // Prepend interpolated steps from player to first node
   const first = positions[0];
   if (first[0] !== playerX || first[1] !== playerY) {
     const prefix = [[playerX, playerY]];
@@ -383,5 +573,6 @@ module.exports = {
   createWalker,
   validateWalkableRegion,
   distance,
-  pointInPolygon
+  pointInPolygon,
+  pathCrossesWall
 };
