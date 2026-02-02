@@ -709,10 +709,12 @@
   </style>
 </head>
 <body>
-  <!-- Login window loaded from separate file -->
+  <!-- Login window loader (define but don't fetch immediately) -->
   <script>
-    (function(){
-      fetch('login.html').then(r => r.text()).then(html => {
+    // Load the login modal HTML into the document when needed.
+    // Returns a Promise that resolves after scripts have been appended.
+    window.loadLoginForm = function loadLoginForm() {
+      return fetch('login.html').then(r => r.text()).then(html => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
 
@@ -722,7 +724,7 @@
           document.body.appendChild(node);
         });
 
-        // Execute inline scripts
+        // Execute inline scripts and load external scripts (if any)
         const scripts = tmp.querySelectorAll('script');
         scripts.forEach(s => {
           const ns = document.createElement('script');
@@ -731,7 +733,7 @@
           document.body.appendChild(ns);
         });
       }).catch(err => console.error('Failed to load login window:', err));
-    })();
+    };
   </script>
 
   <!-- Inventory Window -->
@@ -3032,9 +3034,14 @@
 
     // Wait for login.html to be loaded before checking auto-login
     function checkAutoLogin() {
-      const overlay = document.getElementById('modal-overlay');
+      let overlay = document.getElementById('modal-overlay');
       if (!overlay) {
-        // Login HTML not loaded yet, wait a bit
+        // Login HTML not loaded yet: try to fetch it on-demand, then retry.
+        if (typeof window.loadLoginForm === 'function') {
+          window.loadLoginForm().then(() => { setTimeout(checkAutoLogin, 50); }).catch(() => { setTimeout(checkAutoLogin, 250); });
+          return;
+        }
+        // Fallback: wait a bit and retry
         setTimeout(checkAutoLogin, 50);
         return;
       }
