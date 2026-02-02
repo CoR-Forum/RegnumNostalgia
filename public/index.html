@@ -1018,13 +1018,24 @@
       const origTotalH = rows * tileH;
 
       // Desired raster coordinates size. The world should behave as 6144x6144
-      // v1: tiles are 1024x1024 (3072x3072 total) → scale = 6144/3072 = 2
-      // v2: tiles are 2048x2048 (6144x6144 total) → scale = 6144/6144 = 1
-      const scale = 6144 / origTotalW;
+      // v1: tiles are 1024x1024 (3072x3072 total) → baseScale = 6144/3072 = 2
+      // v2: tiles are 2048x2048 (6144x6144 total) → baseScale = 6144/6144 = 1
+      const baseScale = 6144 / origTotalW;
+
+      // Allow small per-axis adjustments for tile variants. v2 tiles require
+      // a slight manual shrink to better match the v1 appearance:
+      // - width (X) : -1%  => 0.99
+      // - height(Y) : -2%  => 0.98
+      let scaleX = baseScale;
+      let scaleY = baseScale;
+      if (currentTileVersion === 'v2') {
+        scaleX = baseScale * 1.00; // +1% width
+        scaleY = baseScale * 1.01; // +2% height
+      }
 
       // Scaled world size used by Leaflet (map coordinate units)
-      totalW = origTotalW * scale;
-      totalH = origTotalH * scale;
+      totalW = origTotalW * scaleX;
+      totalH = origTotalH * scaleY;
 
       // Use CRS.Simple so coordinates map directly to pixels
       // Disable the default zoomControl (placed top-left) so we can
@@ -1048,7 +1059,7 @@
       // Snap back to bounds, but allow a larger padding buffer so users can
       // pan further outside before the map bounces back. Increase the
       // allowed off-screen drag by 50% over the original setting.
-      const pad = 1000 * scale; // pixels of padding outside the image (scaled)
+      const pad = 1000 * Math.max(scaleX, scaleY); // pixels of padding outside the image (scaled)
       const paddedBounds = [[-pad, -pad], [totalH + pad, totalW + pad]];
       map.setMaxBounds(paddedBounds);
 
@@ -1098,10 +1109,10 @@
         for(let r=1; r<=rows; r++){
           for(let c=1; c<=cols; c++){
             const rowPos = rows - r; // invert row index
-            const y1 = rowPos * tileH * scale;
-            const x1 = (c-1) * tileW * scale;
-            const y2 = (rowPos + 1) * tileH * scale;
-            const x2 = c * tileW * scale;
+            const y1 = rowPos * tileH * scaleY;
+            const x1 = (c-1) * tileW * scaleX;
+            const y2 = (rowPos + 1) * tileH * scaleY;
+            const x2 = c * tileW * scaleX;
             const overlay = L.imageOverlay(tileUrl(r,c), [[y1,x1],[y2,x2]]).addTo(map);
             tileOverlays.push(overlay);
           }
