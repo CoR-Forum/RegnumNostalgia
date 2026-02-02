@@ -2083,9 +2083,35 @@
           if (typeof saved.left !== 'undefined' && typeof saved.top !== 'undefined') {
             try { if (win.style.right && win.style.right !== 'auto') win.style.right = 'auto'; } catch(e){}
             try { if (win.style.bottom && win.style.bottom !== 'auto') win.style.bottom = 'auto'; } catch(e){}
-            win.style.left = (saved.left) + 'px';
-            win.style.top = (saved.top) + 'px';
-            win.style.transform = '';
+            // Clamp restored position so windows are not placed off-screen
+            try {
+              const viewportW = window.innerWidth || document.documentElement.clientWidth || 1024;
+              const viewportH = window.innerHeight || document.documentElement.clientHeight || 768;
+              const savedLeft = Number(saved.left) || 0;
+              const savedTop = Number(saved.top) || 0;
+              // Try to determine window size; fall back to reasonable defaults
+              let winW = win.offsetWidth || parseInt(window.getComputedStyle(win).width, 10) || 304;
+              let winH = win.offsetHeight || parseInt(window.getComputedStyle(win).height, 10) || 200;
+              // Ensure positive sizes
+              winW = Math.max(64, winW);
+              winH = Math.max(64, winH);
+
+              const maxLeft = Math.max(0, viewportW - winW);
+              const maxTop = Math.max(0, viewportH - winH);
+              const left = Math.min(Math.max(0, savedLeft), maxLeft);
+              const top = Math.min(Math.max(0, savedTop), maxTop);
+
+              win.style.left = (left) + 'px';
+              win.style.top = (top) + 'px';
+              win.style.transform = '';
+              // Persist clamped values so future restores are sane
+              try { saveWindowState(win.id, { left: Math.round(left), top: Math.round(top) }); } catch(e){}
+            } catch(e) {
+              // Fallback to directly restoring values if clamping fails
+              win.style.left = (saved.left) + 'px';
+              win.style.top = (saved.top) + 'px';
+              win.style.transform = '';
+            }
           }
           if (saved.open) {
             win.style.display = saved.display || 'flex';
@@ -2794,7 +2820,7 @@
         gameState.realm = data.realm ?? gameState.realm;
         gameState.username = typeof data.username !== 'undefined' ? data.username : gameState.username;
         gameState.health = data.health ?? gameState.health;
-        // Accept both snake_case and camelCase shapes from different API routes
+        // Expect camelCase fields from server
         gameState.maxHealth = data.maxHealth ?? gameState.maxHealth;
         gameState.mana = data.mana ?? gameState.mana;
         gameState.maxMana = data.maxMana ?? gameState.maxMana;
