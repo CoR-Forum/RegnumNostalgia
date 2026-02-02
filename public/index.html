@@ -1885,7 +1885,7 @@
       // Render items as list
       items.forEach(item => {
         // Track gold
-        if (item.itemName === 'Gold Coin') {
+        if (getItemName(item) === 'Gold Coin') {
           totalGold += item.quantity;
         }
 
@@ -1894,13 +1894,13 @@
 
         const iconName = item.iconName || item.icon_name;
         const iconSrc = iconName ? `assets/v1/items/${iconName}` : '';
-        const iconHtml = iconSrc ? `<img src="${iconSrc}" alt="${item.itemName}">` : '';
+        const iconHtml = iconSrc ? `<img src="${iconSrc}" alt="${getItemName(item)}">` : '';
 
         const rarityClass = (item.rarity || 'common');
 
         itemDiv.innerHTML = `
           <div class="item-icon">${iconHtml}</div>
-          <div class="item-name ${rarityClass}">${item.itemName}${typeof item.level !== 'undefined' ? ` <span class="item-level">Lv ${item.level}</span>` : ''}</div>
+          <div class="item-name ${rarityClass}">${getItemName(item)}${typeof item.level !== 'undefined' ? ` <span class="item-level">Lv ${item.level}</span>` : ''}</div>
           ${item.quantity > 1 ? `<div class="item-quantity">×${item.quantity}</div>` : ''}
         `;
 
@@ -2015,9 +2015,9 @@
 
       tooltip.innerHTML = `
         <div class="tooltip-header">
-          <div class="tooltip-icon">${tooltipIconSrc ? `<img src="${tooltipIconSrc}" alt="${item.itemName}">` : ''}</div>
+          <div class="tooltip-icon">${tooltipIconSrc ? `<img src="${tooltipIconSrc}" alt="${getItemName(item)}">` : ''}</div>
           <div class="tooltip-title">
-            <div class="tooltip-name ${rarityClass}">${item.itemName} ${typeof item.level !== 'undefined' ? `<span class="tooltip-level">Lv ${item.level}</span>` : ''}</div>
+            <div class="tooltip-name ${rarityClass}">${getItemName(item)} ${typeof item.level !== 'undefined' ? `<span class="tooltip-level">Lv ${item.level}</span>` : ''}</div>
           </div>
         </div>
         <div class="tooltip-type">${getItemTypeLabel(item)}</div>
@@ -2027,6 +2027,10 @@
       `;
 
       document.body.appendChild(tooltip);
+      // Ensure tooltip appears above movable windows by using
+      // the shared window z-index tracker (initWindow sets this).
+      if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
+      try { tooltip.style.zIndex = String(++window.__windowTopZ); } catch (e) { tooltip.style.zIndex = '40000'; }
       currentTooltip = tooltip;
 
       // Anchor tooltip to the hovered inventory/equipment element
@@ -2084,6 +2088,12 @@
       }
       const t = item.itemType || '';
       return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+
+    // Normalize item display name across different API shapes
+    function getItemName(item){
+      if(!item) return 'Unknown Item';
+      return item.itemName || item.name || item.item_name || item.displayName || item.display_name || 'Unknown Item';
     }
 
     function displayEquipment(equipment){
