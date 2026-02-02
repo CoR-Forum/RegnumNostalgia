@@ -3006,15 +3006,8 @@
       __mapContextMenuEl = document.createElement('div');
       __mapContextMenuEl.id = 'map-contextmenu';
       __mapContextMenuEl.className = 'map-contextmenu';
-      __mapContextMenuEl.innerHTML = '<div class="map-contextmenu-item" id="map-walk-here">Walk here</div><div class="map-contextmenu-item" id="map-teleport">Teleport</div><div class="map-contextmenu-item" id="map-copy-coords">Copy Coords</div><div class="map-contextmenu-item" id="map-screenshots">Screenshots</div>';
+      __mapContextMenuEl.innerHTML = '<div class="map-contextmenu-item" id="map-walk-here">Walk here</div><div class="map-contextmenu-item" id="map-copy-coords">Copy Coords</div><div class="map-contextmenu-item" id="map-screenshots">Screenshots</div>';
       document.body.appendChild(__mapContextMenuEl);
-
-      __mapContextMenuEl.querySelector('#map-teleport').addEventListener('click', async (ev) => {
-        ev.stopPropagation();
-        if (!__lastContextLatLng) return hideMapContextMenu();
-        await performMoveAtLatLng(__lastContextLatLng);
-        hideMapContextMenu();
-      });
 
       __mapContextMenuEl.querySelector('#map-walk-here').addEventListener('click', async (ev) => {
         ev.stopPropagation();
@@ -3146,30 +3139,6 @@
 
     // Region permission helpers moved to public/regions.js
 
-    async function performMoveAtLatLng(latlng) {
-      const x = Math.round(latlng.lng);
-      const y = Math.round(totalH - latlng.lat);
-
-      if (x < 0 || x > 6144 || y < 0 || y > 6144) return;
-
-      try {
-        // WebSocket-only: send position update via socket. Do not call REST.
-        if (window.socket && socket && socket.connected) {
-          socket.emit('position:update', { x, y }, (resp) => {
-            if (resp && resp.success) {
-              gameState.position = { x, y };
-              if (gameState.playerMarker) gameState.playerMarker.setLatLng([totalH - y, x]);
-              updatePlayerCoords(x, y);
-            }
-          });
-        } else {
-          console.warn('WebSocket not connected — cannot update position without REST fallback');
-        }
-      } catch (error) {
-        console.error('Failed to update position:', error);
-      }
-    }
-
     // Start walking toward a target; server will compute path and advance via cron.
     async function performWalkAtLatLng(latlng) {
       const x = Math.round(latlng.lng);
@@ -3210,15 +3179,30 @@
     // loadAndRenderPaths moved into public/build-path.js
 
     function enableClickToMove() {
-      // Use right-click (contextmenu) to open a small menu with actions
+      // Use right-click (contextmenu) to start walking; Shift+right-click opens context menu
       map.on('contextmenu', async (e) => {
-        // Prevent the browser default context menu
+        // Prevent the browser default context menu in all cases
         if (e.originalEvent && typeof e.originalEvent.preventDefault === 'function') e.originalEvent.preventDefault();
+
+        // If user holds Shift while right-clicking, show the context menu
+        const shiftPressed = !!(e.originalEvent && e.originalEvent.shiftKey);
+        if (shiftPressed) {
+          try {
+            __lastContextAllowed = await isLatLngWalkAllowedAsync(e.latlng);
+          } catch (err) { __lastContextAllowed = false; }
+          showMapContextMenuAt(e.containerPoint, e.latlng);
+          return;
+        }
+
+        // Otherwise, attempt to start walking directly to the clicked location
         try {
-          // Compute permission before showing menu to avoid race conditions
-          __lastContextAllowed = await isLatLngWalkAllowedAsync(e.latlng);
-        } catch (err) { __lastContextAllowed = false; }
-        showMapContextMenuAt(e.containerPoint, e.latlng);
+          const allowed = await isLatLngWalkAllowedAsync(e.latlng);
+          if (!allowed) { alert('Cannot walk to that region.'); return; }
+          await performWalkAtLatLng(e.latlng);
+        } catch (err) {
+          console.error('Right-click walk failed', err);
+          try { if (window.addLogMessage) window.addLogMessage('Failed to start walking: ' + (err && err.message ? err.message : 'Unknown error'), 'error'); } catch(e){}
+        }
       });
 
       // Hide menu when map viewport changes

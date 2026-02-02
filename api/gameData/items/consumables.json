@@ -22,17 +22,5 @@
     "level": 1,
     "equipment_slot": null,
     "icon_name": "item-mana-potion-50.png"
-  },
-  {
-    "template_key": "teleport_scroll",
-    "name": "Teleport Scroll",
-    "type": "consumable",
-    "description": "Teleports to spawn point",
-    "stats": {},
-    "rarity": "uncommon",
-    "stackable": 1,
-    "level": 1,
-    "equipment_slot": null,
-    "icon_name": "item-teleport.png"
   }
 ]
