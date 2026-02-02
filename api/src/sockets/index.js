@@ -132,10 +132,12 @@ function initializeSocketHandlers(io) {
           Object.values(equipmentRows[0]).filter(id => id > 0) : [];
 
         // Get inventory items
+        // Return only minimal fields for the inventory list. Detailed fields
+        // (description, stats, rarity, level, equipment_slot, icon_name)
+        // must be requested individually via `item:details` on hover.
         let query = `
           SELECT inv.inventory_id, inv.item_id, inv.quantity, inv.acquired_at,
-                 i.template_key, i.name, i.type, i.description, i.stats, 
-                 i.rarity, i.stackable, i.level, i.equipment_slot, i.icon_name
+                 i.template_key, i.name, i.icon_name
           FROM inventory inv
           JOIN items i ON inv.item_id = i.item_id
           WHERE inv.user_id = ?
@@ -152,11 +154,8 @@ function initializeSocketHandlers(io) {
 
         const [items] = await gameDb.query(query, params);
 
-        // Parse stats JSON
-        const inventory = items.map(item => ({
-          ...item,
-          stats: typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats
-        }));
+        // Return rows as-is (no stats parsing) — minimal payload
+        const inventory = items.map(item => ({ ...item }));
 
         if (callback) callback({ success: true, items: inventory });
       } catch (error) {
@@ -206,9 +205,10 @@ function initializeSocketHandlers(io) {
         let itemDetails = {};
 
         if (equippedIds.length > 0) {
+          // Return only minimal fields for equipped items. Detailed fields
+          // will be fetched on hover via `item:details`.
           const [itemRows] = await gameDb.query(
-            `SELECT inv.inventory_id, i.template_key, i.name, i.type, i.description, 
-                    i.stats, i.rarity, i.level, i.equipment_slot, i.icon_name
+            `SELECT inv.inventory_id, i.template_key, i.name, i.icon_name
              FROM inventory inv
              JOIN items i ON inv.item_id = i.item_id
              WHERE inv.inventory_id IN (?)`,
@@ -216,10 +216,7 @@ function initializeSocketHandlers(io) {
           );
 
           itemRows.forEach(item => {
-            itemDetails[item.inventory_id] = {
-              ...item,
-              stats: typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats
-            };
+            itemDetails[item.inventory_id] = { ...item };
           });
         }
 
@@ -227,7 +224,7 @@ function initializeSocketHandlers(io) {
         const equippedItems = {};
         slots.forEach(slot => {
           const invId = equipment[slot];
-          equippedItems[slot] = invId && itemDetails[invId] ? itemDetails[invId] : null;
+          equippedItems[slot] = invId && itemDetails[invId] ? { inventoryId: invId, item: itemDetails[invId] } : { inventoryId: null, item: null };
         });
 
         if (callback) callback({ success: true, equipment: equippedItems });

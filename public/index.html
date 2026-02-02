@@ -1920,6 +1920,15 @@
         itemDiv.addEventListener('mouseenter', (e) => showTooltip(e, item));
         itemDiv.addEventListener('mouseleave', hideTooltip);
         itemDiv.addEventListener('mousemove', (e) => moveTooltip(e));
+        // Ensure tooltip stays above windows when item is clicked/pressed
+        itemDiv.addEventListener('mousedown', () => {
+          try {
+            if (currentTooltip) {
+              if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
+              currentTooltip.style.zIndex = String(++window.__windowTopZ);
+            }
+          } catch (e) {}
+        });
 
         // Right-click to equip
         itemDiv.addEventListener('contextmenu', async (e) => {
@@ -2034,50 +2043,61 @@
       try { tooltip.style.zIndex = String(++window.__windowTopZ); } catch (e) { tooltip.style.zIndex = '40000'; }
       currentTooltip = tooltip;
 
-      // If the passed `item` is only a minimal record (no description/stats),
-      // request full details via WebSocket using its inventory id.
+      // Always request full details via WebSocket using its inventory id
+      // on every hover (do not cache server-provided details client-side).
       const invId = item.inventoryId || item.inventory_id || item.inventoryId || null;
-      const needsDetails = !(item.description || (item.stats && Object.keys(item.stats || {}).length > 0) || item.type || item.itemType);
-      if (needsDetails && invId && window.getSocket) {
+      if (invId && window.getSocket) {
         try {
           const sock = window.getSocket();
           if (sock && sock.connected) {
-            sock.emit('item:details', { inventoryId: invId }, (resp) => {
+            // Debounce requests to avoid spamming the server when mouse moves quickly.
+            if (tooltip.__detailsTimer) clearTimeout(tooltip.__detailsTimer);
+            tooltip.__detailsTimer = setTimeout(() => {
               try {
-                if (!resp || !resp.success) return;
-                const det = resp.item || {};
-                // Merge details into original item reference so other handlers see them
-                try { Object.assign(item, det); } catch (e) {}
+                // Ensure tooltip is still active
+                if (!currentTooltip || currentTooltip !== tooltip) return;
+                // Tag tooltip with the requested inventory id so late responses
+                // don't overwrite a newer tooltip instance.
+                tooltip.__requestInventoryId = String(invId);
+                sock.emit('item:details', { inventoryId: invId }, (resp) => {
+                  try {
+                    if (!resp || !resp.success) return;
+                    const det = resp.item || {};
+                    // Only apply if tooltip still exists and matches this request
+                    if (!currentTooltip || currentTooltip !== tooltip) return;
+                    if (String(tooltip.__requestInventoryId) !== String(invId)) return;
 
-                // Rebuild stats HTML
-                let newStatsHtml = '';
-                if (det.stats && Object.keys(det.stats || {}).length > 0) {
-                  const parts = Object.entries(det.stats).map(([k,v]) => `+${v} ${k.replace('_',' ')}`);
-                  newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
-                }
+                    // Rebuild stats HTML
+                    let newStatsHtml = '';
+                    if (det.stats && Object.keys(det.stats || {}).length > 0) {
+                      const parts = Object.entries(det.stats).map(([k,v]) => `+${v} ${k.replace('_',' ')}`);
+                      newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
+                    }
 
-                const newIconName = det.icon_name || det.iconName || null;
-                const newIconSrc = newIconName ? `assets/v1/items/${newIconName}` : (tooltipIconSrc || '');
+                    const newIconName = det.icon_name || det.iconName || null;
+                    const newIconSrc = newIconName ? `assets/v1/items/${newIconName}` : (tooltipIconSrc || '');
 
-                const newRarity = det.rarity || rarityClass;
+                    const newRarity = det.rarity || rarityClass;
 
-                tooltip.innerHTML = `
-                  <div class="tooltip-header">
-                    <div class="tooltip-icon">${newIconSrc ? `<img src="${newIconSrc}" alt="${getItemName(det)}">` : ''}</div>
-                    <div class="tooltip-title">
-                      <div class="tooltip-name ${newRarity}">${getItemName(det)} ${typeof det.level !== 'undefined' ? `<span class="tooltip-level">Lv ${det.level}</span>` : ''}</div>
-                    </div>
-                  </div>
-                  <div class="tooltip-type">${getItemTypeLabel(det)}</div>
-                  ${det.description ? `<div class="tooltip-description">"${det.description}"</div>` : ''}
-                  ${newStatsHtml}
-                  <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
-                `;
+                    tooltip.innerHTML = `
+                      <div class="tooltip-header">
+                        <div class="tooltip-icon">${newIconSrc ? `<img src="${newIconSrc}" alt="${getItemName(det)}">` : ''}</div>
+                        <div class="tooltip-title">
+                          <div class="tooltip-name ${newRarity}">${getItemName(det)} ${typeof det.level !== 'undefined' ? `<span class="tooltip-level">Lv ${det.level}</span>` : ''}</div>
+                        </div>
+                      </div>
+                      <div class="tooltip-type">${getItemTypeLabel(det)}</div>
+                      ${det.description ? `<div class="tooltip-description">"${det.description}"</div>` : ''}
+                      ${newStatsHtml}
+                      <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
+                    `;
 
-                // Reposition after content update
-                requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
-              } catch (e) { console.error('Failed to apply item details to tooltip', e); }
-            });
+                    // Reposition after content update
+                    requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
+                  } catch (e) { console.error('Failed to apply item details to tooltip', e); }
+                });
+              } catch (e) { /* ignore socket errors */ }
+            }, 200);
           }
         } catch (e) { /* ignore socket errors */ }
       }
@@ -2106,6 +2126,8 @@
 
     function hideTooltip() {
       if (currentTooltip) {
+        try { if (currentTooltip.__detailsTimer) { clearTimeout(currentTooltip.__detailsTimer); currentTooltip.__detailsTimer = null; } } catch(e){}
+        try { if (currentTooltip.__requestInventoryId) { currentTooltip.__requestInventoryId = null; } } catch(e){}
         currentTooltip.remove();
         currentTooltip = null;
       }
@@ -2175,12 +2197,22 @@
                 rarity: it.rarity || 'common',
                 quantity: it.quantity || 1,
                 level: typeof it.level !== 'undefined' ? it.level : 1,
-                iconName: it.iconName || it.icon_name || null
+                iconName: it.iconName || it.icon_name || null,
+                inventoryId: info.inventoryId || info.inventory_id || null
               };
               showTooltip(e, tooltipItem);
             });
             target.addEventListener('mousemove', moveTooltip);
             target.addEventListener('mouseleave', hideTooltip);
+            // When slot is pressed/clicked, raise tooltip above windows
+            target.addEventListener('mousedown', () => {
+              try {
+                if (currentTooltip) {
+                  if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
+                  currentTooltip.style.zIndex = String(++window.__windowTopZ);
+                }
+              } catch (e) {}
+            });
 
             // Make slot draggable to allow unequip (drag to inventory)
             target.draggable = true;
