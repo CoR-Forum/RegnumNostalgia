@@ -477,14 +477,14 @@ function initializeSocketHandlers(io) {
      */
     socket.on('shoutbox:get', async (data, callback) => {
       try {
-        // Only fetch the most recent 20 messages to limit payload size
-        const [messages] = await forumDb.query(
-          `SELECT entryID, userID, username, time, message
-           FROM wcf1_shoutbox_entry
-           WHERE shoutboxID = 1
-           ORDER BY time DESC
-           LIMIT 20`
-        );
+            // Only fetch the most recent 50 messages to limit payload size
+            const [messages] = await forumDb.query(
+              `SELECT entryID, userID, username, time, message
+               FROM wcf1_shoutbox_entry
+               WHERE shoutboxID = 1
+               ORDER BY time DESC
+               LIMIT 50`
+            );
 
         // Reverse to get chronological order (oldest first)
         const chronological = messages.reverse();
@@ -819,17 +819,32 @@ function startOnlinePlayersBroadcast(io) {
 
 /**
  * Poll for new shoutbox messages every 1 second
+ * Limit fetches to at most 50 messages per tick to avoid huge backfills.
  */
 let lastShoutboxId = 0;
 
-function startShoutboxPolling(io) {
+async function startShoutboxPolling(io) {
+  try {
+    // Initialize lastShoutboxId to the current max entryID so we don't
+    // accidentally broadcast the entire history when the service starts.
+    const [rows] = await forumDb.query(
+      `SELECT MAX(entryID) as maxId FROM wcf1_shoutbox_entry WHERE shoutboxID = 1`
+    );
+    if (rows && rows.length > 0 && rows[0].maxId) {
+      lastShoutboxId = rows[0].maxId;
+    }
+  } catch (err) {
+    logger.error('Failed to initialize lastShoutboxId', { error: err.message });
+  }
+
   setInterval(async () => {
     try {
       const [messages] = await forumDb.query(
         `SELECT entryID, userID, username, time, message
          FROM wcf1_shoutbox_entry
          WHERE shoutboxID = 1 AND entryID > ?
-         ORDER BY entryID ASC`,
+         ORDER BY entryID ASC
+         LIMIT 50`,
         [lastShoutboxId]
       );
 

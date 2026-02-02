@@ -48,8 +48,8 @@
 
     function renderMessages(messages){
       sbMessages.innerHTML = '';
-      // Ensure we never render more than 20 messages
-      const toShow = (messages || []).slice(-20);
+      // Ensure we never render more than 50 messages
+      const toShow = (messages || []).slice(-50);
       toShow.forEach(m=>{
         const el = document.createElement('div');
         el.style.marginBottom = '2px';
@@ -177,7 +177,7 @@
         if (msg.entryID > lastMessageId) lastMessageId = msg.entryID;
         if (msg.time > lastMessageTime) lastMessageTime = msg.time;
         
-        // Append new message (keep at most 20 messages visible)
+        // Append new message (keep at most 50 messages visible)
         const el = document.createElement('div');
         el.style.marginBottom = '2px';
         el.style.wordWrap = 'break-word';
@@ -210,8 +210,8 @@
         
         el.innerHTML = `<span style="opacity:0.7; font-size:11px;">[${timeStr}]</span> <span style="font-weight:700; color:#ffd27a;">${msg.username}</span>: <span style="display:inline;">${message}</span>`;
         sbMessages.appendChild(el);
-        // If there are more than 20 children, remove the oldest at top
-        while (sbMessages.children.length > 20) sbMessages.removeChild(sbMessages.firstChild);
+        // If there are more than 50 children, remove the oldest at top
+        while (sbMessages.children.length > 50) sbMessages.removeChild(sbMessages.firstChild);
         sbMessages.scrollTop = sbMessages.scrollHeight;
       }
     };
