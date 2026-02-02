@@ -72,6 +72,16 @@ territoryQueue.process('sync-territories', async (job) => {
           [newOwner, territory.territory_id]
         );
 
+        // If new owner is a known realm, update icon names to match the realm
+        if (newOwner) {
+          const iconName = `fort-${newOwner}.png`;
+          const iconNameContested = `fort-${newOwner}-contested.png`;
+          await gameDb.query(
+            'UPDATE territories SET icon_name = ?, icon_name_contested = ? WHERE territory_id = ?',
+            [iconName, iconNameContested, territory.territory_id]
+          );
+        }
+
         // Record capture event
         const capturedAt = Math.floor(Date.now() / 1000);
         await gameDb.query(

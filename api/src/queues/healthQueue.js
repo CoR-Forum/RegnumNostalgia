@@ -96,12 +96,21 @@ healthQueue.process('regenerate-health', async (job) => {
         );
 
         if (io) {
+          // Include icon fields so clients can switch icons when contested state changes
+          const [iconRows] = await gameDb.query(
+            'SELECT icon_name, icon_name_contested FROM territories WHERE territory_id = ?',
+            [territory.territory_id]
+          );
+          const icons = (iconRows && iconRows[0]) ? iconRows[0] : { icon_name: null, icon_name_contested: null };
+
           io.emit('territories:update', {
             territoryId: territory.territory_id,
             name: territory.name,
             contested: false,
             health: newHealth,
-            maxHealth: territory.max_health
+            maxHealth: territory.max_health,
+            icon_name: icons.icon_name,
+            icon_name_contested: icons.icon_name_contested
           });
         }
       } else if (newHealth < territory.max_health && !territory.contested) {
@@ -112,12 +121,21 @@ healthQueue.process('regenerate-health', async (job) => {
         );
 
         if (io) {
+          // Include icon fields so clients can switch icons when contested state changes
+          const [iconRows] = await gameDb.query(
+            'SELECT icon_name, icon_name_contested FROM territories WHERE territory_id = ?',
+            [territory.territory_id]
+          );
+          const icons = (iconRows && iconRows[0]) ? iconRows[0] : { icon_name: null, icon_name_contested: null };
+
           io.emit('territories:update', {
             territoryId: territory.territory_id,
             name: territory.name,
             contested: true,
             health: newHealth,
-            maxHealth: territory.max_health
+            maxHealth: territory.max_health,
+            icon_name: icons.icon_name,
+            icon_name_contested: icons.icon_name_contested
           });
         }
       }
