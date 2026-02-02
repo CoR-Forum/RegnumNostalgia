@@ -962,10 +962,9 @@
     <div class="ui-bar-repeat ui-bar-repeat-right"></div>
   </div>
   <!-- Top-right compass with interactive controls (map settings + logout) -->
-  <div id="ui-compass" aria-hidden="false">
+    <div id="ui-compass" aria-hidden="false">
     <img src="assets/v1/ui/ui-compass.png" alt="">
     <div class="compass-controls" aria-hidden="false">
-      <button class="btn-logout" id="tile-version-btn">Map: v1</button>
       <button class="btn-logout" id="settings-btn">Settings</button>
       <button class="btn-logout" id="logout-btn">Logout</button>
     </div>
@@ -2045,16 +2044,18 @@
 
     // Build Path behavior moved to public/build-path.js
 
-    // Tile version switcher handler
+    // Tile version switcher handler (button removed from UI; guard for optional element)
     const tileVersionBtn = document.getElementById('tile-version-btn');
-    tileVersionBtn.textContent = `Map: ${currentTileVersion}`;
-    tileVersionBtn.addEventListener('click', () => {
-      currentTileVersion = currentTileVersion === 'v1' ? 'v2' : 'v1';
-      localStorage.setItem('tileVersion', currentTileVersion);
+    if (tileVersionBtn) {
       tileVersionBtn.textContent = `Map: ${currentTileVersion}`;
-      loadTiles();
-      console.log('[Map] Switched to tiles-' + currentTileVersion);
-    });
+      tileVersionBtn.addEventListener('click', () => {
+        currentTileVersion = currentTileVersion === 'v1' ? 'v2' : 'v1';
+        localStorage.setItem('tileVersion', currentTileVersion);
+        tileVersionBtn.textContent = `Map: ${currentTileVersion}`;
+        loadTiles();
+        console.log('[Map] Switched to tiles-' + currentTileVersion);
+      });
+    }
 
     // Logout handler
     document.getElementById('logout-btn').addEventListener('click', () => {

@@ -54,6 +54,9 @@
       </div>
     </div>
   </div>
+  <div id="settings-footer" style="padding:8px 12px 12px 12px; font-size:11px; color:#bfcbdc; border-top:1px solid rgba(255,255,255,0.02); display:flex; justify-content:center; align-items:center;">
+    <span id="settings-map-version-display">Map: v1</span>
+  </div>
 </div>
 
 <script>
@@ -87,6 +90,7 @@
             try { if (typeof loadTiles === 'function') loadTiles(); } catch (e) {}
           }
         } catch (e) {}
+          try { const d = document.getElementById('settings-map-version-display'); if (d) d.textContent = `Map: ${r.settings.map_version || 'v1'}`; } catch (e) {}
       }
     } catch (e) { console.debug('Failed to load settings', e); }
   }
@@ -96,6 +100,7 @@
     if (!win) return;
     win.style.display = 'flex';
     loadSettingsToUI();
+      try { const d = document.getElementById('settings-map-version-display'); if (d && typeof currentTileVersion !== 'undefined') d.textContent = `Map: ${currentTileVersion}`; } catch (e) {}
   }
 
   // Debounced emitter to avoid spamming socket while dragging sliders
@@ -176,6 +181,7 @@
       const v = e.target.value || 'v1';
       try { localStorage.setItem('tileVersion', v); } catch (e) {}
       try { if (typeof currentTileVersion !== 'undefined') { currentTileVersion = v; if (typeof loadTiles === 'function') loadTiles(); } } catch (e) {}
+        try { const d = document.getElementById('settings-map-version-display'); if (d) d.textContent = `Map: ${v}`; } catch (e) {}
       scheduleEmitSettings();
     });
   }
