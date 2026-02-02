@@ -1102,9 +1102,9 @@
     }
   },
   {
-    "id": "syrtis-city-dohsim",
-    "name": "Dohsim Town",
-    "type": "safe",
+    "id": "syrtis-city-ulrenasir",
+    "name": "Ulren Asir Town",
+    "type": "city",
     "owner": "syrtis",
     "walkable": true,
     "coordinates": [
@@ -1155,6 +1155,43 @@
       "color": "#FFFF00",
       "fillColor": "#FFFF00"
     }
+  },
+  {
+    "id": "syrtis-city-rearaia",
+    "name": "Rearaia City",
+    "type": "city",
+    "owner": "syrtis",
+    "walkable": true,
+    "coordinates": [
+  [2382, 4317], [2425, 4306], [2461, 4363], [2472, 4334],
+  [2494, 4351], [2497, 4417], [2463, 4424], [2463, 4483],
+  [2438, 4485], [2439, 4532], [2436, 4542], [2411, 4535],
+  [2393, 4553], [2400, 4584], [2361, 4587], [2340, 4541],
+  [2338, 4534], [2323, 4504], [2299, 4470], [2295, 4417],
+  [2293, 4380], [2337, 4320], [2372, 4317]
+    ],
+    "properties": {
+      "color": "#FFFF00",
+      "fillColor": "#FFFF00"
+    }
+  },
+  {
+    "id": "syrtis-city-dohsim",
+    "name": "Dohsim City",
+    "type": "city",
+    "owner": "syrtis",
+    "walkable": true,
+    "coordinates": [
+      [2949, 5120], [2941, 5093],
+  [2892, 5062], [2880, 5118], [2838, 5190], [2787, 5259],
+  [2760, 5339], [2799, 5383], [2847, 5290], [2912, 5277],
+  [2958, 5263], [2957, 5256], [2909, 5264], [2888, 5247],
+  [2898, 5225], [2908, 5194], [2913, 5170], [2926, 5151],
+  [2940, 5131]
+    ],
+    "properties": {
+      "color": "#FFFF00",
+      "fillColor": "#FFFF00"
+    }
   }
-
 ]
