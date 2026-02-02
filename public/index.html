@@ -782,10 +782,10 @@
           <div class="equipment-slot empty" data-slot="legs" title="Legs"></div>
         </div>
         <div class="equipment-row" id="equipment-row-bottom">
-          <div class="equipment-slot empty" data-slot="weapon_right" title="Weapon R"></div>
-          <div class="equipment-slot empty" data-slot="weapon_left" title="Weapon L"></div>
-          <div class="equipment-slot empty" data-slot="ring_right" title="Ring R"></div>
-          <div class="equipment-slot empty" data-slot="ring_left" title="Ring L"></div>
+          <div class="equipment-slot empty" data-slot="weaponRight" title="Weapon R"></div>
+          <div class="equipment-slot empty" data-slot="weaponLeft" title="Weapon L"></div>
+          <div class="equipment-slot empty" data-slot="ringRight" title="Ring R"></div>
+          <div class="equipment-slot empty" data-slot="ringLeft" title="Ring L"></div>
           <div class="equipment-slot empty" data-slot="amulet" title="Amulet"></div>
         </div>
       </div>
@@ -2161,7 +2161,7 @@
     function initWindows() {
       initWindow({ id: 'inventory-window', headerId: 'inventory-header', closeId: 'inventory-close-btn', onClose: () => closeWindow('inventory-window') });
       initWindow({ id: 'character-window', headerId: 'character-header', closeId: 'character-close-btn', onClose: () => closeWindow('character-window') });
-      initWindow({ id: 'shoutbox-window', headerId: 'shoutbox-header', closeId: 'shoutbox-close-btn' });
+      // Shoutbox is initialized after its HTML is loaded (see bottom of page)
       initWindow({ id: 'mini-info-window', headerId: null, closeId: 'mini-info-close-btn', draggable: false });
     }
 
@@ -2596,10 +2596,10 @@
           case 'hands': return 'Armor (Hands)';
           case 'shoulders': return 'Armor (Shoulders)';
           case 'legs': return 'Armor (Legs)';
-          case 'weapon_right': return 'Weapon (Right Hand)';
-          case 'weapon_left': return 'Weapon (Left Hand)';
-          case 'ring_right':
-          case 'ring_left': return 'Ring';
+          case 'weaponRight': return 'Weapon (Right Hand)';
+          case 'weaponLeft': return 'Weapon (Left Hand)';
+          case 'ringRight':
+          case 'ringLeft': return 'Ring';
           case 'amulet': return 'Amulet';
           default: return item.itemType || '';
         }
@@ -2616,7 +2616,7 @@
 
     function displayEquipment(equipment){
       try{
-        const slots = ['head','body','hands','shoulders','legs','weapon_right','weapon_left','ring_right','ring_left','amulet'];
+        const slots = ['head','body','hands','shoulders','legs','weaponRight','weaponLeft','ringRight','ringLeft','amulet'];
         slots.forEach(slot => {
           const el = document.querySelector(`.equipment-slot[data-slot="${slot}"]`);
           if(!el) return;
@@ -3936,7 +3936,23 @@
           document.body.appendChild(ns);
         });
 
-        try { if (typeof initWindows === 'function') initWindows(); } catch (e) {}
+        // Initialize shoutbox window after it's loaded
+        try {
+          const shoutboxWin = document.getElementById('shoutbox-window');
+          if (shoutboxWin && typeof getWindowState === 'function' && typeof saveWindowState === 'function') {
+            const shoutboxState = getWindowState('shoutbox-window');
+            if (!shoutboxState || typeof shoutboxState.open === 'undefined') {
+              // Default to open on first load
+              saveWindowState('shoutbox-window', { open: true, display: 'flex' });
+              shoutboxWin.style.display = 'flex';
+            }
+          }
+          if (typeof initWindow === 'function') {
+            initWindow({ id: 'shoutbox-window', headerId: 'shoutbox-header', closeId: 'shoutbox-close-btn' });
+          }
+        } catch (e) {
+          console.error('Failed to initialize shoutbox window:', e);
+        }
       }).catch(err => console.error('Failed to load shoutbox:', err));
     })();
   </script>

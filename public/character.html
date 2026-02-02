@@ -68,10 +68,10 @@
   .equipment-slot[data-slot="hands"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-arms.png'); }
   .equipment-slot[data-slot="shoulders"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-pauldron.png'); }
   .equipment-slot[data-slot="legs"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-legs.png'); }
-  .equipment-slot[data-slot="weapon_right"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-hand-right.png'); }
-  .equipment-slot[data-slot="weapon_left"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-hand-left.png'); }
-  .equipment-slot[data-slot="ring_right"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-rings.png'); }
-  .equipment-slot[data-slot="ring_left"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-rings.png'); }
+  .equipment-slot[data-slot="weaponRight"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-hand-right.png'); }
+  .equipment-slot[data-slot="weaponLeft"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-hand-left.png'); }
+  .equipment-slot[data-slot="ringRight"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-rings.png'); }
+  .equipment-slot[data-slot="ringLeft"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-rings.png'); }
   .equipment-slot[data-slot="amulet"].empty{ background-image: url('assets/v1/ui/ui-equip-slot-amulet.png'); }
 
   /* Character window (classic layout) */
@@ -165,10 +165,10 @@
         case 'hands': return 'Armor (Hands)';
         case 'shoulders': return 'Armor (Shoulders)';
         case 'legs': return 'Armor (Legs)';
-        case 'weapon_right': return 'Weapon (Right Hand)';
-        case 'weapon_left': return 'Weapon (Left Hand)';
-        case 'ring_right':
-        case 'ring_left': return 'Ring';
+        case 'weaponRight': return 'Weapon (Right Hand)';
+        case 'weaponLeft': return 'Weapon (Left Hand)';
+        case 'ringRight':
+        case 'ringLeft': return 'Ring';
         case 'amulet': return 'Amulet';
         default: return item.itemType || '';
       }
@@ -179,7 +179,7 @@
 
   async function displayEquipment(equipment){
     try{
-      const slots = ['head','body','hands','shoulders','legs','weapon_right','weapon_left','ring_right','ring_left','amulet'];
+      const slots = ['head','body','hands','shoulders','legs','weaponRight','weaponLeft','ringRight','ringLeft','amulet'];
       slots.forEach(slot => {
         const el = document.querySelector(`.equipment-slot[data-slot="${slot}"]`);
         if(!el) return;

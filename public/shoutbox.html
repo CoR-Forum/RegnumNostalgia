@@ -121,7 +121,7 @@
             return;
           }
 
-          const maxId = Math.max(...msgs.map(m => Number(m.entryID) || 0));
+          const maxId = Math.max(...msgs.map(m => Number(m.entryId) || 0));
           const maxTime = Math.max(...msgs.map(m => Number(m.time) || 0));
 
           if(maxId > 0){

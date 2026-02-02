@@ -16,6 +16,32 @@ function initializeSocketHandlers(io) {
   // Authentication middleware
   io.use(authenticateSocket);
 
+  // Helper functions to convert equipment slot names between snake_case (DB) and camelCase (API)
+  const slotToDb = {
+    head: 'head',
+    body: 'body',
+    hands: 'hands',
+    shoulders: 'shoulders',
+    legs: 'legs',
+    weaponRight: 'weapon_right',
+    weaponLeft: 'weapon_left',
+    ringRight: 'ring_right',
+    ringLeft: 'ring_left',
+    amulet: 'amulet'
+  };
+  const dbToSlot = {
+    head: 'head',
+    body: 'body',
+    hands: 'hands',
+    shoulders: 'shoulders',
+    legs: 'legs',
+    weapon_right: 'weaponRight',
+    weapon_left: 'weaponLeft',
+    ring_right: 'ringRight',
+    ring_left: 'ringLeft',
+    amulet: 'amulet'
+  };
+
   // Connection event
   io.on('connection', async (socket) => {
     const user = socket.user; // { userId, username, realm }
@@ -328,7 +354,7 @@ function initializeSocketHandlers(io) {
               success: true,
               equipment: {
                 head: null, body: null, hands: null, shoulders: null, legs: null,
-                weapon_right: null, weapon_left: null, ring_right: null, ring_left: null, amulet: null
+                weaponRight: null, weaponLeft: null, ringRight: null, ringLeft: null, amulet: null
               }
             });
           }
@@ -336,11 +362,11 @@ function initializeSocketHandlers(io) {
         }
 
         const equipment = equipmentRows[0];
-        const slots = ['head', 'body', 'hands', 'shoulders', 'legs', 'weapon_right', 
-                       'weapon_left', 'ring_right', 'ring_left', 'amulet'];
+        const dbSlots = ['head', 'body', 'hands', 'shoulders', 'legs', 'weapon_right', 
+                         'weapon_left', 'ring_right', 'ring_left', 'amulet'];
 
         // Get inventory IDs that are equipped
-        const equippedIds = slots
+        const equippedIds = dbSlots
           .map(slot => equipment[slot])
           .filter(id => id > 0);
 
@@ -367,11 +393,12 @@ function initializeSocketHandlers(io) {
           });
         }
 
-        // Build equipment response
+        // Build equipment response with camelCase slot names
         const equippedItems = {};
-        slots.forEach(slot => {
-          const invId = equipment[slot];
-          equippedItems[slot] = invId && itemDetails[invId] ? { inventoryId: invId, item: itemDetails[invId] } : { inventoryId: null, item: null };
+        dbSlots.forEach(dbSlot => {
+          const invId = equipment[dbSlot];
+          const camelSlot = dbToSlot[dbSlot];
+          equippedItems[camelSlot] = invId && itemDetails[invId] ? { inventoryId: invId, item: itemDetails[invId] } : { inventoryId: null, item: null };
         });
 
         if (callback) callback({ success: true, equipment: equippedItems });
@@ -527,7 +554,7 @@ function initializeSocketHandlers(io) {
         if (callback) {
           callback({ 
             success: true, 
-            slot,
+            slot: dbToSlot[slot],
             equippedInventoryId: inventoryId,
             unequippedInventoryId: previousInventoryId > 0 ? previousInventoryId : null
           });
@@ -555,15 +582,16 @@ function initializeSocketHandlers(io) {
      * Handle equipment unequip
      */
     socket.on('equipment:unequip', async (data, callback) => {
-      const { slot } = data;
+      const { slot: camelSlot } = data;
 
-      const validSlots = ['head', 'body', 'hands', 'shoulders', 'legs', 
-                          'weapon_right', 'weapon_left', 'ring_right', 'ring_left', 'amulet'];
+      const validSlots = Object.keys(slotToDb);
 
-      if (!slot || !validSlots.includes(slot)) {
+      if (!camelSlot || !validSlots.includes(camelSlot)) {
         if (callback) callback({ success: false, error: 'Invalid equipment slot' });
         return;
       }
+
+      const slot = slotToDb[camelSlot];
 
       try {
         // Get current equipped item
@@ -594,7 +622,7 @@ function initializeSocketHandlers(io) {
         if (callback) {
           callback({ 
             success: true, 
-            slot,
+            slot: camelSlot,
             unequippedInventoryId: inventoryId
           });
         }
