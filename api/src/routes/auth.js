@@ -83,6 +83,14 @@ router.post('/', async (req, res) => {
          VALUES (?, ?, NULL, 0, 0, 100, 100, 50, 50, 0, 1, 10, 10, 10, 10, 10, UNIX_TIMESTAMP())`,
         [userId, username]
       );
+
+      // Create default user settings
+      await gameDb.query(
+        `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version, updated_at)
+         VALUES (?, 1, 0.5, 1, 0.75, 1, 0.75, 'v2', UNIX_TIMESTAMP())`,
+        [userId]
+      );
+
       logger.info('Created new player', { userId, username });
     } else {
       realm = existingPlayer[0].realm;
