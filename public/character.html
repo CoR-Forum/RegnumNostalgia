@@ -106,6 +106,7 @@
     const win = document.getElementById('character-window');
     if (!win) return;
     win.style.display = 'flex';
+    try { setHudPressed && setHudPressed('character', true); } catch (e) {}
     try{
       // WebSocket-only: request player stats via socket. If not connected, set a one-time listener for connection.
       const requestStats = () => new Promise((resolve) => {
@@ -159,6 +160,7 @@
 
   function closeCharacter(){
     const el = document.getElementById('character-window'); if(el) el.style.display = 'none';
+    try { setHudPressed && setHudPressed('character', false); } catch (e) {}
   }
 
   function updateCharacterStats(){

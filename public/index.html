@@ -95,6 +95,10 @@
         .ui-hud-btn[data-action="spellbook"]{ background-image: url('assets/v1/hud/ui-icon-spellbook-base.png'); }
         .ui-hud-btn[data-action="spellbook"]:hover{ background-image: url('assets/v1/hud/ui-icon-spellbook-hover.png'); }
         .ui-hud-btn[data-action="spellbook"]:active{ background-image: url('assets/v1/hud/ui-icon-spellbook-pressed.png'); }
+
+        /* Persisted pressed state when the corresponding window is open */
+        .ui-hud-btn.pressed[data-action="inventory"]{ background-image: url('assets/v1/hud/ui-icon-inventory-pressed.png'); }
+        .ui-hud-btn.pressed[data-action="character"]{ background-image: url('assets/v1/hud/ui-icon-character-pressed.png'); }
       z-index: 1100;
       display: flex;
       gap: 8px;
@@ -1863,6 +1867,8 @@
     async function openInventory() {
       const inventoryWindow = document.getElementById('inventory-window');
       inventoryWindow.style.display = 'flex';
+      // Mark HUD inventory button as pressed while the window is open
+      try { setHudPressed && setHudPressed('inventory', true); } catch (e) {}
       document.getElementById('inventory-loading').style.display = 'block';
       document.getElementById('inventory-items').style.display = 'none';
       document.getElementById('inventory-empty').style.display = 'none';
@@ -1910,7 +1916,22 @@
 
     // Inventory button handler (legacy header button may be absent)
     const _inventoryBtn = document.getElementById('inventory-btn');
-    if (_inventoryBtn) _inventoryBtn.addEventListener('click', () => { openInventory(); });
+    if (_inventoryBtn) _inventoryBtn.addEventListener('click', () => {
+      const inv = document.getElementById('inventory-window');
+      if (inv && inv.style.display && inv.style.display !== 'none') closeInventory();
+      else openInventory();
+    });
+
+    // Helper to toggle persistent pressed state on HUD buttons
+    function setHudPressed(action, pressed) {
+      try {
+        const id = action === 'inventory' ? 'inventory-hud-btn' : (action === 'character' ? 'character-hud-btn' : null);
+        if (!id) return;
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (pressed) el.classList.add('pressed'); else el.classList.remove('pressed');
+      } catch (e) { /* ignore */ }
+    }
 
     // Delegated handler for HUD buttons (inventory/character and future buttons)
     document.addEventListener('click', (e) => {
@@ -1919,9 +1940,23 @@
       const action = String(btn.dataset.action || '').trim();
       if (!action) return;
       try {
-        // Prefer explicit known handlers
-        if (action === 'inventory') { return openInventory(); }
-        if (action === 'character') { return openCharacter(); }
+        // Prefer explicit known handlers and toggle if already open
+        if (action === 'inventory') {
+          const inv = document.getElementById('inventory-window');
+          if (inv && inv.style.display && inv.style.display !== 'none') return closeInventory();
+          return openInventory();
+        }
+        if (action === 'character') {
+          const charWin = document.getElementById('character-window');
+          if (charWin && charWin.style.display && charWin.style.display !== 'none') {
+            setHudPressed('character', false);
+            return closeCharacter();
+          }
+          // Open character window (may be defined in character.html) and set pressed
+          try { if (typeof openCharacter === 'function') openCharacter(); } catch (e) {}
+          setHudPressed('character', true);
+          return;
+        }
 
         // Try to call a global open<Action>() function if available (e.g. openParty)
         const fnName = 'open' + action.charAt(0).toUpperCase() + action.slice(1);
@@ -1934,7 +1969,16 @@
 
     // Character button (header button may be absent)
     const _characterBtn = document.getElementById('character-btn');
-    if (_characterBtn) _characterBtn.addEventListener('click', () => { openCharacter(); });
+    if (_characterBtn) _characterBtn.addEventListener('click', () => {
+      const charWin = document.getElementById('character-window');
+      if (charWin && charWin.style.display && charWin.style.display !== 'none') {
+        setHudPressed('character', false);
+        closeCharacter();
+      } else {
+        try { if (typeof openCharacter === 'function') openCharacter(); } catch (e) {}
+        setHudPressed('character', true);
+      }
+    });
 
     // Window helpers
     function setTranslate(xPos, yPos, el) {
@@ -2037,6 +2081,11 @@
       if (draggable && header) makeDraggable(win, header);
       if (closeBtn) {
         closeBtn.addEventListener('click', () => {
+          // Ensure HUD pressed state is cleared when windows are closed via the close button
+          try {
+            if (id === 'inventory-window') setHudPressed && setHudPressed('inventory', false);
+            if (id === 'character-window') setHudPressed && setHudPressed('character', false);
+          } catch (e) {}
           if (typeof onClose === 'function') onClose();
           else win.style.display = 'none';
         });
@@ -2086,6 +2135,8 @@
     async function openInventory() {
       const inventoryWindow = document.getElementById('inventory-window');
       inventoryWindow.style.display = 'flex';
+      // mark HUD button as pressed while inventory is open
+      try { setHudPressed && setHudPressed('inventory', true); } catch (e) {}
       document.getElementById('inventory-loading').style.display = 'block';
       document.getElementById('inventory-items').style.display = 'none';
       document.getElementById('inventory-empty').style.display = 'none';
@@ -2133,10 +2184,12 @@
 
     function closeInventory() {
       document.getElementById('inventory-window').style.display = 'none';
+      try { setHudPressed && setHudPressed('inventory', false); } catch (e) {}
     }
 
     function closeCharacter() {
       document.getElementById('character-window').style.display = 'none';
+      try { setHudPressed && setHudPressed('character', false); } catch (e) {}
     }
 
     // Character window functions moved to public/character.html
@@ -3689,6 +3742,10 @@
     .ui-hud-btn[data-action="inventory"]{ right: 207px; background-image: url('assets/v1/ui/ui-icon-inventory-base.png'); }
     .ui-hud-btn[data-action="inventory"]:hover{ background-image: url('assets/v1/ui/ui-icon-inventory-hover.png'); }
     .ui-hud-btn[data-action="inventory"]:active{ background-image: url('assets/v1/ui/ui-icon-inventory-pressed.png'); }
+
+    /* Persisted pressed state (ensure correct ui asset path used) */
+    .ui-hud-btn.pressed[data-action="inventory"]{ background-image: url('assets/v1/ui/ui-icon-inventory-pressed.png'); }
+    .ui-hud-btn.pressed[data-action="character"]{ background-image: url('assets/v1/ui/ui-icon-character-pressed.png'); }
 
     .ui-hud-btn[data-action="actions"]{ right: 164px; background-image: url('assets/v1/ui/ui-icon-actions-base.png'); }
     .ui-hud-btn[data-action="actions"]:hover{ background-image: url('assets/v1/ui/ui-icon-actions-hover.png'); }
