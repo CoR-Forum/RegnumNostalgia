@@ -33,6 +33,15 @@
     /* Utility: hide elements by adding the `hidden` class */
     .hidden { display: none !important; }
 
+    /* Prevent dragging of UI images (compass, character status, inventory icons) */
+    #ui-compass img,
+    #ui-character-status img,
+    #inventory-window img {
+      -webkit-user-drag: none;
+      user-drag: none;
+      -khtml-user-drag: none;
+    }
+
     /* Prevent the page from scrolling; map handles panning */
     html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
     /* Map fills the viewport */
@@ -785,7 +794,7 @@
     </div>
     <div id="inventory-footer" class="ui-window-body" style="padding: 20px; display: none;">
       <div style="display: flex; align-items: center; gap: 4px; color: #e0e0e0; font-size: 11px;">
-        <img src="assets/v1/ui/ui-icon-gold.png" alt="Gold" style="width: 14px; height: 14px; display: inline-block;">
+        <img src="assets/v1/ui/ui-icon-gold.png" alt="Gold" style="width: 14px; height: 14px; display: inline-block;" draggable="false" ondragstart="return false;">
         <span id="inventory-gold" style="font-weight: 400;">0 Gold</span>
       </div>
     </div>
@@ -963,7 +972,7 @@
   </div>
   <!-- Top-right compass with interactive controls (map settings + logout) -->
     <div id="ui-compass" aria-hidden="false">
-    <img src="assets/v1/ui/ui-compass.png" alt="">
+    <img src="assets/v1/ui/ui-compass.png" alt="" draggable="false" ondragstart="return false;">
     <div class="compass-controls" aria-hidden="false">
       <button class="btn-logout" id="settings-btn">Settings</button>
       <button class="btn-logout" id="logout-btn">Logout</button>
@@ -976,7 +985,7 @@
   </div>
   <!-- Top-left character status (non-interactive) -->
   <div id="ui-character-status" aria-hidden="true">
-    <img src="assets/v1/ui/ui-character-status.png" alt="">
+    <img src="assets/v1/ui/ui-character-status.png" alt="" draggable="false" ondragstart="return false;">
     <div class="ui-character-overlay" aria-hidden="true">
       <div class="status-top">
         <div id="player-level" style="font-weight:700; color:#ffd700; font-size:13px; min-width:28px; text-align:left;">1</div>
