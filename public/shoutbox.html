@@ -36,7 +36,9 @@
 
     function renderMessages(messages){
       sbMessages.innerHTML = '';
-      messages.forEach(m=>{
+      // Ensure we never render more than 20 messages
+      const toShow = (messages || []).slice(-20);
+      toShow.forEach(m=>{
         const el = document.createElement('div');
         el.style.marginBottom = '2px';
         el.style.wordWrap = 'break-word';
@@ -72,7 +74,7 @@
         el.innerHTML = `<span style="opacity:0.7; font-size:11px;">[${timeStr}]</span> <span style="font-weight:700; color:#ffd27a;">${username}</span>: <span style="display:inline;">${message}</span>`;
         sbMessages.appendChild(el);
       });
-      sbMessages.scrollTop = sbMessages.scrollHeight;
+        sbMessages.scrollTop = sbMessages.scrollHeight;
     }
 
     function fetchMessages(){
@@ -165,7 +167,7 @@
         if (msg.entryID > lastMessageId) lastMessageId = msg.entryID;
         if (msg.time > lastMessageTime) lastMessageTime = msg.time;
         
-        // Append new message
+        // Append new message (keep at most 20 messages visible)
         const el = document.createElement('div');
         el.style.marginBottom = '2px';
         el.style.wordWrap = 'break-word';
@@ -198,9 +200,40 @@
         
         el.innerHTML = `<span style="opacity:0.7; font-size:11px;">[${timeStr}]</span> <span style="font-weight:700; color:#ffd27a;">${msg.username}</span>: <span style="display:inline;">${message}</span>`;
         sbMessages.appendChild(el);
+        // If there are more than 20 children, remove the oldest at top
+        while (sbMessages.children.length > 20) sbMessages.removeChild(sbMessages.firstChild);
         sbMessages.scrollTop = sbMessages.scrollHeight;
       }
     };
+
+    // If user scrolls to the very top, show an external link to view all messages
+    const viewAllId = 'shoutbox-view-all-link';
+    function ensureViewAllLink(visible){
+      let existing = document.getElementById(viewAllId);
+      if (visible) {
+        if (!existing) {
+          const linkEl = document.createElement('div');
+          linkEl.id = viewAllId;
+          linkEl.style.padding = '6px';
+          linkEl.style.textAlign = 'center';
+          linkEl.style.background = 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))';
+          linkEl.style.cursor = 'pointer';
+          linkEl.style.fontSize = '12px';
+          linkEl.style.color = '#9ecbff';
+          linkEl.textContent = 'See all messages on cor-forum.de';
+          linkEl.addEventListener('click', () => { window.open('https://cor-forum.de', '_blank', 'noopener'); });
+          sbMessages.insertBefore(linkEl, sbMessages.firstChild);
+        }
+      } else {
+        if (existing) existing.remove();
+      }
+    }
+
+    sbMessages.addEventListener('scroll', () => {
+      // When scrolled to the very top, show the external link
+      const atTop = sbMessages.scrollTop === 0;
+      ensureViewAllLink(atTop);
+    });
 
     function startShoutboxPolling(){
       const socket = window.getSocket && window.getSocket();

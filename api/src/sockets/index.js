@@ -448,12 +448,13 @@ function initializeSocketHandlers(io) {
      */
     socket.on('shoutbox:get', async (data, callback) => {
       try {
+        // Only fetch the most recent 20 messages to limit payload size
         const [messages] = await forumDb.query(
           `SELECT entryID, userID, username, time, message
            FROM wcf1_shoutbox_entry
            WHERE shoutboxID = 1
            ORDER BY time DESC
-           LIMIT 50`
+           LIMIT 20`
         );
 
         // Reverse to get chronological order (oldest first)
