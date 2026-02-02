@@ -129,7 +129,7 @@ territoryQueue.process('sync-territories', async (job) => {
               const vol = typeof settings.capture_sounds_volume === 'number' ? settings.capture_sounds_volume : (typeof settings.sound_volume === 'number' ? settings.sound_volume : parseFloat(settings.sound_volume) || 1.0);
               s.emit('audio:play', {
                 type: 'sfx',
-                file: 'territory-capture.ogg',
+                file: '53134-fort_captured.ogg',
                 volume: vol,
                 global: false,
                 captures

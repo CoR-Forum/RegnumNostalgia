@@ -133,6 +133,11 @@
           showRealmSelection();
         } else {
           await initGame();
+          // Defensive: ensure session token persisted and UI cleaned up
+          try { if (gameState && gameState.sessionToken) localStorage.setItem('sessionToken', gameState.sessionToken); } catch (e) {}
+          try { const autoLoginLoading = document.getElementById('auto-login-loading'); if (autoLoginLoading) autoLoginLoading.classList.add('hidden'); } catch (e) {}
+          try { if (typeof window.hideModal === 'function') window.hideModal(); } catch (e) {}
+          try { if (window.__autoLoginFallback) { clearTimeout(window.__autoLoginFallback); window.__autoLoginFallback = null; } } catch (e) {}
         }
       } catch (error) {
         errorEl.textContent = error.message;

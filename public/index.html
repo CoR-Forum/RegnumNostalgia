@@ -2635,8 +2635,35 @@
           console.warn('No initial player state received via WebSocket; waiting for server emission');
         }
 
-        // Reveal main UI now that session is validated
-        try { document.body.classList.add('authenticated'); } catch(e){}
+        // Validate session: prefer socket-provided state, but verify via HTTP
+        try {
+          let httpPlayerData = null;
+          try {
+            httpPlayerData = await apiCall('/player/position');
+            // If socket didn't provide a state, use the HTTP response
+            if (!(data && data.position)) data = httpPlayerData;
+          } catch (httpErr) {
+            const msg = String(httpErr && httpErr.message ? httpErr.message : '');
+            const status = httpErr && typeof httpErr.status !== 'undefined' ? httpErr.status : null;
+            const authFailure = (status === 401 || status === 403) || /invalid|expired|unauthor/i.test(msg);
+            const playerNotFound = /player not found/i.test(msg);
+            if (authFailure || playerNotFound) {
+              // Let outer catch handle clearing the token
+              throw httpErr;
+            }
+            // Non-auth HTTP error (network/etc) — fall back to socket data if present
+          }
+
+          // Only reveal UI if we have a valid player state
+          if (!(data && data.position)) {
+            throw new Error('No player state received');
+          }
+
+          document.body.classList.add('authenticated');
+        } catch (e) {
+          // Re-throw to be handled by outer catch block
+          throw e;
+        }
         // Allow layout to settle, then invalidate Leaflet size and re-center map
         try {
           setTimeout(() => {
@@ -3395,10 +3422,25 @@
           const autoLoginLoading = document.getElementById('auto-login-loading');
           if (loginForm) loginForm.style.display = 'none';
           if (autoLoginLoading) autoLoginLoading.classList.remove('hidden');
+          // Fallback: if auto-login stalls, show login form after 5s
+          try { if (window.__autoLoginFallback) clearTimeout(window.__autoLoginFallback); } catch (e) {}
+          window.__autoLoginFallback = setTimeout(() => {
+            try {
+              const lf = document.getElementById('login-form');
+              const al = document.getElementById('auto-login-loading');
+              const ov = document.getElementById('modal-overlay');
+              if (lf) lf.style.display = 'block';
+              if (al) al.classList.add('hidden');
+              if (ov) ov.classList.remove('hidden');
+              try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
+            } catch (e) {}
+          }, 5000);
         } catch (e) {}
         
         setTimeout(() => {
-          initGame().catch((err) => {
+          initGame().then(() => {
+            try { if (window.__autoLoginFallback) { clearTimeout(window.__autoLoginFallback); window.__autoLoginFallback = null; } } catch (e) {}
+          }).catch((err) => {
             // Auto-login failed. Do not forcibly remove the stored session token here;
             // `initGame` already clears it if the server reported an auth failure.
             try {
@@ -3407,7 +3449,7 @@
               const autoLoginLoading = document.getElementById('auto-login-loading');
               if (loginForm) loginForm.style.display = 'block';
               if (autoLoginLoading) autoLoginLoading.classList.add('hidden');
-              
+              try { if (window.__autoLoginFallback) { clearTimeout(window.__autoLoginFallback); window.__autoLoginFallback = null; } } catch (e) {}
               document.body.classList.remove('authenticated');
               const overlay = document.getElementById('modal-overlay'); 
               if (overlay) { 
