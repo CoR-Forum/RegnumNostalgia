@@ -315,6 +315,29 @@
                   gameStateRef.regionsLayer = null;
                 }
               }
+
+            // Paths overview: mirror the regions behaviour so paths are visible
+            // at minimum zoom even if the user hasn't toggled them on.
+            try {
+              if (gameStateRef.showPaths) {
+                // user explicitly wants paths: ensure rendered
+                if (!gameStateRef.pathsLayer && typeof window.loadAndRenderPaths === 'function') {
+                  try { await window.loadAndRenderPaths(); } catch (e) { /* ignore */ }
+                }
+              } else {
+                // user hasn't enabled paths: only show them when at min zoom as an overview
+                if (isMinZoom) {
+                  if (!gameStateRef.pathsLayer && typeof window.loadAndRenderPaths === 'function') {
+                    try { await window.loadAndRenderPaths(); } catch (e) { /* ignore */ }
+                  }
+                } else {
+                  if (gameStateRef.pathsLayer) {
+                    try { mapRef.removeLayer(gameStateRef.pathsLayer); } catch (e) {}
+                    gameStateRef.pathsLayer = null;
+                  }
+                }
+              }
+            } catch (err) { /* ignore path overview errors */ }
             }
           }
         } catch (err) { console.debug('zoomend regions error', err); }
