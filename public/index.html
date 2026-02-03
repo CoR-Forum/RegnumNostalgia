@@ -2861,9 +2861,29 @@
             // Non-auth HTTP error (network/etc) — fall back to socket data if present
           }
 
-          // Only reveal UI if we have a valid player state
+          // Only reveal UI if we have a valid player state. If the realm
+          // selection flow already populated `gameState.position`, use it as
+          // a fallback to avoid returning to login on first-time realm select.
           if (!(data && data.position)) {
-            throw new Error('No player state received');
+            if (gameState && gameState.position && typeof gameState.position.x === 'number' && typeof gameState.position.y === 'number') {
+              data = {
+                position: gameState.position,
+                realm: gameState.realm,
+                username: gameState.username,
+                health: gameState.health,
+                maxHealth: gameState.maxHealth,
+                mana: gameState.mana,
+                maxMana: gameState.maxMana,
+                damage: gameState.damage,
+                armor: gameState.armor,
+                xp: gameState.xp,
+                level: gameState.level,
+                xpToNext: gameState.xpToNext,
+                stats: gameState.stats
+              };
+            } else {
+              throw new Error('No player state received');
+            }
           }
 
           document.body.classList.add('authenticated');
