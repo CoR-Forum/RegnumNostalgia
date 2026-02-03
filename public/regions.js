@@ -7,6 +7,8 @@
 
   // Fallback realm colors in case getRealmColor isn't provided by the page
   const FALLBACK_REALM_COLORS = { syrtis: '#22c55e', alsius: '#3b82f6', ignis: '#ef4444' };
+  const CITY_FILL = '#ffcc99';
+  const CITY_STROKE = '#d08a4d';
 
   function resolveRealmColor(owner) {
     try {
@@ -160,10 +162,16 @@
         const pos = r.coordinates || r.positions || [];
         const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
         if (!latlngs || latlngs.length === 0) continue;
-        // Always derive color from region owner/realm
-        const realmColor = resolveRealmColor(r.owner);
-        const fill = realmColor;
-        const stroke = darkenHex(realmColor, -30);
+        // Determine fill/stroke: cities are always light orange, otherwise use realm color
+        let fill, stroke;
+        if (r && String(r.type) === 'city') {
+          fill = CITY_FILL;
+          stroke = CITY_STROKE;
+        } else {
+          const realmColor = resolveRealmColor(r.owner);
+          fill = realmColor;
+          stroke = darkenHex(realmColor, -30);
+        }
         const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
         try { poly.addTo(mapRef); poly.bringToFront(); } catch (e) {}
         layers.push(poly);
@@ -303,10 +311,16 @@
                     const pos = r.coordinates || r.positions || [];
                     const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
                     if (!latlngs || latlngs.length === 0) continue;
-                    // Always derive color from region owner/realm
-                    const realmColor = resolveRealmColor(r.owner);
-                    const fill = realmColor;
-                    const stroke = darkenHex(realmColor, -30);
+                    // Determine fill/stroke: cities are always light orange, otherwise use realm color
+                    let fill, stroke;
+                    if (r && String(r.type) === 'city') {
+                      fill = CITY_FILL;
+                      stroke = CITY_STROKE;
+                    } else {
+                      const realmColor = resolveRealmColor(r.owner);
+                      fill = realmColor;
+                      stroke = darkenHex(realmColor, -30);
+                    }
                     const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
                     layers.push(poly);
                   }
@@ -330,10 +344,16 @@
                       const pos = r.coordinates || r.positions || [];
                       const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
                       if (!latlngs || latlngs.length === 0) continue;
-                      // Always derive color from region owner/realm
-                      const realmColor = resolveRealmColor(r.owner);
-                      const fill = realmColor;
-                      const stroke = darkenHex(realmColor, -30);
+                      // Determine fill/stroke: cities are always light orange, otherwise use realm color
+                      let fill, stroke;
+                      if (r && String(r.type) === 'city') {
+                        fill = CITY_FILL;
+                        stroke = CITY_STROKE;
+                      } else {
+                        const realmColor = resolveRealmColor(r.owner);
+                        fill = realmColor;
+                        stroke = darkenHex(realmColor, -30);
+                      }
                       const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
                       layers.push(poly);
                     }

@@ -69,8 +69,8 @@
               <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Type:</label>
               <select id="edit-type" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
                 <option value="safe">Safe</option>
-                <option value="war">War</option>
-                <option value="invasion">Invasion</option>
+                <option value="city">City</option>
+                <option value="warzone">Warzone</option>
               </select>
             </div>
             <div style="margin-bottom:8px;">
@@ -949,7 +949,16 @@
       const ownerSelect = document.getElementById('edit-owner');
       const walkableCheck = document.getElementById('edit-walkable');
       const musicInput = document.getElementById('edit-music');
-      if (typeSelect) typeSelect.value = item.type || 'safe';
+      if (typeSelect) {
+        // If the region's type isn't one of the select options, add it so it can be preserved
+        try {
+          const has = Array.from(typeSelect.options).some(o => String(o.value) === String(item.type));
+          if (!has && item.type) {
+            const opt = document.createElement('option'); opt.value = item.type; opt.textContent = item.type; typeSelect.appendChild(opt);
+          }
+        } catch (e) {}
+        try { typeSelect.value = item.type || 'safe'; } catch (e) { /* ignore */ }
+      }
       if (ownerSelect) ownerSelect.value = item.owner || 'neutral';
       if (walkableCheck) walkableCheck.checked = item.walkable !== false;
       if (musicInput) musicInput.value = item.music || item.musicFile || item.music_file || '';
@@ -1030,7 +1039,11 @@
     }
 
     if (editingType === 'region') {
-      item.type = document.getElementById('edit-type')?.value || 'safe';
+      // Prefer the selected value; if it's empty/unknown, fall back to the original editingItem.type
+      const rawType = document.getElementById('edit-type')?.value;
+      if (rawType && String(rawType).length > 0) item.type = rawType;
+      else if (editingItem && editingItem.type) item.type = editingItem.type;
+      else item.type = 'safe';
       item.owner = document.getElementById('edit-owner')?.value || 'neutral';
       item.walkable = document.getElementById('edit-walkable')?.checked !== false;
       item.music = document.getElementById('edit-music')?.value || '';
