@@ -6298,7 +6298,7 @@
   {
     "id": "alsius-warzone-1",
     "name": "Alsius Warzone",
-    "type": "safe",
+    "type": "warzone",
     "owner": "alsius",
     "walkable": true,
     "music": "50206-regnum_ambient_forest.ogg",
