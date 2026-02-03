@@ -3,7 +3,7 @@
   const tpl = `
   <div id="build-path-panel" style="position: absolute; right: 12px; bottom: 140px; width: 560px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
     <div id="build-path-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
-      <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Build Path</h2>
+      <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Region Editor</h2>
       <div style="display:flex;gap:8px;align-items:center">
         <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-paths" type="checkbox" style="transform:scale(1.1)" /> <span>Show paths</span></label>
         <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-regions" type="checkbox" style="transform:scale(1.1)" /> <span>Show regions</span></label>
@@ -81,24 +81,33 @@
   // Load and render paths (moved here from index.html)
   async function loadAndRenderPaths(){
     try {
+      console.debug('loadAndRenderPaths invoked');
       // remove existing paths layer
       if (gameState.pathsLayer) {
         try { map.removeLayer(gameState.pathsLayer); } catch(e){}
         gameState.pathsLayer = null;
       }
 
-      // Use cached paths data from WebSocket
-      const paths = gameState.pathsData || [];
+      // Use cached paths data from WebSocket. If not yet populated, wait briefly and retry (WebSocket may deliver data asynchronously).
+      let paths = gameState.pathsData || [];
       if (paths.length === 0) {
-        console.warn('No paths data available yet');
-        return;
+        console.warn('No paths data available yet, waiting for WebSocket...');
+        await new Promise(resolve => setTimeout(resolve, 400));
+        paths = gameState.pathsData || [];
+        if (paths.length === 0) {
+          console.error('Paths data still not available');
+          return;
+        }
       }
 
       const layers = [];
       for (const p of paths) {
         const pos = p.positions || [];
         console.debug('loadAndRenderPaths: path', p.name, 'raw positions', pos);
-        const latlngs = positionsToLatLngs(pos);
+        const latlngs = (typeof positionsToLatLngs === 'function') ? positionsToLatLngs(pos) : (pos||[]).map(p => {
+          if (Array.isArray(p)) return [ totalH - p[1], p[0] ];
+          return [ totalH - (p.y ?? p[1] ?? 0), (p.x ?? p[0] ?? 0) ];
+        });
         console.debug('loadAndRenderPaths: latlngs', latlngs);
         if (!latlngs || latlngs.length === 0) continue;
         const poly = L.polyline(latlngs, { color: p.loop ? '#ff00ff' : '#3388ff', weight: 4, opacity: 0.95 }).addTo(map);
@@ -110,6 +119,7 @@
       if (layers.length > 0) {
         gameState.pathsLayer = L.layerGroup(layers).addTo(map);
       }
+      console.debug('loadAndRenderPaths: rendered', layers.length, 'path layers');
     } catch (err) {
       console.error('Failed to load paths:', err);
     }

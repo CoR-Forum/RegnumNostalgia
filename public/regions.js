@@ -107,6 +107,7 @@
 
   async function loadAndRenderRegions(){
     try {
+      console.debug('loadAndRenderRegions invoked');
       if (!mapRef || !apiCallRef) return [];
       if (gameStateRef.regionsLayer) {
         try { mapRef.removeLayer(gameStateRef.regionsLayer); } catch(e){}
@@ -142,6 +143,7 @@
       if (layers.length > 0) {
         gameStateRef.regionsLayer = L.layerGroup(layers).addTo(mapRef);
       }
+      console.debug('loadAndRenderRegions: rendered', layers.length, 'region layers');
 
       return regions;
     } catch (err) {
@@ -253,13 +255,15 @@
         try {
           const currentZoom = mapRef.getZoom();
           const isMinZoom = typeof mapRef.getMinZoom === 'function' && currentZoom === mapRef.getMinZoom();
-          
-          // After user zooms, only show regions at min zoom level
+
+          // If user has interacted by zooming, show an overview of regions at min zoom
+          // even if the user hasn't explicitly toggled regions on. If the user has
+          // toggled regions on, keep them visible at all zoom levels.
           if (userHasZoomed) {
-            if (isMinZoom) {
+            if (gameStateRef.showRegions) {
+              // User explicitly enabled regions: ensure they're rendered at any zoom.
               if (!gameStateRef.regionsLayer) {
                 try {
-                  // Use cached regions data from WebSocket
                   const regions = gameStateRef.regionsData || [];
                   if (regions.length === 0) {
                     console.warn('No regions data available yet');
@@ -281,10 +285,35 @@
                 } catch (err) { /* ignore */ }
               }
             } else {
-              // Remove regions when not at min zoom (after user has zoomed)
-              if (gameStateRef.regionsLayer) { 
-                try { mapRef.removeLayer(gameStateRef.regionsLayer); } catch(e){} 
-                gameStateRef.regionsLayer = null; 
+              // User hasn't enabled regions: only show them when at min zoom as an overview.
+              if (isMinZoom) {
+                if (!gameStateRef.regionsLayer) {
+                  try {
+                    const regions = gameStateRef.regionsData || [];
+                    if (regions.length === 0) {
+                      console.warn('No regions data available yet');
+                      return;
+                    }
+                    const layers = [];
+                    for (const r of regions) {
+                      const pos = r.coordinates || r.positions || [];
+                      const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
+                      if (!latlngs || latlngs.length === 0) continue;
+                      const fill = (r.properties && r.properties.fillColor) ? r.properties.fillColor : (r.type === 'danger' ? '#ff5555' : '#55ff55');
+                      const stroke = (r.properties && r.properties.color) ? r.properties.color : '#228822';
+                      const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
+                      layers.push(poly);
+                    }
+                    if (layers.length > 0) {
+                      gameStateRef.regionsLayer = L.layerGroup(layers).addTo(mapRef);
+                    }
+                  } catch (err) { /* ignore */ }
+                }
+              } else {
+                if (gameStateRef.regionsLayer) {
+                  try { mapRef.removeLayer(gameStateRef.regionsLayer); } catch (e) {}
+                  gameStateRef.regionsLayer = null;
+                }
               }
             }
           }

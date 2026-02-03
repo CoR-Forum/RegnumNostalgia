@@ -1654,12 +1654,19 @@
       socket.on('paths:list', (data) => {
         if (data && data.paths) {
           gameState.pathsData = data.paths;
+          // Only render paths immediately if the Region Editor is open (user requested paths).
+          try {
+            if (gameState.showPaths && window.loadAndRenderPaths && typeof window.loadAndRenderPaths === 'function') {
+              window.loadAndRenderPaths();
+            }
+          } catch (e) { console.debug('loadAndRenderPaths call failed', e); }
         }
       });
 
       socket.on('regions:list', (data) => {
         if (data && data.regions) {
           gameState.regionsData = data.regions;
+          try { if (window.loadAndRenderRegions && typeof window.loadAndRenderRegions === 'function') window.loadAndRenderRegions(); } catch (e) { console.debug('loadAndRenderRegions call failed', e); }
         }
       });
 
@@ -3066,7 +3073,7 @@
       const buildItem = document.createElement('div');
       buildItem.className = 'map-contextmenu-item';
       buildItem.id = 'map-build-path';
-      buildItem.textContent = 'Build Path';
+      buildItem.textContent = 'Region Editor';
       __mapContextMenuEl.appendChild(buildItem);
       buildItem.addEventListener('click', async (ev) => {
         ev.stopPropagation();
