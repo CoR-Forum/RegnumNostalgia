@@ -1,0 +1,105 @@
+<div id="build-path-panel" style="position: absolute; right: 12px; bottom: 140px; width: 800px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+  <div id="build-path-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+    <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Region Editor</h2>
+    <div style="display:flex;gap:8px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-paths" type="checkbox" style="transform:scale(1.1)" /> <span>Show paths</span></label>
+      <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-regions" type="checkbox" style="transform:scale(1.1)" /> <span>Show regions</span></label>
+      <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><span style="font-size:11px;color:#fff">Mode</span>
+        <select id="build-path-mode" style="margin-left:6px;padding:2px 6px;font-size:11px;background:#222;color:#fff;border:1px solid #333;">
+          <option value="path">Path</option>
+          <option value="area">Area</option>
+        </select>
+      </label>
+      <button id="build-path-clear" class="btn" style="width:auto;padding:4px 8px;">Clear</button>
+      <button id="build-path-copy" class="btn" style="width:auto;padding:4px 8px;">Copy</button>
+      <button id="build-path-close" class="btn" style="width:auto;padding:4px 8px;">Close</button>
+    </div>
+  </div>
+  <div style="padding:8px;display:flex;gap:8px;">
+    <!-- Left panel: Lists -->
+    <div style="flex:0 0 280px;display:flex;flex-direction:column;gap:8px;">
+      <!-- Tab switcher -->
+      <div style="display:flex;gap:2px;border-bottom:1px solid #333;padding-bottom:4px;">
+        <button id="tab-regions" class="editor-tab active" style="flex:1;padding:6px;background:#333;color:#fff;border:none;cursor:pointer;font-size:11px;">Regions</button>
+        <button id="tab-paths" class="editor-tab" style="flex:1;padding:6px;background:#222;color:#aaa;border:none;cursor:pointer;font-size:11px;">Paths</button>
+        <button id="tab-walls" class="editor-tab" style="flex:1;padding:6px;background:#222;color:#aaa;border:none;cursor:pointer;font-size:11px;">Walls</button>
+      </div>
+      
+      <!-- List containers -->
+      <div id="regions-list-container" class="list-container" style="display:block;">
+        <div style="margin-bottom:8px;">
+          <button id="btn-new-region" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Region</button>
+        </div>
+        <div id="regions-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
+      </div>
+      
+      <div id="paths-list-container" class="list-container" style="display:none;">
+        <div style="margin-bottom:8px;">
+          <button id="btn-new-path" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Path</button>
+        </div>
+        <div id="paths-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
+      </div>
+      
+      <div id="walls-list-container" class="list-container" style="display:none;">
+        <div style="margin-bottom:8px;">
+          <button id="btn-new-wall" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Wall</button>
+        </div>
+        <div id="walls-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
+      </div>
+    </div>
+    
+    <!-- Right panel: Editor -->
+    <div style="flex:1;display:flex;flex-direction:column;">
+      <p style="color:#e0e0e0;font-size:11px;margin:0 0 8px 0;">Click on the map to append coordinates to the textarea below.</p>
+      <textarea id="build-path-textarea" rows="10" style="width:100%;background:#111;border:1px solid #222;color:#e0e0e0;padding:8px;font-family: monospace; font-size:12px;"></textarea>
+      <div id="editor-form" style="display:none;margin-top:8px;padding:8px;background:#111;border:1px solid #222;">
+        <div style="margin-bottom:8px;">
+          <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">ID:</label>
+          <input id="edit-id" type="text" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+        </div>
+        <div style="margin-bottom:8px;">
+          <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Name:</label>
+          <input id="edit-name" type="text" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+        </div>
+        <div id="region-fields" style="display:none;">
+          <div style="margin-bottom:8px;">
+            <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Type:</label>
+            <select id="edit-type" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
+              <option value="safe">Safe</option>
+              <option value="war">War</option>
+              <option value="invasion">Invasion</option>
+            </select>
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Owner:</label>
+            <select id="edit-owner" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
+              <option value="syrtis">Syrtis</option>
+              <option value="alsius">Alsius</option>
+              <option value="ignis">Ignis</option>
+              <option value="neutral">Neutral</option>
+            </select>
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:6px;color:#e0e0e0;font-size:11px;">
+              <input id="edit-walkable" type="checkbox" style="transform:scale(1.1)" />
+              <span>Walkable</span>
+            </label>
+          </div>
+        </div>
+        <div id="path-fields" style="display:none;">
+          <div style="margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:6px;color:#e0e0e0;font-size:11px;">
+              <input id="edit-loop" type="checkbox" style="transform:scale(1.1)" />
+              <span>Loop</span>
+            </label>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="btn-save" style="flex:1;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">Save</button>
+          <button id="btn-cancel" style="flex:1;padding:6px;background:#666;color:#fff;border:none;cursor:pointer;font-size:11px;">Cancel</button>
+          <button id="btn-delete" style="padding:6px 12px;background:#a00;color:#fff;border:none;cursor:pointer;font-size:11px;">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

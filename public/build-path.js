@@ -109,9 +109,23 @@
   `;
 
   function ensurePanel() {
-    if (document.getElementById('build-path-panel')) return document.getElementById('build-path-panel');
+    // Return if already created
+    const existing = document.getElementById('build-path-panel');
+    if (existing) return existing;
+
+    // Try to load external HTML fragment synchronously (fallback to embedded tpl)
+    let html = null;
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', '/regionEditor.html', false); // synchronous on purpose for init compatibility
+      xhr.send(null);
+      if (xhr.status === 200) html = xhr.responseText;
+    } catch (e) {
+      console.debug('Failed to load /regionEditor.html, falling back to embedded template', e);
+    }
+
     const wrap = document.createElement('div');
-    wrap.innerHTML = tpl;
+    wrap.innerHTML = html || tpl;
     document.body.appendChild(wrap.firstElementChild);
     return document.getElementById('build-path-panel');
   }
