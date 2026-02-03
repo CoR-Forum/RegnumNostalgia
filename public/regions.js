@@ -5,6 +5,33 @@
   let apiCallRef = null;
   let positionsToLatLngsRef = null;
 
+  // Fallback realm colors in case getRealmColor isn't provided by the page
+  const FALLBACK_REALM_COLORS = { syrtis: '#22c55e', alsius: '#3b82f6', ignis: '#ef4444' };
+
+  function resolveRealmColor(owner) {
+    try {
+      if (typeof getRealmColor === 'function') return getRealmColor(owner);
+      const key = (owner || 'syrtis');
+      return FALLBACK_REALM_COLORS[key] || FALLBACK_REALM_COLORS.syrtis;
+    } catch (e) {
+      return FALLBACK_REALM_COLORS.syrtis;
+    }
+  }
+
+  function darkenHex(hex, amount) {
+    try {
+      const col = hex.replace('#','');
+      const num = parseInt(col,16);
+      let r = (num >> 16) + amount;
+      let g = ((num >> 8) & 0x00FF) + amount;
+      let b = (num & 0x0000FF) + amount;
+      r = Math.max(0, Math.min(255, r));
+      g = Math.max(0, Math.min(255, g));
+      b = Math.max(0, Math.min(255, b));
+      return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+    } catch (e) { return hex; }
+  }
+
   function pointInPolygon(x, y, polygon) {
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -133,8 +160,10 @@
         const pos = r.coordinates || r.positions || [];
         const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
         if (!latlngs || latlngs.length === 0) continue;
-        const fill = (r.properties && r.properties.fillColor) ? r.properties.fillColor : (r.type === 'danger' ? '#ff5555' : '#55ff55');
-        const stroke = (r.properties && r.properties.color) ? r.properties.color : '#228822';
+        // Always derive color from region owner/realm
+        const realmColor = resolveRealmColor(r.owner);
+        const fill = realmColor;
+        const stroke = darkenHex(realmColor, -30);
         const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
         try { poly.addTo(mapRef); poly.bringToFront(); } catch (e) {}
         layers.push(poly);
@@ -274,8 +303,10 @@
                     const pos = r.coordinates || r.positions || [];
                     const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
                     if (!latlngs || latlngs.length === 0) continue;
-                    const fill = (r.properties && r.properties.fillColor) ? r.properties.fillColor : (r.type === 'danger' ? '#ff5555' : '#55ff55');
-                    const stroke = (r.properties && r.properties.color) ? r.properties.color : '#228822';
+                    // Always derive color from region owner/realm
+                    const realmColor = resolveRealmColor(r.owner);
+                    const fill = realmColor;
+                    const stroke = darkenHex(realmColor, -30);
                     const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
                     layers.push(poly);
                   }
@@ -299,8 +330,10 @@
                       const pos = r.coordinates || r.positions || [];
                       const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
                       if (!latlngs || latlngs.length === 0) continue;
-                      const fill = (r.properties && r.properties.fillColor) ? r.properties.fillColor : (r.type === 'danger' ? '#ff5555' : '#55ff55');
-                      const stroke = (r.properties && r.properties.color) ? r.properties.color : '#228822';
+                      // Always derive color from region owner/realm
+                      const realmColor = resolveRealmColor(r.owner);
+                      const fill = realmColor;
+                      const stroke = darkenHex(realmColor, -30);
                       const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
                       layers.push(poly);
                     }
