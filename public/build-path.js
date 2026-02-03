@@ -67,11 +67,15 @@
           <div id="region-fields" style="display:none;">
             <div style="margin-bottom:8px;">
               <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Type:</label>
-              <select id="edit-type" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
+                <select id="edit-type" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
                 <option value="safe">Safe</option>
                 <option value="city">City</option>
+                <option value="field">Field</option>
+                <option value="territories">Territories</option>
+                <option value="territories_surroundings">Territories Surroundings</option>
                 <option value="warzone">Warzone</option>
-              </select>
+                <option value="neutral">Neutral</option>
+                </select>
             </div>
             <div style="margin-bottom:8px;">
               <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Owner:</label>
