@@ -21,6 +21,7 @@ const territoriesRoutes = require('./routes/territories');
 const itemsRoutes = require('./routes/items');
 const screenshotsRoutes = require('./routes/screenshots');
 const settingsRoutes = require('./routes/settings');
+const editorRoutes = require('./routes/editor');
 
 const PORT = process.env.PORT || 3000;
 const app = express();
@@ -107,6 +108,7 @@ app.use('/items', itemsRoutes);
 // app.use('/shoutbox', shoutboxRoutes); // Moved to WebSocket
 app.use('/screenshots', screenshotsRoutes);
 app.use('/user/settings', settingsRoutes);
+app.use('/editor', editorRoutes);
 
 // Bull Board setup (queue monitoring dashboard)
 const serverAdapter = new ExpressAdapter();

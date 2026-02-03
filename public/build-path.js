@@ -1,7 +1,7 @@
 (function(){
   // Build Path module - creates panel, handles clicks and polyline drawing
   const tpl = `
-  <div id="build-path-panel" style="position: absolute; right: 12px; bottom: 140px; width: 560px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+  <div id="build-path-panel" style="position: absolute; right: 12px; bottom: 140px; width: 800px; background: #1a1a1a; border: 1px solid #333; box-shadow: 0 4px 16px rgba(0,0,0,0.8); z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
     <div id="build-path-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
       <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Region Editor</h2>
       <div style="display:flex;gap:8px;align-items:center">
@@ -18,9 +18,92 @@
         <button id="build-path-close" class="btn" style="width:auto;padding:4px 8px;">Close</button>
       </div>
     </div>
-    <div style="padding:8px">
-      <p style="color:#e0e0e0;font-size:11px;margin-bottom:8px;">Click on the map to append coordinates to the textarea below.</p>
-      <textarea id="build-path-textarea" rows="10" style="width:100%;background:#111;border:1px solid #222;color:#e0e0e0;padding:8px;font-family: monospace; font-size:12px;"></textarea>
+    <div style="padding:8px;display:flex;gap:8px;">
+      <!-- Left panel: Lists -->
+      <div style="flex:0 0 280px;display:flex;flex-direction:column;gap:8px;">
+        <!-- Tab switcher -->
+        <div style="display:flex;gap:2px;border-bottom:1px solid #333;padding-bottom:4px;">
+          <button id="tab-regions" class="editor-tab active" style="flex:1;padding:6px;background:#333;color:#fff;border:none;cursor:pointer;font-size:11px;">Regions</button>
+          <button id="tab-paths" class="editor-tab" style="flex:1;padding:6px;background:#222;color:#aaa;border:none;cursor:pointer;font-size:11px;">Paths</button>
+          <button id="tab-walls" class="editor-tab" style="flex:1;padding:6px;background:#222;color:#aaa;border:none;cursor:pointer;font-size:11px;">Walls</button>
+        </div>
+        
+        <!-- List containers -->
+        <div id="regions-list-container" class="list-container" style="display:block;">
+          <div style="margin-bottom:8px;">
+            <button id="btn-new-region" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Region</button>
+          </div>
+          <div id="regions-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
+        </div>
+        
+        <div id="paths-list-container" class="list-container" style="display:none;">
+          <div style="margin-bottom:8px;">
+            <button id="btn-new-path" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Path</button>
+          </div>
+          <div id="paths-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
+        </div>
+        
+        <div id="walls-list-container" class="list-container" style="display:none;">
+          <div style="margin-bottom:8px;">
+            <button id="btn-new-wall" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Wall</button>
+          </div>
+          <div id="walls-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
+        </div>
+      </div>
+      
+      <!-- Right panel: Editor -->
+      <div style="flex:1;display:flex;flex-direction:column;">
+        <p style="color:#e0e0e0;font-size:11px;margin:0 0 8px 0;">Click on the map to append coordinates to the textarea below.</p>
+        <textarea id="build-path-textarea" rows="10" style="width:100%;background:#111;border:1px solid #222;color:#e0e0e0;padding:8px;font-family: monospace; font-size:12px;"></textarea>
+        <div id="editor-form" style="display:none;margin-top:8px;padding:8px;background:#111;border:1px solid #222;">
+          <div style="margin-bottom:8px;">
+            <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">ID:</label>
+            <input id="edit-id" type="text" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+          </div>
+          <div style="margin-bottom:8px;">
+            <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Name:</label>
+            <input id="edit-name" type="text" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+          </div>
+          <div id="region-fields" style="display:none;">
+            <div style="margin-bottom:8px;">
+              <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Type:</label>
+              <select id="edit-type" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
+                <option value="safe">Safe</option>
+                <option value="war">War</option>
+                <option value="invasion">Invasion</option>
+              </select>
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Owner:</label>
+              <select id="edit-owner" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
+                <option value="syrtis">Syrtis</option>
+                <option value="alsius">Alsius</option>
+                <option value="ignis">Ignis</option>
+                <option value="neutral">Neutral</option>
+              </select>
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:6px;color:#e0e0e0;font-size:11px;">
+                <input id="edit-walkable" type="checkbox" style="transform:scale(1.1)" />
+                <span>Walkable</span>
+              </label>
+            </div>
+          </div>
+          <div id="path-fields" style="display:none;">
+            <div style="margin-bottom:8px;">
+              <label style="display:flex;align-items:center;gap:6px;color:#e0e0e0;font-size:11px;">
+                <input id="edit-loop" type="checkbox" style="transform:scale(1.1)" />
+                <span>Loop</span>
+              </label>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button id="btn-save" style="flex:1;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">Save</button>
+            <button id="btn-cancel" style="flex:1;padding:6px;background:#666;color:#fff;border:none;cursor:pointer;font-size:11px;">Cancel</button>
+            <button id="btn-delete" style="padding:6px 12px;background:#a00;color:#fff;border:none;cursor:pointer;font-size:11px;">Delete</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   `;
@@ -211,6 +294,19 @@
     gameState.buildPathMode = true;
     const ta = document.getElementById('build-path-textarea');
 
+    // Initialize editor lists if not already done
+    if (!editorState.initialized) {
+      initEditorLists();
+      editorState.initialized = true;
+    }
+
+    // Load editor lists
+    try {
+      loadRegionsList();
+      loadPathsList();
+      loadWallsList();
+    } catch (e) { console.error('build-path:showPanel load lists', e); }
+
     // show paths and regions by default when opening the builder
     try {
       gameState.showPaths = true;
@@ -336,6 +432,10 @@
       });
     }
 
+    // Initialize editor features
+    initEditorTabs();
+    initEditorForm();
+
     // expose public API
     window.buildPath = {
       init,
@@ -349,6 +449,360 @@
       updateWalkerCurrentIndex,
       clearWalkerPath
     };
+  }
+
+  // Editor state
+  let editorState = {
+    currentTab: 'regions',
+    editingItem: null,
+    editingType: null,
+    regions: [],
+    paths: [],
+    walls: [],
+    initialized: false
+  };
+
+  // Tab switching
+  function initEditorTabs() {
+    const tabs = ['regions', 'paths', 'walls'];
+    tabs.forEach(tab => {
+      const btn = document.getElementById(`tab-${tab}`);
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        tabs.forEach(t => {
+          const b = document.getElementById(`tab-${t}`);
+          const c = document.getElementById(`${t}-list-container`);
+          if (b && c) {
+            if (t === tab) {
+              b.classList.add('active');
+              b.style.background = '#333';
+              b.style.color = '#fff';
+              c.style.display = 'block';
+            } else {
+              b.classList.remove('active');
+              b.style.background = '#222';
+              b.style.color = '#aaa';
+              c.style.display = 'none';
+            }
+          }
+        });
+        editorState.currentTab = tab;
+      });
+    });
+  }
+
+  // Load and render lists
+  async function initEditorLists() {
+    // Load initial data
+    await Promise.all([
+      loadRegionsList(),
+      loadPathsList(),
+      loadWallsList()
+    ]);
+
+    // Wire new buttons
+    const btnNewRegion = document.getElementById('btn-new-region');
+    const btnNewPath = document.getElementById('btn-new-path');
+    const btnNewWall = document.getElementById('btn-new-wall');
+
+    if (btnNewRegion) btnNewRegion.addEventListener('click', () => createNewItem('region'));
+    if (btnNewPath) btnNewPath.addEventListener('click', () => createNewItem('path'));
+    if (btnNewWall) btnNewWall.addEventListener('click', () => createNewItem('wall'));
+  }
+
+  async function loadRegionsList() {
+    try {
+      const response = await fetch('/api/editor/regions');
+      const regions = await response.json();
+      editorState.regions = regions;
+      renderRegionsList();
+    } catch (error) {
+      console.error('Failed to load regions:', error);
+    }
+  }
+
+  async function loadPathsList() {
+    try {
+      const response = await fetch('/api/editor/paths');
+      const paths = await response.json();
+      editorState.paths = paths;
+      renderPathsList();
+    } catch (error) {
+      console.error('Failed to load paths:', error);
+    }
+  }
+
+  async function loadWallsList() {
+    try {
+      const response = await fetch('/api/editor/walls');
+      const walls = await response.json();
+      editorState.walls = walls;
+      renderWallsList();
+    } catch (error) {
+      console.error('Failed to load walls:', error);
+    }
+  }
+
+  function renderRegionsList() {
+    const container = document.getElementById('regions-list');
+    if (!container) return;
+    
+    container.innerHTML = editorState.regions.map(region => `
+      <div class="list-item" data-id="${region.id}" style="padding:4px 6px;margin:2px 0;background:#222;border:1px solid #333;cursor:pointer;color:#e0e0e0;font-size:11px;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#222'">
+        <strong>${region.name}</strong><br>
+        <small style="color:#999;">ID: ${region.id} | Type: ${region.type || 'N/A'} | Owner: ${region.owner || 'N/A'}</small>
+      </div>
+    `).join('');
+
+    // Wire click handlers
+    container.querySelectorAll('.list-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.getAttribute('data-id');
+        const region = editorState.regions.find(r => r.id === id);
+        if (region) editItem('region', region);
+      });
+    });
+  }
+
+  function renderPathsList() {
+    const container = document.getElementById('paths-list');
+    if (!container) return;
+    
+    container.innerHTML = editorState.paths.map(path => `
+      <div class="list-item" data-id="${path.id}" style="padding:4px 6px;margin:2px 0;background:#222;border:1px solid #333;cursor:pointer;color:#e0e0e0;font-size:11px;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#222'">
+        <strong>${path.name}</strong><br>
+        <small style="color:#999;">ID: ${path.id} | Points: ${(path.positions || []).length} | Loop: ${path.loop ? 'Yes' : 'No'}</small>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.list-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.getAttribute('data-id');
+        const path = editorState.paths.find(p => p.id === id);
+        if (path) editItem('path', path);
+      });
+    });
+  }
+
+  function renderWallsList() {
+    const container = document.getElementById('walls-list');
+    if (!container) return;
+    
+    container.innerHTML = editorState.walls.map(wall => `
+      <div class="list-item" data-id="${wall.id}" style="padding:4px 6px;margin:2px 0;background:#222;border:1px solid #333;cursor:pointer;color:#e0e0e0;font-size:11px;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#222'">
+        <strong>${wall.name}</strong><br>
+        <small style="color:#999;">ID: ${wall.id} | Points: ${(wall.positions || []).length}</small>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.list-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.getAttribute('data-id');
+        const wall = editorState.walls.find(w => w.id === id);
+        if (wall) editItem('wall', wall);
+      });
+    });
+  }
+
+  function createNewItem(type) {
+    const newItem = {
+      id: '',
+      name: '',
+      positions: type === 'region' ? [] : []
+    };
+
+    if (type === 'region') {
+      newItem.type = 'safe';
+      newItem.owner = 'neutral';
+      newItem.walkable = true;
+      newItem.coordinates = [];
+    } else if (type === 'path') {
+      newItem.loop = false;
+    }
+
+    editItem(type, newItem, true);
+  }
+
+  function editItem(type, item, isNew = false) {
+    editorState.editingItem = { ...item };
+    editorState.editingType = type;
+    editorState.isNew = isNew;
+
+    const form = document.getElementById('editor-form');
+    const regionFields = document.getElementById('region-fields');
+    const pathFields = document.getElementById('path-fields');
+    const ta = document.getElementById('build-path-textarea');
+
+    if (!form) return;
+
+    // Show form
+    form.style.display = 'block';
+
+    // Populate basic fields
+    const idInput = document.getElementById('edit-id');
+    const nameInput = document.getElementById('edit-name');
+    if (idInput) {
+      idInput.value = item.id || '';
+      idInput.disabled = !isNew;
+    }
+    if (nameInput) nameInput.value = item.name || '';
+
+    // Show/hide type-specific fields
+    if (regionFields) regionFields.style.display = type === 'region' ? 'block' : 'none';
+    if (pathFields) pathFields.style.display = type === 'path' ? 'block' : 'none';
+
+    // Populate type-specific fields
+    if (type === 'region') {
+      const typeSelect = document.getElementById('edit-type');
+      const ownerSelect = document.getElementById('edit-owner');
+      const walkableCheck = document.getElementById('edit-walkable');
+      if (typeSelect) typeSelect.value = item.type || 'safe';
+      if (ownerSelect) ownerSelect.value = item.owner || 'neutral';
+      if (walkableCheck) walkableCheck.checked = item.walkable !== false;
+
+      // Show coordinates in textarea
+      if (ta && item.coordinates) {
+        ta.value = formatPointsToTextarea(item.coordinates);
+        gameState.buildPathPoints = [...item.coordinates];
+        updateBuildPathPolyline();
+      }
+    } else {
+      // paths and walls use positions
+      if (ta && item.positions) {
+        ta.value = formatPointsToTextarea(item.positions);
+        gameState.buildPathPoints = [...item.positions];
+        updateBuildPathPolyline();
+      }
+
+      if (type === 'path') {
+        const loopCheck = document.getElementById('edit-loop');
+        if (loopCheck) loopCheck.checked = item.loop === true;
+      }
+    }
+  }
+
+  function initEditorForm() {
+    const btnSave = document.getElementById('btn-save');
+    const btnCancel = document.getElementById('btn-cancel');
+    const btnDelete = document.getElementById('btn-delete');
+
+    if (btnSave) btnSave.addEventListener('click', saveItem);
+    if (btnCancel) btnCancel.addEventListener('click', cancelEdit);
+    if (btnDelete) btnDelete.addEventListener('click', deleteItem);
+  }
+
+  async function saveItem() {
+    const { editingItem, editingType, isNew } = editorState;
+    if (!editingItem || !editingType) return;
+
+    // Gather form data
+    const id = document.getElementById('edit-id')?.value || '';
+    const name = document.getElementById('edit-name')?.value || '';
+    const ta = document.getElementById('build-path-textarea');
+    const positions = ta ? parseTextareaToPoints(ta) : [];
+
+    if (!id || !name) {
+      alert('ID and Name are required');
+      return;
+    }
+
+    const item = { id, name };
+
+    if (editingType === 'region') {
+      item.type = document.getElementById('edit-type')?.value || 'safe';
+      item.owner = document.getElementById('edit-owner')?.value || 'neutral';
+      item.walkable = document.getElementById('edit-walkable')?.checked !== false;
+      item.coordinates = positions;
+    } else {
+      item.positions = positions;
+      if (editingType === 'path') {
+        item.loop = document.getElementById('edit-loop')?.checked === true;
+      }
+    }
+
+    try {
+      const endpoint = `/api/editor/${editingType === 'region' ? 'regions' : editingType === 'path' ? 'paths' : 'walls'}`;
+      const method = isNew ? 'POST' : 'PUT';
+      const url = isNew ? endpoint : `${endpoint}/${id}`;
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(item)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save');
+      }
+
+      // Reload the appropriate list
+      if (editingType === 'region') await loadRegionsList();
+      else if (editingType === 'path') await loadPathsList();
+      else if (editingType === 'wall') await loadWallsList();
+
+      // Reload rendered layers if they're visible
+      if (gameState.showRegions && typeof loadAndRenderRegions === 'function') await loadAndRenderRegions();
+      if (gameState.showPaths && typeof loadAndRenderPaths === 'function') await loadAndRenderPaths();
+
+      cancelEdit();
+      alert(`${editingType.charAt(0).toUpperCase() + editingType.slice(1)} saved successfully!`);
+    } catch (error) {
+      console.error('Failed to save:', error);
+      alert('Failed to save: ' + error.message);
+    }
+  }
+
+  function cancelEdit() {
+    editorState.editingItem = null;
+    editorState.editingType = null;
+    editorState.isNew = false;
+
+    const form = document.getElementById('editor-form');
+    const ta = document.getElementById('build-path-textarea');
+
+    if (form) form.style.display = 'none';
+    if (ta) ta.value = '';
+
+    gameState.buildPathPoints = [];
+    if (gameState.buildPathPolyline) {
+      try { map.removeLayer(gameState.buildPathPolyline); } catch(e){}
+      gameState.buildPathPolyline = null;
+    }
+  }
+
+  async function deleteItem() {
+    const { editingItem, editingType } = editorState;
+    if (!editingItem || !editingType || !editingItem.id) return;
+
+    if (!confirm(`Are you sure you want to delete this ${editingType}?`)) return;
+
+    try {
+      const endpoint = `/api/editor/${editingType === 'region' ? 'regions' : editingType === 'path' ? 'paths' : 'walls'}`;
+      const response = await fetch(`${endpoint}/${editingItem.id}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete');
+      }
+
+      // Reload the appropriate list
+      if (editingType === 'region') await loadRegionsList();
+      else if (editingType === 'path') await loadPathsList();
+      else if (editingType === 'wall') await loadWallsList();
+
+      // Reload rendered layers if they're visible
+      if (gameState.showRegions && typeof loadAndRenderRegions === 'function') await loadAndRenderRegions();
+      if (gameState.showPaths && typeof loadAndRenderPaths === 'function') await loadAndRenderPaths();
+
+      cancelEdit();
+      alert(`${editingType.charAt(0).toUpperCase() + editingType.slice(1)} deleted successfully!`);
+    } catch (error) {
+      console.error('Failed to delete:', error);
+      alert('Failed to delete: ' + error.message);
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
