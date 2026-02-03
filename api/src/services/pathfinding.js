@@ -457,52 +457,65 @@ async function findPath(userId, targetX, targetY, realm) {
       const passagePath = await findPathThroughWall(wallCheck.wall, playerX, playerY, targetX, targetY);
       
       if (passagePath && passagePath.positions) {
+        // Determine which end of the passage path is closer to player
+        const firstPos = passagePath.positions[0];
+        const lastPos = passagePath.positions[passagePath.positions.length - 1];
+        const distToFirst = distance(playerX, playerY, firstPos[0], firstPos[1]);
+        const distToLast = distance(playerX, playerY, lastPos[0], lastPos[1]);
+        
+        // Use the closest end as entrance, and reverse path if needed
+        let orderedPositions = passagePath.positions;
+        if (distToLast < distToFirst) {
+          orderedPositions = [...passagePath.positions].reverse();
+        }
+        
         // Build the passage crossing prefix
         passagePrefixPositions = [[playerX, playerY]];
         
-        // Walk to the start of the passage path
-        const pathStart = passagePath.positions[0];
-        passagePrefixPositions.push(...interpolateSteps(playerX, playerY, pathStart[0], pathStart[1]));
+        // Walk to the nearest entrance of the passage path
+        const pathEntrance = orderedPositions[0];
+        passagePrefixPositions.push(...interpolateSteps(playerX, playerY, pathEntrance[0], pathEntrance[1]));
         
-        // Check each point along the passage path to see if we can exit early and walk directly to target
-        let canExitEarly = false;
+        // Check each point along the passage path to see if we can exit early
+        let canExitToTarget = false;
         let exitIndex = -1;
         
-        for (let i = 0; i < passagePath.positions.length; i++) {
-          const pos = passagePath.positions[i];
+        // First, check if we can walk directly to target from any passage point
+        for (let i = 0; i < orderedPositions.length; i++) {
+          const pos = orderedPositions[i];
           const distToTarget = distance(pos[0], pos[1], targetX, targetY);
           
           if (distToTarget <= DIRECT_THRESHOLD) {
             const wallCheck = await pathCrossesWall(pos[0], pos[1], targetX, targetY);
             if (!wallCheck.crosses) {
-              // Found an exit point - can walk directly from here
-              canExitEarly = true;
+              // Found an exit point - can walk directly to target from here
+              canExitToTarget = true;
               exitIndex = i;
               break;
             }
           }
         }
         
-        if (canExitEarly) {
+        if (canExitToTarget) {
           // Add positions up to the exit point
           for (let i = 0; i <= exitIndex; i++) {
-            passagePrefixPositions.push(passagePath.positions[i]);
+            passagePrefixPositions.push(orderedPositions[i]);
           }
           // Walk directly to target from exit point
-          const exitPos = passagePath.positions[exitIndex];
+          const exitPos = orderedPositions[exitIndex];
           passagePrefixPositions.push(...interpolateSteps(exitPos[0], exitPos[1], targetX, targetY));
           return passagePrefixPositions;
         }
         
-        // Can't exit early, follow the entire passage path
-        passagePath.positions.forEach(pos => {
+        // If can't reach target directly, add all passage positions
+        orderedPositions.forEach(pos => {
           passagePrefixPositions.push(pos);
         });
         
         // Use path network from passage exit to target
-        const pathEnd = passagePath.positions[passagePath.positions.length - 1];
-        searchStartX = pathEnd[0];
-        searchStartY = pathEnd[1];
+        const pathExit = orderedPositions[orderedPositions.length - 1];
+        searchStartX = pathExit[0];
+        searchStartY = pathExit[1];
       }
       // If no passage path found, fall through to path network navigation
     }
@@ -515,7 +528,52 @@ async function findPath(userId, targetX, targetY, realm) {
     throw new Error('No path nodes available');
   }
 
-  // Find nearest nodes to searchStart (either player position or passage exit) and target
+  // If we have a passage prefix, check if we can exit earlier to join the path network
+  if (passagePrefixPositions) {
+    const passages = passagePrefixPositions.slice(); // Clone the array
+    
+    // Check each point along the passage path (after the interpolated walk to the passage start)
+    let bestExitIndex = -1;
+    let bestExitNode = null;
+    let bestExitDist = INF;
+    
+    // Find how many positions are just the walk to the passage start
+    let passageStartIndex = 0;
+    for (let i = 0; i < passages.length; i++) {
+      // Look for the actual passage path positions (not interpolated steps)
+      // These would be the positions from passagePath.positions
+      // For simplicity, we'll check all positions after the initial player position
+      if (i === 0) continue; // Skip player starting position
+      
+      const pos = passages[i];
+      
+      // Check if we can reach any path node from this position
+      for (const nodeId in nodes) {
+        const node = nodes[nodeId];
+        const distToNode = distance(pos[0], pos[1], node.x, node.y);
+        
+        if (distToNode <= MAX_NODE_DISTANCE) {
+          const wallCheck = await pathCrossesWall(pos[0], pos[1], node.x, node.y);
+          if (!wallCheck.crosses && distToNode < bestExitDist) {
+            bestExitDist = distToNode;
+            bestExitIndex = i;
+            bestExitNode = nodeId;
+          }
+        }
+      }
+      
+      // If we found a good exit point, use it
+      if (bestExitNode !== null) {
+        // Trim the passage prefix to this exit point
+        passagePrefixPositions = passages.slice(0, bestExitIndex + 1);
+        searchStartX = passages[bestExitIndex][0];
+        searchStartY = passages[bestExitIndex][1];
+        break;
+      }
+    }
+  }
+
+  // Find nearest nodes to searchStart (either player position, passage point, or passage exit) and target
   let startNode = null;
   let endNode = null;
   let minStartDist = INF;
