@@ -664,6 +664,13 @@
       newItem.walkable = true;
       newItem.coordinates = [];
       newItem.music = '';
+      // When creating a new region, ensure build mode is area so it renders as a polygon
+      try {
+        gameState.buildMode = 'area';
+        const modeSelect = document.getElementById('build-path-mode');
+        if (modeSelect) modeSelect.value = 'area';
+        updateBuildPathPolyline();
+      } catch (e) { /* ignore if DOM not ready */ }
     } else if (type === 'path') {
       newItem.loop = false;
     }
@@ -951,6 +958,12 @@
       if (ta && item.coordinates) {
         ta.value = formatPointsToTextarea(item.coordinates);
         gameState.buildPathPoints = [...item.coordinates];
+        // Ensure build mode is area when editing a region so it renders as a polygon
+        try {
+          gameState.buildMode = 'area';
+          const modeSelect = document.getElementById('build-path-mode');
+          if (modeSelect) modeSelect.value = 'area';
+        } catch (e) {}
         updateBuildPathPolyline();
         // Create draggable markers for editing
         if (item.coordinates.length > 0) {
@@ -1002,6 +1015,19 @@
     }
 
     const item = { id, name };
+
+    // Preserve existing properties (like fillColor) if present on the editing item
+    try {
+      const existing = editorState && editorState.editingItem ? editorState.editingItem : null;
+      if (existing && existing.properties) {
+        // shallow copy to avoid mutation
+        item.properties = JSON.parse(JSON.stringify(existing.properties));
+      } else {
+        item.properties = item.properties || {};
+      }
+    } catch (e) {
+      item.properties = item.properties || {};
+    }
 
     if (editingType === 'region') {
       item.type = document.getElementById('edit-type')?.value || 'safe';
