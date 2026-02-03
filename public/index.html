@@ -1617,9 +1617,11 @@
       socket.on('territories:capture', (data) => {
         if (data && data.captures) {
           console.log('Territories captured:', data.captures);
-          // Show notification for captures
+          // Show notification for captures using same overlay styling
           data.captures.forEach(capture => {
-            console.log(`${capture.name} captured by ${capture.newOwner || 'neutral'}`);
+            const msg = `${capture.name} captured by ${capture.newOwner || 'neutral'}`;
+            try { if (window.addLogMessage) window.addLogMessage(msg, 'error'); else alert(msg); } catch (e) { alert(msg); }
+            console.log(msg);
           });
         }
       });
