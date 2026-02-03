@@ -666,6 +666,39 @@
     editMarkers = [];
   }
 
+  // Interpolate points to maintain ~20px distance
+  function interpolatePoints(points, targetDistance = 20) {
+    if (points.length < 2) return points;
+    
+    const result = [];
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      const [x1, y1] = points[i];
+      const [x2, y2] = points[i + 1];
+      
+      result.push([x1, y1]);
+      
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance > targetDistance) {
+        const steps = Math.floor(distance / targetDistance);
+        for (let j = 1; j < steps; j++) {
+          const t = j / steps;
+          const ix = Math.round(x1 + dx * t);
+          const iy = Math.round(y1 + dy * t);
+          result.push([ix, iy]);
+        }
+      }
+    }
+    
+    // Add the last point
+    result.push(points[points.length - 1]);
+    
+    return result;
+  }
+
   function createEditMarkers(points) {
     clearEditMarkers();
     
@@ -689,6 +722,35 @@
       // Store the index so we can update the right point
       marker.pointIndex = index;
 
+      // Handle drag start - remove nearby interpolated points
+      marker.on('dragstart', function(e) {
+        const removeRadius = 50; // Remove points within this radius of the dragged point
+        const [dragX, dragY] = gameState.buildPathPoints[this.pointIndex];
+        
+        // Filter out points that are too close to the dragged point (except endpoints and the dragged point itself)
+        const filtered = [];
+        for (let i = 0; i < gameState.buildPathPoints.length; i++) {
+          const [x, y] = gameState.buildPathPoints[i];
+          const dist = Math.sqrt((x - dragX) ** 2 + (y - dragY) ** 2);
+          
+          // Keep if: it's an endpoint, it's the dragged point, or it's far enough away
+          if (i === 0 || 
+              i === gameState.buildPathPoints.length - 1 || 
+              i === this.pointIndex || 
+              dist > removeRadius) {
+            filtered.push(gameState.buildPathPoints[i]);
+            
+            // Update the index if this is the dragged point
+            if (i === this.pointIndex) {
+              this.pointIndex = filtered.length - 1;
+            }
+          }
+        }
+        
+        gameState.buildPathPoints = filtered;
+        updateBuildPathPolyline();
+      });
+
       // Handle drag events
       marker.on('drag', function(e) {
         const newLatLng = e.target.getLatLng();
@@ -698,13 +760,7 @@
         // Update the point in buildPathPoints
         gameState.buildPathPoints[this.pointIndex] = [newX, newY];
         
-        // Update the textarea
-        const ta = document.getElementById('build-path-textarea');
-        if (ta) {
-          ta.value = formatPointsToTextarea(gameState.buildPathPoints);
-        }
-        
-        // Update the polyline visualization
+        // Update the polyline visualization (without interpolation during drag for performance)
         updateBuildPathPolyline();
       });
 
@@ -716,11 +772,113 @@
         // Final update
         gameState.buildPathPoints[this.pointIndex] = [newX, newY];
         
+        // Apply interpolation after drag ends
+        const interpolated = interpolatePoints(gameState.buildPathPoints, 20);
+        gameState.buildPathPoints = interpolated;
+        
+        // Update textarea with interpolated points
         const ta = document.getElementById('build-path-textarea');
         if (ta) {
           ta.value = formatPointsToTextarea(gameState.buildPathPoints);
         }
         
+        // Recreate all markers with new interpolated points
+        clearEditMarkers();
+        
+        // Recreate markers for all points
+        gameState.buildPathPoints.forEach((point, idx) => {
+          const [px, py] = point;
+          const platlng = [totalH - py, px];
+          
+          const pIcon = L.divIcon({
+            className: 'edit-point-marker',
+            html: `<div style="width:12px;height:12px;border-radius:50%;background:#ff6600;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.5);cursor:move;"></div>`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          });
+          
+          const pMarker = L.marker(platlng, {
+            icon: pIcon,
+            draggable: true
+          }).addTo(map);
+          
+          pMarker.pointIndex = idx;
+          
+          // Re-attach drag handlers
+          pMarker.on('drag', function(ev) {
+            const nl = ev.target.getLatLng();
+            const nx = Math.round(nl.lng);
+            const ny = Math.round(totalH - nl.lat);
+            gameState.buildPathPoints[this.pointIndex] = [nx, ny];
+            updateBuildPathPolyline();
+          });
+          
+          pMarker.on('dragend', arguments.callee);
+          
+          // Right-click to remove point
+          pMarker.on('contextmenu', function(ev) {
+            L.DomEvent.stopPropagation(ev);
+            L.DomEvent.preventDefault(ev);
+            
+            if (gameState.buildPathPoints.length <= 2) {
+              alert('Cannot remove point - at least 2 points are required');
+              return;
+            }
+            
+            // Remove the point
+            gameState.buildPathPoints.splice(this.pointIndex, 1);
+            
+            // Update textarea
+            const ta = document.getElementById('build-path-textarea');
+            if (ta) {
+              ta.value = formatPointsToTextarea(gameState.buildPathPoints);
+            }
+            
+            // Recreate markers
+            clearEditMarkers();
+            createEditMarkers(gameState.buildPathPoints);
+            
+            // Update polyline
+            updateBuildPathPolyline();
+          });
+          
+          pMarker.bindTooltip(`Point ${idx + 1}: [${px}, ${py}]`, {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -10]
+          });
+          
+          editMarkers.push(pMarker);
+        });
+        
+        // Update the polyline visualization
+        updateBuildPathPolyline();
+      });
+
+      // Right-click to remove point
+      marker.on('contextmenu', function(e) {
+        L.DomEvent.stopPropagation(e);
+        L.DomEvent.preventDefault(e);
+        
+        if (gameState.buildPathPoints.length <= 2) {
+          alert('Cannot remove point - at least 2 points are required');
+          return;
+        }
+        
+        // Remove the point
+        gameState.buildPathPoints.splice(this.pointIndex, 1);
+        
+        // Update textarea
+        const ta = document.getElementById('build-path-textarea');
+        if (ta) {
+          ta.value = formatPointsToTextarea(gameState.buildPathPoints);
+        }
+        
+        // Recreate markers
+        clearEditMarkers();
+        createEditMarkers(gameState.buildPathPoints);
+        
+        // Update polyline
         updateBuildPathPolyline();
       });
 
