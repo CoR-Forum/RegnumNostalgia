@@ -3026,8 +3026,8 @@
           // Ensure permission check (async) before initiating walk
           try {
             const allowed = await isLatLngWalkAllowedAsync(ll);
-            if (!allowed) { alert('Cannot walk to that region.'); hideMapContextMenu(); return; }
-          } catch (e) { console.error('Walk permission check failed', e); alert('Cannot walk to that region.'); hideMapContextMenu(); return; }
+            if (!allowed) { try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch(e){ alert('Cannot walk to that region.'); } hideMapContextMenu(); return; }
+          } catch (e) { console.error('Walk permission check failed', e); try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch(ex){ alert('Cannot walk to that region.'); } hideMapContextMenu(); return; }
 
           await performWalkAtLatLng(ll);
         } catch (err) {
@@ -3159,8 +3159,8 @@
         // Prevent walking into non-walkable or foreign-owned regions
         try {
           const allowed = await isLatLngWalkAllowedAsync(latlng);
-          if (!allowed) { alert('Cannot walk to that region.'); return; }
-        } catch (e) { console.debug('region check before walk failed', e); alert('Cannot walk to that region.'); return; }
+                if (!allowed) { try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch(e){ alert('Cannot walk to that region.'); } return; }
+        } catch (e) { console.debug('region check before walk failed', e); try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch(ex){ alert('Cannot walk to that region.'); } return; }
 
         // Use WebSocket for move request
         const socket = window.getSocket && window.getSocket();
@@ -3204,7 +3204,7 @@
         // Otherwise, attempt to start walking directly to the clicked location
         try {
           const allowed = await isLatLngWalkAllowedAsync(e.latlng);
-          if (!allowed) { alert('Cannot walk to that region.'); return; }
+          if (!allowed) { try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch(e){ alert('Cannot walk to that region.'); } return; }
           await performWalkAtLatLng(e.latlng);
         } catch (err) {
           console.error('Right-click walk failed', err);
