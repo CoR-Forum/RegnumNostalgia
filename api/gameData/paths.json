@@ -684,6 +684,16 @@
     "loop": false
   },
   {
+    "id":"syrtis-initiation-teleport",
+    "name":"Syrtis Initiation Teleport",
+    "positions":[
+        [1206, 4942], [1172, 5037], [1128, 5132], [1080, 5226],
+  [1025, 5306], [995, 5395], [1015, 5450], [1014, 5481]
+
+    ],
+    "loop": false
+  },
+  {
     "id":"alsius1",
     "name":"Alsius 1",
     "positions":[
