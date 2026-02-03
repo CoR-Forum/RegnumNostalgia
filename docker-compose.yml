@@ -18,8 +18,7 @@ services:
     volumes:
       - ./api/src:/app/src
       - ./api/scripts:/app/scripts
-      - ./api/gameData:/app/gameData:ro
-      - ./api/gameData:/app/gameData:ro
+      - ./api/gameData:/app/gameData
       - ./api/logs:/app/logs
     working_dir: /app
     env_file:

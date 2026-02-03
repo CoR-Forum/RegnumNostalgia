@@ -350,6 +350,9 @@
       // remove regions layer
       if (gameState.regionsLayer) { try { map.removeLayer(gameState.regionsLayer); } catch(e){} gameState.regionsLayer = null; }
 
+      // clear draggable markers
+      clearEditMarkers();
+
       // clear toggles and flags
       gameState.showPaths = false;
       gameState.showRegions = false;
@@ -512,10 +515,20 @@
 
   async function loadRegionsList() {
     try {
-      const response = await fetch('/api/editor/regions');
-      const regions = await response.json();
-      editorState.regions = regions;
-      renderRegionsList();
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        console.error('WebSocket not connected');
+        return;
+      }
+      
+      socket.emit('editor:regions:get', (response) => {
+        if (response.success) {
+          editorState.regions = response.data;
+          renderRegionsList();
+        } else {
+          console.error('Failed to load regions:', response.error);
+        }
+      });
     } catch (error) {
       console.error('Failed to load regions:', error);
     }
@@ -523,10 +536,20 @@
 
   async function loadPathsList() {
     try {
-      const response = await fetch('/api/editor/paths');
-      const paths = await response.json();
-      editorState.paths = paths;
-      renderPathsList();
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        console.error('WebSocket not connected');
+        return;
+      }
+      
+      socket.emit('editor:paths:get', (response) => {
+        if (response.success) {
+          editorState.paths = response.data;
+          renderPathsList();
+        } else {
+          console.error('Failed to load paths:', response.error);
+        }
+      });
     } catch (error) {
       console.error('Failed to load paths:', error);
     }
@@ -534,10 +557,20 @@
 
   async function loadWallsList() {
     try {
-      const response = await fetch('/api/editor/walls');
-      const walls = await response.json();
-      editorState.walls = walls;
-      renderWallsList();
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        console.error('WebSocket not connected');
+        return;
+      }
+      
+      socket.emit('editor:walls:get', (response) => {
+        if (response.success) {
+          editorState.walls = response.data;
+          renderWallsList();
+        } else {
+          console.error('Failed to load walls:', response.error);
+        }
+      });
     } catch (error) {
       console.error('Failed to load walls:', error);
     }
@@ -623,6 +656,85 @@
     editItem(type, newItem, true);
   }
 
+  // Draggable markers for editing
+  let editMarkers = [];
+
+  function clearEditMarkers() {
+    editMarkers.forEach(marker => {
+      try { map.removeLayer(marker); } catch (e) {}
+    });
+    editMarkers = [];
+  }
+
+  function createEditMarkers(points) {
+    clearEditMarkers();
+    
+    points.forEach((point, index) => {
+      const [x, y] = point;
+      const latlng = [totalH - y, x];
+      
+      // Create a custom icon for the marker
+      const customIcon = L.divIcon({
+        className: 'edit-point-marker',
+        html: `<div style="width:12px;height:12px;border-radius:50%;background:#ff6600;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.5);cursor:move;"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+      
+      const marker = L.marker(latlng, {
+        icon: customIcon,
+        draggable: true
+      }).addTo(map);
+
+      // Store the index so we can update the right point
+      marker.pointIndex = index;
+
+      // Handle drag events
+      marker.on('drag', function(e) {
+        const newLatLng = e.target.getLatLng();
+        const newX = Math.round(newLatLng.lng);
+        const newY = Math.round(totalH - newLatLng.lat);
+        
+        // Update the point in buildPathPoints
+        gameState.buildPathPoints[this.pointIndex] = [newX, newY];
+        
+        // Update the textarea
+        const ta = document.getElementById('build-path-textarea');
+        if (ta) {
+          ta.value = formatPointsToTextarea(gameState.buildPathPoints);
+        }
+        
+        // Update the polyline visualization
+        updateBuildPathPolyline();
+      });
+
+      marker.on('dragend', function(e) {
+        const newLatLng = e.target.getLatLng();
+        const newX = Math.round(newLatLng.lng);
+        const newY = Math.round(totalH - newLatLng.lat);
+        
+        // Final update
+        gameState.buildPathPoints[this.pointIndex] = [newX, newY];
+        
+        const ta = document.getElementById('build-path-textarea');
+        if (ta) {
+          ta.value = formatPointsToTextarea(gameState.buildPathPoints);
+        }
+        
+        updateBuildPathPolyline();
+      });
+
+      // Add tooltip showing point index and coordinates
+      marker.bindTooltip(`Point ${index + 1}: [${x}, ${y}]`, {
+        permanent: false,
+        direction: 'top',
+        offset: [0, -10]
+      });
+
+      editMarkers.push(marker);
+    });
+  }
+
   function editItem(type, item, isNew = false) {
     editorState.editingItem = { ...item };
     editorState.editingType = type;
@@ -665,6 +777,10 @@
         ta.value = formatPointsToTextarea(item.coordinates);
         gameState.buildPathPoints = [...item.coordinates];
         updateBuildPathPolyline();
+        // Create draggable markers for editing
+        if (item.coordinates.length > 0) {
+          createEditMarkers(item.coordinates);
+        }
       }
     } else {
       // paths and walls use positions
@@ -672,6 +788,10 @@
         ta.value = formatPointsToTextarea(item.positions);
         gameState.buildPathPoints = [...item.positions];
         updateBuildPathPolyline();
+        // Create draggable markers for editing
+        if (item.positions.length > 0) {
+          createEditMarkers(item.positions);
+        }
       }
 
       if (type === 'path') {
@@ -721,32 +841,30 @@
     }
 
     try {
-      const endpoint = `/api/editor/${editingType === 'region' ? 'regions' : editingType === 'path' ? 'paths' : 'walls'}`;
-      const method = isNew ? 'POST' : 'PUT';
-      const url = isNew ? endpoint : `${endpoint}/${id}`;
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save');
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        throw new Error('WebSocket not connected');
       }
 
-      // Reload the appropriate list
-      if (editingType === 'region') await loadRegionsList();
-      else if (editingType === 'path') await loadPathsList();
-      else if (editingType === 'wall') await loadWallsList();
+      const eventName = `editor:${editingType}:save`;
+      
+      socket.emit(eventName, { item, isNew }, (response) => {
+        if (response.success) {
+          // Reload the appropriate list
+          if (editingType === 'region') loadRegionsList();
+          else if (editingType === 'path') loadPathsList();
+          else if (editingType === 'wall') loadWallsList();
 
-      // Reload rendered layers if they're visible
-      if (gameState.showRegions && typeof loadAndRenderRegions === 'function') await loadAndRenderRegions();
-      if (gameState.showPaths && typeof loadAndRenderPaths === 'function') await loadAndRenderPaths();
+          // Reload rendered layers if they're visible
+          if (gameState.showRegions && typeof loadAndRenderRegions === 'function') loadAndRenderRegions();
+          if (gameState.showPaths && typeof loadAndRenderPaths === 'function') loadAndRenderPaths();
 
-      cancelEdit();
-      alert(`${editingType.charAt(0).toUpperCase() + editingType.slice(1)} saved successfully!`);
+          cancelEdit();
+          alert(`${editingType.charAt(0).toUpperCase() + editingType.slice(1)} saved successfully!`);
+        } else {
+          throw new Error(response.error || 'Failed to save');
+        }
+      });
     } catch (error) {
       console.error('Failed to save:', error);
       alert('Failed to save: ' + error.message);
@@ -769,6 +887,9 @@
       try { map.removeLayer(gameState.buildPathPolyline); } catch(e){}
       gameState.buildPathPolyline = null;
     }
+    
+    // Clear draggable markers
+    clearEditMarkers();
   }
 
   async function deleteItem() {
@@ -778,27 +899,30 @@
     if (!confirm(`Are you sure you want to delete this ${editingType}?`)) return;
 
     try {
-      const endpoint = `/api/editor/${editingType === 'region' ? 'regions' : editingType === 'path' ? 'paths' : 'walls'}`;
-      const response = await fetch(`${endpoint}/${editingItem.id}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete');
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        throw new Error('WebSocket not connected');
       }
 
-      // Reload the appropriate list
-      if (editingType === 'region') await loadRegionsList();
-      else if (editingType === 'path') await loadPathsList();
-      else if (editingType === 'wall') await loadWallsList();
+      const eventName = `editor:${editingType}:delete`;
+      
+      socket.emit(eventName, { id: editingItem.id }, (response) => {
+        if (response.success) {
+          // Reload the appropriate list
+          if (editingType === 'region') loadRegionsList();
+          else if (editingType === 'path') loadPathsList();
+          else if (editingType === 'wall') loadWallsList();
 
-      // Reload rendered layers if they're visible
-      if (gameState.showRegions && typeof loadAndRenderRegions === 'function') await loadAndRenderRegions();
-      if (gameState.showPaths && typeof loadAndRenderPaths === 'function') await loadAndRenderPaths();
+          // Reload rendered layers if they're visible
+          if (gameState.showRegions && typeof loadAndRenderRegions === 'function') loadAndRenderRegions();
+          if (gameState.showPaths && typeof loadAndRenderPaths === 'function') loadAndRenderPaths();
 
-      cancelEdit();
-      alert(`${editingType.charAt(0).toUpperCase() + editingType.slice(1)} deleted successfully!`);
+          cancelEdit();
+          alert(`${editingType.charAt(0).toUpperCase() + editingType.slice(1)} deleted successfully!`);
+        } else {
+          throw new Error(response.error || 'Failed to delete');
+        }
+      });
     } catch (error) {
       console.error('Failed to delete:', error);
       alert('Failed to delete: ' + error.message);

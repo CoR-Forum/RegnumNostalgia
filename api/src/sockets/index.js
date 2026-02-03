@@ -749,6 +749,244 @@ function initializeSocketHandlers(io) {
       }
     });
 
+    // ==================== EDITOR OPERATIONS ====================
+    const fs = require('fs').promises;
+    const path = require('path');
+
+    const REGIONS_FILE = path.join(__dirname, '../../gameData/regions.json');
+    const PATHS_FILE = path.join(__dirname, '../../gameData/paths.json');
+    const WALLS_FILE = path.join(__dirname, '../../gameData/walls.json');
+
+    async function readJsonFile(filePath) {
+      const data = await fs.readFile(filePath, 'utf8');
+      return JSON.parse(data);
+    }
+
+    async function writeJsonFile(filePath, data) {
+      await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+    }
+
+    // Get all regions
+    socket.on('editor:regions:get', async (callback) => {
+      try {
+        const regions = await readJsonFile(REGIONS_FILE);
+        callback({ success: true, data: regions });
+      } catch (error) {
+        logger.error('Failed to get regions', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to load regions' });
+      }
+    });
+
+    // Get all paths
+    socket.on('editor:paths:get', async (callback) => {
+      try {
+        const paths = await readJsonFile(PATHS_FILE);
+        callback({ success: true, data: paths });
+      } catch (error) {
+        logger.error('Failed to get paths', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to load paths' });
+      }
+    });
+
+    // Get all walls
+    socket.on('editor:walls:get', async (callback) => {
+      try {
+        const walls = await readJsonFile(WALLS_FILE);
+        callback({ success: true, data: walls });
+      } catch (error) {
+        logger.error('Failed to get walls', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to load walls' });
+      }
+    });
+
+    // Create or update region
+    socket.on('editor:region:save', async (data, callback) => {
+      try {
+        const regions = await readJsonFile(REGIONS_FILE);
+        const { item, isNew } = data;
+
+        if (!item.id || !item.name) {
+          return callback({ success: false, error: 'Region must have id and name' });
+        }
+
+        if (isNew) {
+          if (regions.find(r => r.id === item.id)) {
+            return callback({ success: false, error: 'Region with this id already exists' });
+          }
+          regions.push(item);
+        } else {
+          const index = regions.findIndex(r => r.id === item.id);
+          if (index === -1) {
+            return callback({ success: false, error: 'Region not found' });
+          }
+          regions[index] = item;
+        }
+
+        await writeJsonFile(REGIONS_FILE, regions);
+        logger.info('Region saved', { id: item.id, userId: user.userId });
+        
+        // Broadcast to all clients that regions were updated
+        io.emit('editor:regions:updated');
+        
+        callback({ success: true, data: item });
+      } catch (error) {
+        logger.error('Failed to save region', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to save region' });
+      }
+    });
+
+    // Create or update path
+    socket.on('editor:path:save', async (data, callback) => {
+      try {
+        const paths = await readJsonFile(PATHS_FILE);
+        const { item, isNew } = data;
+
+        if (!item.id || !item.name) {
+          return callback({ success: false, error: 'Path must have id and name' });
+        }
+
+        if (!item.positions) item.positions = [];
+        if (typeof item.loop === 'undefined') item.loop = false;
+
+        if (isNew) {
+          if (paths.find(p => p.id === item.id)) {
+            return callback({ success: false, error: 'Path with this id already exists' });
+          }
+          paths.push(item);
+        } else {
+          const index = paths.findIndex(p => p.id === item.id);
+          if (index === -1) {
+            return callback({ success: false, error: 'Path not found' });
+          }
+          paths[index] = item;
+        }
+
+        await writeJsonFile(PATHS_FILE, paths);
+        logger.info('Path saved', { id: item.id, userId: user.userId });
+        
+        // Broadcast to all clients that paths were updated
+        io.emit('editor:paths:updated');
+        
+        callback({ success: true, data: item });
+      } catch (error) {
+        logger.error('Failed to save path', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to save path' });
+      }
+    });
+
+    // Create or update wall
+    socket.on('editor:wall:save', async (data, callback) => {
+      try {
+        const walls = await readJsonFile(WALLS_FILE);
+        const { item, isNew } = data;
+
+        if (!item.id || !item.name) {
+          return callback({ success: false, error: 'Wall must have id and name' });
+        }
+
+        if (!item.positions) item.positions = [];
+
+        if (isNew) {
+          if (walls.find(w => w.id === item.id)) {
+            return callback({ success: false, error: 'Wall with this id already exists' });
+          }
+          walls.push(item);
+        } else {
+          const index = walls.findIndex(w => w.id === item.id);
+          if (index === -1) {
+            return callback({ success: false, error: 'Wall not found' });
+          }
+          walls[index] = item;
+        }
+
+        await writeJsonFile(WALLS_FILE, walls);
+        logger.info('Wall saved', { id: item.id, userId: user.userId });
+        
+        // Broadcast to all clients that walls were updated
+        io.emit('editor:walls:updated');
+        
+        callback({ success: true, data: item });
+      } catch (error) {
+        logger.error('Failed to save wall', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to save wall' });
+      }
+    });
+
+    // Delete region
+    socket.on('editor:region:delete', async (data, callback) => {
+      try {
+        const regions = await readJsonFile(REGIONS_FILE);
+        const { id } = data;
+
+        const index = regions.findIndex(r => r.id === id);
+        if (index === -1) {
+          return callback({ success: false, error: 'Region not found' });
+        }
+
+        regions.splice(index, 1);
+        await writeJsonFile(REGIONS_FILE, regions);
+        logger.info('Region deleted', { id, userId: user.userId });
+        
+        // Broadcast to all clients that regions were updated
+        io.emit('editor:regions:updated');
+        
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Failed to delete region', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to delete region' });
+      }
+    });
+
+    // Delete path
+    socket.on('editor:path:delete', async (data, callback) => {
+      try {
+        const paths = await readJsonFile(PATHS_FILE);
+        const { id } = data;
+
+        const index = paths.findIndex(p => p.id === id);
+        if (index === -1) {
+          return callback({ success: false, error: 'Path not found' });
+        }
+
+        paths.splice(index, 1);
+        await writeJsonFile(PATHS_FILE, paths);
+        logger.info('Path deleted', { id, userId: user.userId });
+        
+        // Broadcast to all clients that paths were updated
+        io.emit('editor:paths:updated');
+        
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Failed to delete path', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to delete path' });
+      }
+    });
+
+    // Delete wall
+    socket.on('editor:wall:delete', async (data, callback) => {
+      try {
+        const walls = await readJsonFile(WALLS_FILE);
+        const { id } = data;
+
+        const index = walls.findIndex(w => w.id === id);
+        if (index === -1) {
+          return callback({ success: false, error: 'Wall not found' });
+        }
+
+        walls.splice(index, 1);
+        await writeJsonFile(WALLS_FILE, walls);
+        logger.info('Wall deleted', { id, userId: user.userId });
+        
+        // Broadcast to all clients that walls were updated
+        io.emit('editor:walls:updated');
+        
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Failed to delete wall', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to delete wall' });
+      }
+    });
+
     /**
      * Handle disconnection
      */
