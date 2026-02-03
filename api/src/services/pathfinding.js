@@ -15,7 +15,7 @@ async function loadWalls() { return wallsData; }
 
 const INF = Number.MAX_SAFE_INTEGER;
 const LINK_THRESHOLD = 30; // pixels - cross-path link threshold
-const DIRECT_THRESHOLD = 1000; // pixels - use direct walking for short trips
+const DIRECT_THRESHOLD = 500; // pixels - use direct walking for short trips
 const MAX_NODE_DISTANCE = 1000; // pixels - max distance to nearest node
 const STEP_SIZE = 30; // pixels per step for interpolation
 
