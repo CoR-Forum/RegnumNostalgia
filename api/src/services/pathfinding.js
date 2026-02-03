@@ -160,6 +160,7 @@ async function findPathThroughWall(wall, fromX, fromY, toX, toY) {
   
   let bestPath = null;
   let bestScore = INF;
+  let bestReverse = false;
   
   // Find paths that cross through this wall
   for (const path of paths) {
@@ -191,19 +192,41 @@ async function findPathThroughWall(wall, fromX, fromY, toX, toY) {
       const firstPos = positions[0];
       const lastPos = positions[positions.length - 1];
       
-      // Calculate total distance: from -> path start -> path end -> to
-      const distToStart = distance(fromX, fromY, firstPos[0], firstPos[1]);
-      const distFromEnd = distance(lastPos[0], lastPos[1], toX, toY);
-      const score = distToStart + distFromEnd;
+      // Calculate total distance in both directions
+      // Forward: from -> first -> last -> to
+      const distToFirst = distance(fromX, fromY, firstPos[0], firstPos[1]);
+      const distFromLast = distance(lastPos[0], lastPos[1], toX, toY);
+      const forwardScore = distToFirst + distFromLast;
       
-      if (score < bestScore) {
-        bestScore = score;
+      // Reverse: from -> last -> first -> to
+      const distToLast = distance(fromX, fromY, lastPos[0], lastPos[1]);
+      const distFromFirst = distance(firstPos[0], firstPos[1], toX, toY);
+      const reverseScore = distToLast + distFromFirst;
+      
+      // Choose the better direction
+      if (forwardScore < bestScore) {
+        bestScore = forwardScore;
         bestPath = path;
+        bestReverse = false;
+      }
+      
+      if (reverseScore < bestScore) {
+        bestScore = reverseScore;
+        bestPath = path;
+        bestReverse = true;
       }
     }
   }
   
-  return bestPath;
+  if (bestPath) {
+    return {
+      ...bestPath,
+      positions: bestReverse ? [...bestPath.positions].reverse() : bestPath.positions,
+      reversed: bestReverse
+    };
+  }
+  
+  return null;
 }
 
 /**
@@ -414,6 +437,11 @@ async function findPath(userId, targetX, targetY, realm) {
   const playerY = rows[0].y;
 
   const tripDist = distance(playerX, playerY, targetX, targetY);
+  
+  // Track if we need to prepend a passage path crossing
+  let passagePrefixPositions = null;
+  let searchStartX = playerX;
+  let searchStartY = playerY;
 
   // For short trips, check if direct walking crosses a wall
   if (tripDist <= DIRECT_THRESHOLD) {
@@ -429,48 +457,77 @@ async function findPath(userId, targetX, targetY, realm) {
       const passagePath = await findPathThroughWall(wallCheck.wall, playerX, playerY, targetX, targetY);
       
       if (passagePath && passagePath.positions) {
-        // Use the passage path to go through the wall
-        const positions = [[playerX, playerY]];
+        // Build the passage crossing prefix
+        passagePrefixPositions = [[playerX, playerY]];
         
         // Walk to the start of the passage path
         const pathStart = passagePath.positions[0];
-        positions.push(...interpolateSteps(playerX, playerY, pathStart[0], pathStart[1]));
+        passagePrefixPositions.push(...interpolateSteps(playerX, playerY, pathStart[0], pathStart[1]));
         
-        // Follow the passage path through the wall
+        // Check each point along the passage path to see if we can exit early and walk directly to target
+        let canExitEarly = false;
+        let exitIndex = -1;
+        
+        for (let i = 0; i < passagePath.positions.length; i++) {
+          const pos = passagePath.positions[i];
+          const distToTarget = distance(pos[0], pos[1], targetX, targetY);
+          
+          if (distToTarget <= DIRECT_THRESHOLD) {
+            const wallCheck = await pathCrossesWall(pos[0], pos[1], targetX, targetY);
+            if (!wallCheck.crosses) {
+              // Found an exit point - can walk directly from here
+              canExitEarly = true;
+              exitIndex = i;
+              break;
+            }
+          }
+        }
+        
+        if (canExitEarly) {
+          // Add positions up to the exit point
+          for (let i = 0; i <= exitIndex; i++) {
+            passagePrefixPositions.push(passagePath.positions[i]);
+          }
+          // Walk directly to target from exit point
+          const exitPos = passagePath.positions[exitIndex];
+          passagePrefixPositions.push(...interpolateSteps(exitPos[0], exitPos[1], targetX, targetY));
+          return passagePrefixPositions;
+        }
+        
+        // Can't exit early, follow the entire passage path
         passagePath.positions.forEach(pos => {
-          positions.push(pos);
+          passagePrefixPositions.push(pos);
         });
         
-        // Walk from the end of the passage path to the target
+        // Use path network from passage exit to target
         const pathEnd = passagePath.positions[passagePath.positions.length - 1];
-        positions.push(...interpolateSteps(pathEnd[0], pathEnd[1], targetX, targetY));
-        
-        return positions;
+        searchStartX = pathEnd[0];
+        searchStartY = pathEnd[1];
       }
       // If no passage path found, fall through to path network navigation
     }
   }
 
-  // For longer trips, use path network
+  // For longer trips or after wall crossing, use path network
   const { nodes, adj } = await buildPathGraph();
   
   if (Object.keys(nodes).length === 0) {
     throw new Error('No path nodes available');
   }
 
-  // Find nearest nodes to player and target
+  // Find nearest nodes to searchStart (either player position or passage exit) and target
   let startNode = null;
   let endNode = null;
   let minStartDist = INF;
   let minEndDist = INF;
 
-  // Find the best start node (closest to player that doesn't cross a wall)
+  // Find the best start node (closest to searchStart that doesn't cross a wall)
   for (const nodeId in nodes) {
     const node = nodes[nodeId];
-    const distToStart = distance(playerX, playerY, node.x, node.y);
+    const distToStart = distance(searchStartX, searchStartY, node.x, node.y);
     
     if (distToStart < minStartDist && distToStart <= MAX_NODE_DISTANCE) {
-      const wallCheck = await pathCrossesWall(playerX, playerY, node.x, node.y);
+      const wallCheck = await pathCrossesWall(searchStartX, searchStartY, node.x, node.y);
       if (!wallCheck.crosses) {
         minStartDist = distToStart;
         startNode = nodeId;
@@ -515,13 +572,31 @@ async function findPath(userId, targetX, targetY, realm) {
     positions.push([nodes[nodeId].x, nodes[nodeId].y]);
   });
 
-  // Prepend interpolated steps from player to first node
-  const first = positions[0];
-  if (first[0] !== playerX || first[1] !== playerY) {
-    const prefix = [[playerX, playerY]];
-    prefix.push(...interpolateSteps(playerX, playerY, first[0], first[1]));
-    prefix.pop(); // Remove duplicate of first position
-    positions.unshift(...prefix);
+  // Prepend passage prefix if we crossed a wall, otherwise interpolate from player
+  if (passagePrefixPositions) {
+    // Check if first node is very close to passage exit (within STEP_SIZE)
+    const first = positions[0];
+    const distToFirstNode = distance(searchStartX, searchStartY, first[0], first[1]);
+    
+    if (distToFirstNode > STEP_SIZE) {
+      // Need to bridge from passage exit to first path node
+      const bridgeSteps = interpolateSteps(searchStartX, searchStartY, first[0], first[1]);
+      bridgeSteps.pop(); // Remove duplicate of first position
+      passagePrefixPositions.push(...bridgeSteps);
+    }
+    // Remove first position from main path to avoid duplication
+    positions.shift();
+    // Prepend the entire passage prefix
+    positions.unshift(...passagePrefixPositions);
+  } else {
+    // Prepend interpolated steps from player to first node
+    const first = positions[0];
+    if (first[0] !== searchStartX || first[1] !== searchStartY) {
+      const prefix = [[searchStartX, searchStartY]];
+      prefix.push(...interpolateSteps(searchStartX, searchStartY, first[0], first[1]));
+      prefix.pop(); // Remove duplicate of first position
+      positions.unshift(...prefix);
+    }
   }
 
   // Append interpolated steps from last node to target
