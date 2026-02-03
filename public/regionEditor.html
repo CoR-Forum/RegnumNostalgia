@@ -85,6 +85,10 @@
             </select>
           </div>
           <div style="margin-bottom:8px;">
+            <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Music (file):</label>
+            <input id="edit-music" type="text" placeholder="e.g. background.music" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+          </div>
+          <div style="margin-bottom:8px;">
             <label style="display:flex;align-items:center;gap:6px;color:#e0e0e0;font-size:11px;">
               <input id="edit-walkable" type="checkbox" style="transform:scale(1.1)" />
               <span>Walkable</span>
@@ -235,6 +239,7 @@
       const t = document.getElementById('edit-type'); if (t && item.type) t.value = item.type;
       const o = document.getElementById('edit-owner'); if (o && item.owner) o.value = item.owner;
       const w = document.getElementById('edit-walkable'); if (w) w.checked = !!item.walkable;
+      const m = document.getElementById('edit-music'); if (m) m.value = item.music || item.musicFile || item.music_file || '';
       // switch tab
       document.getElementById('tab-regions').click();
     }
@@ -314,13 +319,13 @@
     if (window.editorState) {
       try {
         if (Array.isArray(window.editorState.regions) && window.editorState.regions.length) {
-          index.regions = window.editorState.regions.map(r => ({ id: r.id, name: r.name || r.title || '', type: r.type, owner: r.owner, walkable: r.walkable, coordinates: r.coordinates || r.positions || r.coords }));
+          index.regions = window.editorState.regions.map(r => ({ id: r.id, name: r.name || r.title || '', type: r.type, owner: r.owner, walkable: r.walkable, music: r.music || r.musicFile || r.music_file || '', coordinates: r.coordinates || r.positions || r.coords }));
         }
         if (Array.isArray(window.editorState.paths) && window.editorState.paths.length) {
-          index.paths = window.editorState.paths.map(p => ({ id: p.id, name: p.name || p.title || '', loop: p.loop, points: p.positions || p.points || p.path }));
+          index.paths = window.editorState.paths.map(p => ({ id: p.id, name: p.name || p.title || '', loop: p.loop, music: p.music || p.musicFile || p.music_file || '', points: p.positions || p.points || p.path }));
         }
         if (Array.isArray(window.editorState.walls) && window.editorState.walls.length) {
-          index.walls = window.editorState.walls.map(w => ({ id: w.id, name: w.name || w.title || '', points: w.positions || w.points }));
+          index.walls = window.editorState.walls.map(w => ({ id: w.id, name: w.name || w.title || '', music: w.music || w.musicFile || w.music_file || '', points: w.positions || w.points }));
         }
       } catch (e) { }
     }

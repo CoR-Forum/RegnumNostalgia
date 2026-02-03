@@ -663,6 +663,7 @@
       newItem.owner = 'neutral';
       newItem.walkable = true;
       newItem.coordinates = [];
+      newItem.music = '';
     } else if (type === 'path') {
       newItem.loop = false;
     }
@@ -940,9 +941,11 @@
       const typeSelect = document.getElementById('edit-type');
       const ownerSelect = document.getElementById('edit-owner');
       const walkableCheck = document.getElementById('edit-walkable');
+      const musicInput = document.getElementById('edit-music');
       if (typeSelect) typeSelect.value = item.type || 'safe';
       if (ownerSelect) ownerSelect.value = item.owner || 'neutral';
       if (walkableCheck) walkableCheck.checked = item.walkable !== false;
+      if (musicInput) musicInput.value = item.music || item.musicFile || item.music_file || '';
 
       // Show coordinates in textarea
       if (ta && item.coordinates) {
@@ -1004,6 +1007,7 @@
       item.type = document.getElementById('edit-type')?.value || 'safe';
       item.owner = document.getElementById('edit-owner')?.value || 'neutral';
       item.walkable = document.getElementById('edit-walkable')?.checked !== false;
+      item.music = document.getElementById('edit-music')?.value || '';
       item.coordinates = positions;
     } else {
       item.positions = positions;
