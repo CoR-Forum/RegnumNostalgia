@@ -5,6 +5,7 @@
     "type": "safe",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         983,
@@ -930,6 +931,7 @@
     "type": "safe",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         2796,
@@ -2567,6 +2569,7 @@
     "type": "warzone",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         2946,
@@ -3060,6 +3063,7 @@
     "type": "safe",
     "owner": "ignis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         3606,
@@ -3549,6 +3553,7 @@
     "type": "warzone",
     "owner": "ignis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         3720,
@@ -4190,6 +4195,7 @@
     "type": "safe",
     "owner": "alsius",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         2147,
@@ -6295,6 +6301,7 @@
     "type": "safe",
     "owner": "alsius",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         3155,
@@ -7884,6 +7891,7 @@
     "type": "warzone",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         3114,
@@ -7989,6 +7997,7 @@
     "type": "city",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         423,
@@ -8054,6 +8063,7 @@
     "type": "city",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         1149,
@@ -8123,6 +8133,7 @@
     "type": "city",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         1190,
@@ -8260,6 +8271,7 @@
     "type": "city",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         1596,
@@ -8325,6 +8337,7 @@
     "type": "city",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         2382,
@@ -8430,6 +8443,7 @@
     "type": "city",
     "owner": "syrtis",
     "walkable": true,
+    "music": "50206-regnum_ambient_forest.ogg",
     "coordinates": [
       [
         2949,
