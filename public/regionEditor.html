@@ -2,6 +2,9 @@
   <div id="build-path-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
     <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Region Editor</h2>
     <div style="display:flex;gap:8px;align-items:center">
+      <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;">
+        <input id="build-path-search" type="search" placeholder="Search regions, paths, walls..." style="padding:4px 8px;border:1px solid #333;background:#222;color:#fff;font-size:11px;width:260px;" />
+      </label>
       <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-paths" type="checkbox" style="transform:scale(1.1)" /> <span>Show paths</span></label>
       <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-regions" type="checkbox" style="transform:scale(1.1)" /> <span>Show regions</span></label>
       <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><span style="font-size:11px;color:#fff">Mode</span>
@@ -15,6 +18,8 @@
       <button id="build-path-close" class="btn" style="width:auto;padding:4px 8px;">Close</button>
     </div>
   </div>
+  <!-- Search results panel (global, preloaded) -->
+  <div id="build-path-search-results" style="display:none;position:absolute;right:12px;top:36px;width:360px;max-height:320px;overflow:auto;background:#0f0f12;border:1px solid #333;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);z-index:1100;font-family: monospace;font-size:12px;color:#e0e0e0;"></div>
   <div style="padding:8px;display:flex;gap:8px;">
     <!-- Left panel: Lists -->
     <div style="flex:0 0 280px;display:flex;flex-direction:column;gap:8px;">
@@ -103,3 +108,250 @@
     </div>
   </div>
 </div>
+
+<script>
+(() => {
+  let searchInput = document.getElementById('build-path-search');
+  let resultsEl = document.getElementById('build-path-search-results');
+  if (!searchInput) searchInput = document.querySelector('#build-path-header input[type=search]');
+  if (resultsEl) {
+    // make results float above everything so they're visible even if the panel is toggled
+    resultsEl.style.position = 'fixed';
+    // move to body so it's not hidden by parent display:none
+    try { document.body.appendChild(resultsEl); } catch (e) {}
+  }
+  const editorForm = document.getElementById('editor-form');
+  const textarea = document.getElementById('build-path-textarea');
+
+  const index = { regions: [], paths: [], walls: [] };
+
+  const possibleBases = ['','/api/','/'];
+  const fileNames = { regions: 'gameData/regions.json', paths: 'gameData/paths.json', walls: 'gameData/walls.json' };
+
+  async function fetchAny(urls) {
+    for (const u of urls) {
+      try {
+        const res = await fetch(u, {cache: 'no-store'});
+        if (!res.ok) continue;
+        const json = await res.json();
+        if (Array.isArray(json)) return json;
+        // some endpoints might wrap objects
+        return json;
+      } catch (e) {
+        // continue
+      }
+    }
+    return null;
+  }
+
+  async function preload() {
+    for (const key of Object.keys(fileNames)) {
+      const tries = possibleBases.map(b => b + fileNames[key]);
+      const data = await fetchAny(tries);
+      if (data) {
+        index[key] = Array.isArray(data) ? data : Object.values(data);
+      }
+    }
+
+    // Fallback: parse DOM lists if any index is empty
+    if (!index.regions.length) index.regions = parseListFallback('regions-list');
+    if (!index.paths.length) index.paths = parseListFallback('paths-list');
+    if (!index.walls.length) index.walls = parseListFallback('walls-list');
+  }
+
+  // debug helper
+  function debugIndex() {
+    try { console.info('Search index sizes', { regions: index.regions.length, paths: index.paths.length, walls: index.walls.length }); } catch(e){}
+  }
+
+  function parseListFallback(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return [];
+    const items = [];
+    Array.from(el.children).forEach(child => {
+      const text = child.textContent.trim();
+      if (!text) return;
+      const id = child.dataset && child.dataset.id ? child.dataset.id : (child.id || '');
+      items.push({ id, name: text, _dom: true });
+    });
+    return items;
+  }
+
+  function normalizeString(v){ return (v||'').toString().toLowerCase(); }
+
+  function search(q) {
+    q = normalizeString(q);
+    if (!q) return [];
+    const results = [];
+    for (const type of ['regions','paths','walls']) {
+      for (const item of index[type]) {
+        const name = normalizeString(item.name || item.title || item.id || item._id || item.label || '');
+        const id = normalizeString(item.id || item._id || '');
+        if (name.includes(q) || id.includes(q)) {
+          results.push({type, item});
+          if (results.length >= 200) return results;
+        }
+      }
+    }
+    return results;
+  }
+
+  function renderResults(results) {
+    resultsEl.innerHTML = '';
+    if (!results.length) {
+      resultsEl.style.display = 'none';
+      return;
+    }
+    resultsEl.style.display = 'block';
+    results.forEach(r => {
+      const d = document.createElement('div');
+      d.style.padding = '6px';
+      d.style.borderBottom = '1px solid #222';
+      d.style.cursor = 'pointer';
+      d.style.whiteSpace = 'nowrap';
+      d.title = (r.item.name || r.item.title || r.item.id || '');
+      const name = (r.item.name || r.item.title || r.item.id || '').toString();
+      d.innerHTML = `<strong style="color:#9bd">${r.type}</strong> · ${escapeHtml(name)} ${r.item.id? '(id: '+escapeHtml(r.item.id)+')':''}`;
+      d.addEventListener('click', ()=> openResult(r.type, r.item));
+      resultsEl.appendChild(d);
+    });
+  }
+
+  function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function openResult(type, item) {
+    // open editor form
+    if (editorForm) editorForm.style.display = 'block';
+    const idEl = document.getElementById('edit-id');
+    const nameEl = document.getElementById('edit-name');
+    if (idEl) idEl.value = item.id || item._id || '';
+    if (nameEl) nameEl.value = item.name || item.title || '';
+
+    // show type-specific fields
+    document.getElementById('region-fields').style.display = (type==='regions') ? 'block' : 'none';
+    document.getElementById('path-fields').style.display = (type==='paths') ? 'block' : 'none';
+
+    if (type==='regions') {
+      const t = document.getElementById('edit-type'); if (t && item.type) t.value = item.type;
+      const o = document.getElementById('edit-owner'); if (o && item.owner) o.value = item.owner;
+      const w = document.getElementById('edit-walkable'); if (w) w.checked = !!item.walkable;
+      // switch tab
+      document.getElementById('tab-regions').click();
+    }
+    if (type==='paths') {
+      const l = document.getElementById('edit-loop'); if (l) l.checked = !!item.loop;
+      document.getElementById('tab-paths').click();
+    }
+    if (type==='walls') {
+      document.getElementById('tab-walls').click();
+    }
+
+    // Try to stringify coordinate-like arrays into the textarea
+    const coords = extractCoords(item);
+    if (coords && coords.length) {
+      textarea.value = coords.map(p=>p.join(',')).join('\n');
+    }
+
+    // try to highlight/scroll list entry
+    const listMap = { regions: 'regions-list', paths: 'paths-list', walls: 'walls-list' };
+    const listEl = document.getElementById(listMap[type]);
+    if (listEl) {
+      // try to find child with matching data-id or id or text
+      const match = Array.from(listEl.children).find(c => (c.dataset && c.dataset.id && String(c.dataset.id) === String(item.id)) || c.id === String(item.id) || c.textContent.trim() === (item.name||item.title||''));
+      if (match) { match.scrollIntoView({block:'center'}); match.style.background='#25333a'; setTimeout(()=> match.style.background='',1200); }
+    }
+
+    // hide results
+    resultsEl.style.display = 'none';
+  }
+
+  function extractCoords(obj) {
+    if (!obj || typeof obj !== 'object') return [];
+    // common keys
+    const keys = ['points','path','coords','coordinates','points_xy','nodes','vertices'];
+    for (const k of keys) {
+      if (Array.isArray(obj[k]) && obj[k].length) {
+        // determine if array of pairs or flat numbers
+        const arr = obj[k];
+        if (Array.isArray(arr[0])) return arr.filter(a => a.length>=2).map(a=>[a[0],a[1]]);
+        // flat number array -> chunk
+        if (typeof arr[0] === 'number') {
+          const res = [];
+          for (let i=0;i+1<arr.length;i+=2) res.push([arr[i],arr[i+1]]);
+          return res;
+        }
+      }
+    }
+    // sometimes coordinates stored as string
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      if (typeof v === 'string' && v.match(/[0-9]+\s*,\s*[0-9]+/)) {
+        return v.split(/\s*[,;\n]+\s*/).map(s => s.split(/\s*,\s*/).map(Number)).filter(a=>a.length>=2 && !isNaN(a[0]));
+      }
+    }
+    return [];
+  }
+
+  // debounce
+  function debounce(fn, wait){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), wait); }; }
+
+  const doSearch = debounce((v)=>{
+    const r = search(v || '');
+    renderResults(r);
+  }, 180);
+
+  searchInput && searchInput.addEventListener('input', (e)=> doSearch(e.target.value));
+  searchInput && searchInput.addEventListener('keydown', (e)=>{
+    if (e.key === 'Escape') { resultsEl.style.display='none'; searchInput.blur(); }
+  });
+
+  // keep index up-to-date if lists are populated later by other scripts:
+  function updateIndexFromDOM() {
+    const r = parseListFallback('regions-list'); if (r && r.length) index.regions = r;
+    const p = parseListFallback('paths-list'); if (p && p.length) index.paths = p;
+    const w = parseListFallback('walls-list'); if (w && w.length) index.walls = w;
+    // prefer editorState if available (populated by build-path.js)
+    if (window.editorState) {
+      try {
+        if (Array.isArray(window.editorState.regions) && window.editorState.regions.length) {
+          index.regions = window.editorState.regions.map(r => ({ id: r.id, name: r.name || r.title || '', type: r.type, owner: r.owner, walkable: r.walkable, coordinates: r.coordinates || r.positions || r.coords }));
+        }
+        if (Array.isArray(window.editorState.paths) && window.editorState.paths.length) {
+          index.paths = window.editorState.paths.map(p => ({ id: p.id, name: p.name || p.title || '', loop: p.loop, points: p.positions || p.points || p.path }));
+        }
+        if (Array.isArray(window.editorState.walls) && window.editorState.walls.length) {
+          index.walls = window.editorState.walls.map(w => ({ id: w.id, name: w.name || w.title || '', points: w.positions || w.points }));
+        }
+      } catch (e) { }
+    }
+  }
+
+  // observe list containers for later population
+  ['regions-list','paths-list','walls-list'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const obs = new MutationObserver(() => {
+      updateIndexFromDOM();
+    });
+    obs.observe(el, { childList: true, subtree: false });
+  });
+
+  // initialise: try preload now and again after window load; also attempt DOM fallbacks later
+  preload().catch(()=>{}).finally(()=> { updateIndexFromDOM(); debugIndex(); });
+  window.addEventListener('load', ()=> { preload().catch(()=>{}).finally(()=> { updateIndexFromDOM(); debugIndex(); }); });
+  setTimeout(()=>{ updateIndexFromDOM(); debugIndex(); }, 500);
+  setTimeout(()=>{ updateIndexFromDOM(); debugIndex(); }, 1500);
+
+  // Poll for editorState for a short period in case build-path.js initialises after this script
+  (function pollEditorState(timeout = 5000, interval = 200) {
+    const start = Date.now();
+    const id = setInterval(() => {
+      if (window.editorState && ((window.editorState.regions && window.editorState.regions.length) || (window.editorState.paths && window.editorState.paths.length) || (window.editorState.walls && window.editorState.walls.length))) {
+        updateIndexFromDOM(); debugIndex(); clearInterval(id); return;
+      }
+      if (Date.now() - start > timeout) { clearInterval(id); }
+    }, interval);
+  })();
+
+})();
+</script>
