@@ -143,7 +143,7 @@ async function initDatabase() {
         acquired_at INT NOT NULL,
         INDEX idx_inventory_user_id (user_id),
         INDEX idx_inventory_item_id (item_id),
-        INDEX idx_inventory_user_item (user_id, item_id),
+        UNIQUE KEY uk_inventory_user_item (user_id, item_id),
         FOREIGN KEY (user_id) REFERENCES players(user_id),
         FOREIGN KEY (item_id) REFERENCES items(item_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
@@ -195,6 +195,26 @@ async function initDatabase() {
         INDEX idx_walkers_user_id (user_id),
         INDEX idx_walkers_finished_at (finished_at),
         INDEX idx_walkers_status (status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // spawned_items
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS spawned_items (
+        spawned_item_id INT AUTO_INCREMENT PRIMARY KEY,
+        item_id INT NOT NULL,
+        x INT NOT NULL,
+        y INT NOT NULL,
+        realm VARCHAR(16) NOT NULL,
+        spawned_at INT NOT NULL,
+        respawn_time INT NULL,
+        collected_by INT NULL,
+        collected_at INT NULL,
+        INDEX idx_spawned_items_realm (realm),
+        INDEX idx_spawned_items_x_y (x, y),
+        INDEX idx_spawned_items_respawn (respawn_time),
+        FOREIGN KEY (item_id) REFERENCES items(item_id),
+        FOREIGN KEY (collected_by) REFERENCES players(user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 

@@ -1,0 +1,52 @@
+[
+  {
+    "region_id": "alsius-mining-area-1",
+    "realm": "alsius",
+    "items": [
+      { "template_key": "gold_ore", "chance": 0.3, "min_quantity": 1, "max_quantity": 3 },
+      { "template_key": "iron_ore", "chance": 0.5, "min_quantity": 1, "max_quantity": 5 },
+      { "template_key": "rock", "chance": 0.2, "min_quantity": 1, "max_quantity": 2 }
+    ],
+    "spawn_points": [
+      { "x": 2000, "y": 1500 },
+      { "x": 2100, "y": 1600 },
+      { "x": 2200, "y": 1700 }
+    ],
+    "spawn_regions": ["alsius-inner-1"],
+    "max_spawns_per_region": 3,
+    "respawn_interval": 10
+  },
+  {
+    "region_id": "ignis-mining-area-1",
+    "realm": "ignis",
+    "items": [
+      { "template_key": "copper_ore", "chance": 0.4, "min_quantity": 1, "max_quantity": 4 },
+      { "template_key": "magnanite", "chance": 0.1, "min_quantity": 1, "max_quantity": 1 },
+      { "template_key": "rock", "chance": 0.5, "min_quantity": 1, "max_quantity": 3 }
+    ],
+    "spawn_points": [
+      { "x": 4000, "y": 2000 },
+      { "x": 4100, "y": 2100 }
+    ],
+    "spawn_regions": ["ignis-inner-1"],
+    "max_spawns_per_region": 2,
+    "respawn_interval": 10
+  },
+  {
+    "region_id": "syrtis-mining-area-1",
+    "realm": "syrtis",
+    "items": [
+      { "template_key": "magnanite", "chance": 0.2, "min_quantity": 1, "max_quantity": 2 },
+      { "template_key": "magnanite", "chance": 0.6, "min_quantity": 1, "max_quantity": 6 },
+      { "template_key": "magnanite", "chance": 0.05, "min_quantity": 1, "max_quantity": 5 }
+    ],
+    "spawn_points": [
+      { "x": 3000, "y": 4000 },
+      { "x": 3100, "y": 4100 },
+      { "x": 3200, "y": 4200 }
+    ],
+    "spawn_regions": ["syrtis-inner-1"],
+    "max_spawns_per_region": 2,
+    "respawn_interval": 10
+  }
+]

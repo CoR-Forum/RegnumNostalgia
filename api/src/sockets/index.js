@@ -408,6 +408,38 @@ function initializeSocketHandlers(io) {
       }
     });
 
+    /**
+     * Get spawned items for user's realm
+     */
+    socket.on('spawned-items:get', async (callback) => {
+      try {
+        const [spawnedItems] = await gameDb.query(
+          `SELECT si.x, si.y, i.template_key, i.icon_name, i.name
+           FROM spawned_items si
+           JOIN items i ON si.item_id = i.item_id
+           WHERE si.realm = ? AND si.collected_at IS NULL`,
+          [user.realm]
+        );
+
+        const spawnedItemsPayload = spawnedItems.map(si => ({
+          x: si.x,
+          y: si.y,
+          templateKey: si.template_key,
+          iconName: si.icon_name,
+          name: si.name
+        }));
+
+        if (callback) {
+          callback({ success: true, spawnedItems: spawnedItemsPayload });
+        } else {
+          socket.emit('spawned-items:list', { spawnedItems: spawnedItemsPayload });
+        }
+      } catch (error) {
+        logger.error('Failed to get spawned items', { error: error.message, userId: user.userId });
+        if (callback) callback({ success: false, error: 'Failed to load spawned items' });
+      }
+    });
+
         /**
          * Fetch details for a single inventory item by inventoryId
          * Used by clients to lazy-load item tooltips on hover.
@@ -568,6 +600,9 @@ function initializeSocketHandlers(io) {
           logger.error('Failed to emit updated player state after equip', { error: err.message, userId: user.userId });
         }
 
+        // Emit inventory update
+        socket.emit('inventory:update', { userId: user.userId });
+
       } catch (error) {
         logger.error('Failed to equip item', { 
           error: error.message, 
@@ -634,6 +669,9 @@ function initializeSocketHandlers(io) {
         } catch (err) {
           logger.error('Failed to emit updated player state after unequip', { error: err.message, userId: user.userId });
         }
+
+        // Emit inventory update
+        socket.emit('inventory:update', { userId: user.userId });
 
       } catch (error) {
         logger.error('Failed to unequip item', { 
@@ -1093,6 +1131,24 @@ async function sendInitialGameState(socket, user) {
     }));
 
     socket.emit('superbosses:list', { superbosses: superbossesPayload });
+
+    // Get spawned items for user's realm
+    const [spawnedItems] = await gameDb.query(
+      `SELECT si.x, si.y, i.template_key, i.icon_name
+       FROM spawned_items si
+       JOIN items i ON si.item_id = i.item_id
+       WHERE si.realm = ? AND si.collected_at IS NULL`,
+      [user.realm]
+    );
+
+    const spawnedItemsPayload = spawnedItems.map(si => ({
+      x: si.x,
+      y: si.y,
+      templateKey: si.template_key,
+      iconName: si.icon_name
+    }));
+
+    socket.emit('spawned-items:list', { spawnedItems: spawnedItemsPayload });
 
     // Get server time
     const [timeRows] = await gameDb.query(

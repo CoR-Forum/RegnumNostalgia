@@ -1,6 +1,7 @@
 const Bull = require('bull');
 const { redis, gameDb } = require('../config/database');
 const { QUEUE_INTERVALS, BULL_JOB_OPTIONS } = require('../config/constants');
+const { collectItem } = require('../services/spawn');
 const logger = require('../config/logger');
 
 let io = null; // Socket.io instance, injected later
@@ -66,11 +67,37 @@ walkerQueue.process('process-walkers', async (job) => {
 
       if (nextIndex >= positions.length) {
         // Walker has reached destination
+        const finalPos = positions[positions.length - 1];
+
         await gameDb.query(
           `UPDATE walkers SET status = 'done', finished_at = ?, updated_at = ?
            WHERE walker_id = ?`,
           [now, now, walker.walker_id]
         );
+
+        // Update player position to final destination
+        await gameDb.query(
+          'UPDATE players SET x = ?, y = ?, last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
+          [finalPos[0], finalPos[1], walker.user_id]
+        );
+
+        // Check for collectable item at destination
+        try {
+          const collected = await collectItem(walker.user_id, finalPos[0], finalPos[1]);
+          if (io) {
+            io.emit('item:collected', {
+              userId: walker.user_id,
+              item: collected.template_key,
+              position: { x: finalPos[0], y: finalPos[1] }
+            });
+            // Notify inventory update
+            io.emit('inventory:update', {
+              userId: walker.user_id
+            });
+          }
+        } catch (error) {
+          // No item to collect, that's fine
+        }
 
         // Emit walker completed event
         if (io) {
