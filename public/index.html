@@ -1742,12 +1742,6 @@
             gameState.collectables.delete(data.spawnId);
           }
           gameState.collectingSpawnIds.delete(data.spawnId);
-
-          // Show notification if items were collected
-          if (data.items && data.items.length > 0) {
-            const itemNames = data.items.map(i => `${i.quantity}x ${i.name}`).join(', ');
-            showNotification(`Collected: ${itemNames}`, 'success');
-          }
         }
       });
 
@@ -1756,8 +1750,6 @@
           // Remove collecting state but keep marker
           gameState.collectingSpawnIds.delete(data.spawnId);
           updateCollectableMarker(data.spawnId, false);
-
-          showNotification('Item already collected by another player', 'error');
         }
       });
 
@@ -1848,6 +1840,12 @@
 
           socket.emit('collectable:click', { spawnId: item.spawnId }, (response) => {
             if (response && response.success) {
+              // Remove any existing destination marker (from previous walk)
+              if (gameState.walkDestinationMarker) {
+                try { map.removeLayer(gameState.walkDestinationMarker); } catch (e) {}
+                gameState.walkDestinationMarker = null;
+              }
+              
               // Draw the path if we have positions
               if (response.walker && response.walker.positions) {
                 // Don't show destination marker when collecting items (item itself is already marked)
@@ -1866,8 +1864,6 @@
                   }
                 }
               }
-            } else if (response && !response.success) {
-              showNotification(response.error || 'Failed to collect item', 'error');
             }
           });
         });
