@@ -1674,9 +1674,21 @@
       });
 
       socket.on('spawned-items:spawned', (data) => {
-        if (data && data.items && data.realm === gameState.realm) {
+        if (data && data.items && (data.realm === gameState.realm || data.realm === 'neutral')) {
           // Add new spawned items to the map
           displaySpawnedItemMarkers(data.items, false);
+        }
+      });
+
+      socket.on('spawned-items:collected', (data) => {
+        if (data && data.x !== undefined && data.y !== undefined && (data.realm === gameState.realm || data.realm === 'neutral')) {
+          // Remove the collected item marker from the map
+          const key = `${data.x}-${data.y}`;
+          if (gameState.spawnedItems && gameState.spawnedItems.has(key)) {
+            const marker = gameState.spawnedItems.get(key);
+            map.removeLayer(marker);
+            gameState.spawnedItems.delete(key);
+          }
         }
       });
 

@@ -3,6 +3,7 @@ const { healthQueue, initHealthQueue, setSocketIO: setHealthIO } = require('./he
 const { timeQueue, initTimeQueue, setSocketIO: setTimeIO } = require('./timeQueue');
 const { territoryQueue, initTerritoryQueue, setSocketIO: setTerritoryIO } = require('./territoryQueue');
 const { spawnQueue, initSpawnQueue, setSocketIO: setSpawnIO } = require('./spawnQueue');
+const { setSocketIO: setSpawnServiceIO } = require('../services/spawn');
 const logger = require('../config/logger');
 
 /**
@@ -17,6 +18,7 @@ async function initializeQueues(io) {
   setTimeIO(io);
   setTerritoryIO(io);
   setSpawnIO(io);
+  setSpawnServiceIO(io);
 
   // Initialize repeatable jobs
   await initWalkerQueue();

@@ -417,7 +417,7 @@ function initializeSocketHandlers(io) {
           `SELECT si.x, si.y, i.template_key, i.icon_name, i.name
            FROM spawned_items si
            JOIN items i ON si.item_id = i.item_id
-           WHERE si.realm = ? AND si.collected_at IS NULL`,
+           WHERE (si.realm = ? OR si.realm = 'neutral') AND si.collected_at IS NULL`,
           [user.realm]
         );
 

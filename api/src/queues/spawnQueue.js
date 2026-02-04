@@ -29,20 +29,36 @@ spawnQueue.process('spawn-collectables', async (job) => {
     if (io && spawnedItems.length > 0) {
       // Group by realm and emit to clients in that realm
       const realmGroups = {};
+      const neutralItems = [];
       spawnedItems.forEach(item => {
-        if (!realmGroups[item.realm]) realmGroups[item.realm] = [];
-        realmGroups[item.realm].push({
-          x: item.x,
-          y: item.y,
-          templateKey: item.template_key,
-          iconName: item.icon_name,
-          name: item.name
-        });
+        if (item.realm === 'neutral') {
+          neutralItems.push({
+            x: item.x,
+            y: item.y,
+            templateKey: item.template_key,
+            iconName: item.icon_name,
+            name: item.name
+          });
+        } else {
+          if (!realmGroups[item.realm]) realmGroups[item.realm] = [];
+          realmGroups[item.realm].push({
+            x: item.x,
+            y: item.y,
+            templateKey: item.template_key,
+            iconName: item.icon_name,
+            name: item.name
+          });
+        }
       });
 
       // Emit to all clients in each realm
       for (const [realm, items] of Object.entries(realmGroups)) {
         io.emit('spawned-items:spawned', { realm, items });
+      }
+
+      // Emit neutral items to all clients
+      if (neutralItems.length > 0) {
+        io.emit('spawned-items:spawned', { realm: 'neutral', items: neutralItems });
       }
     }
   } catch (error) {

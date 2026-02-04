@@ -5,6 +5,11 @@ const logger = require('../config/logger');
 
 let spawnLocations = [];
 let regions = [];
+let io = null;
+
+function setSocketIO(socketIO) {
+  io = socketIO;
+}
 
 // Load spawn locations and regions
 function loadSpawnLocations() {
@@ -84,6 +89,16 @@ async function spawnItems() {
     activeByRealm[row.realm] = row.count;
   });
 
+  // Get all active items grouped by realm for region counting
+  const [allActiveItems] = await gameDb.query(
+    'SELECT realm, x, y FROM spawned_items WHERE collected_at IS NULL'
+  );
+  const activeItemsByRealm = {};
+  allActiveItems.forEach(item => {
+    if (!activeItemsByRealm[item.realm]) activeItemsByRealm[item.realm] = [];
+    activeItemsByRealm[item.realm].push(item);
+  });
+
   const MAX_ACTIVE_SPAWNS_PER_REALM = 50; // Limit to prevent excessive spawning
 
   for (const location of spawnLocations) {
@@ -94,32 +109,29 @@ async function spawnItems() {
     }
 
     // Count active items in this location's regions
-    let regionActiveCount = 0;
+    const realmItems = activeItemsByRealm[location.realm] || [];
+    let shouldSkip = false;
     if (location.spawn_regions) {
       for (const regionId of location.spawn_regions) {
         const region = regions.find(r => r.id === regionId);
         if (!region || !region.coordinates) continue;
 
-        // Get all active spawned items in this realm
-        const [activeItems] = await gameDb.query(
-          'SELECT x, y FROM spawned_items WHERE realm = ? AND collected_at IS NULL',
-          [location.realm]
-        );
-
-        // Count how many are inside this region
-        for (const item of activeItems) {
+        // Count how many active items are inside this region
+        let countInRegion = 0;
+        for (const item of realmItems) {
           if (pointInPolygon(item.x, item.y, region.coordinates)) {
-            regionActiveCount++;
+            countInRegion++;
           }
+        }
+
+        if (countInRegion >= location.max_spawns_per_region) {
+          logger.info(`Skipping spawn for location ${location.region_id} region ${regionId} - already has ${countInRegion}/${location.max_spawns_per_region} active items`);
+          shouldSkip = true;
+          break;
         }
       }
     }
-
-    const maxAllowed = location.max_spawns_per_region * (location.spawn_regions?.length || 1);
-    if (regionActiveCount >= maxAllowed) {
-      logger.info(`Skipping spawn for location ${location.region_id} - region already has ${regionActiveCount}/${maxAllowed} active items`);
-      continue;
-    }
+    if (shouldSkip) continue;
 
     // Handle fixed spawn points
     if (location.spawn_points) {
@@ -208,7 +220,7 @@ function selectItem(items) {
 
 async function collectItem(userId, x, y) {
   const [rows] = await gameDb.query(
-    'SELECT si.spawned_item_id, si.item_id, i.template_key, i.name, i.stackable FROM spawned_items si JOIN items i ON si.item_id = i.item_id WHERE si.x = ? AND si.y = ? AND si.collected_at IS NULL',
+    'SELECT si.spawned_item_id, si.item_id, si.realm, i.template_key, i.name, i.stackable FROM spawned_items si JOIN items i ON si.item_id = i.item_id WHERE si.x = ? AND si.y = ? AND si.collected_at IS NULL',
     [x, y]
   );
 
@@ -238,6 +250,11 @@ async function collectItem(userId, x, y) {
     );
   }
 
+  // Notify all clients in the realm that the item was collected
+  if (io) {
+    io.emit('spawned-items:collected', { x, y, realm: spawnedItem.realm });
+  }
+
   logger.info('Item collected', {
     userId,
     item: spawnedItem.template_key,
@@ -262,5 +279,6 @@ module.exports = {
   spawnItems,
   collectItem,
   getSpawnedItems,
-  loadSpawnLocations
+  loadSpawnLocations,
+  setSocketIO
 };
