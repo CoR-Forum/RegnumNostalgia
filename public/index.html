@@ -1813,20 +1813,20 @@
 
         const iconHtml = `
           <div style="
-            width: 32px;
-            height: 32px;
+            width: 16px;
+            height: 16px;
             background: url('assets/markers/${item.visualIcon}') center center / contain no-repeat;
-            ${isCollecting ? 'border: 3px solid #ff8800; border-radius: 50%;' : ''}
+            ${isCollecting ? 'border: 2px solid #ff8800; border-radius: 50%;' : ''}
             cursor: pointer;
-            filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
           "></div>
         `;
 
         const customIcon = L.divIcon({
           className: 'collectable-marker',
           html: iconHtml,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
         });
 
         const marker = L.marker(latLng, { icon: customIcon }).addTo(map);

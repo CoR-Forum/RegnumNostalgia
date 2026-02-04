@@ -35,10 +35,62 @@ function pointInPolygon(x, y, polygon) {
 }
 
 /**
+ * Calculate minimum distance from point to polygon edges
+ */
+function minDistanceToEdge(x, y, polygon) {
+  let minDist = Infinity;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const x1 = polygon[j][0];
+    const y1 = polygon[j][1];
+    const x2 = polygon[i][0];
+    const y2 = polygon[i][1];
+    
+    // Calculate distance from point to line segment
+    const A = x - x1;
+    const B = y - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+    
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+    
+    if (lenSq !== 0) {
+      param = dot / lenSq;
+    }
+    
+    let xx, yy;
+    
+    if (param < 0) {
+      xx = x1;
+      yy = y1;
+    } else if (param > 1) {
+      xx = x2;
+      yy = y2;
+    } else {
+      xx = x1 + param * C;
+      yy = y1 + param * D;
+    }
+    
+    const dx = x - xx;
+    const dy = y - yy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    
+    minDist = Math.min(minDist, dist);
+  }
+  
+  return minDist;
+}
+
+/**
  * Get random point within a polygon using rejection sampling
+ * Ensures point is at least 10 pixels away from edges
  */
 function getRandomPointInPolygon(polygon) {
   if (polygon.length === 0) return null;
+
+  const MIN_DISTANCE_FROM_EDGE = 10;
 
   // Find bounding box
   let minX = Infinity, maxX = -Infinity;
@@ -57,7 +109,10 @@ function getRandomPointInPolygon(polygon) {
     const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
     
     if (pointInPolygon(x, y, polygon)) {
-      return { x, y };
+      const distToEdge = minDistanceToEdge(x, y, polygon);
+      if (distToEdge >= MIN_DISTANCE_FROM_EDGE) {
+        return { x, y };
+      }
     }
   }
 

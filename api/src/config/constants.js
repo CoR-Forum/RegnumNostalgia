@@ -126,7 +126,7 @@ module.exports = {
   REGION_SPAWN_RULES: [
     {
       regions: ['syrtis-inner-1', 'syrtis-inner-2'],
-      maxSpawns: 5,
+      maxSpawns: 2,
       respawnTime: 180,
       realm: 'syrtis',
       visual: 'collectable-rock.png',
