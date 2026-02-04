@@ -54,7 +54,7 @@ async function authenticateSocket(socket, next) {
     // Load user settings (if present)
     let settings = {
       musicEnabled: 1,
-      musicVolume: 0.6,
+      musicVolume: 0.20,
       soundsEnabled: 1,
       soundVolume: 1.0,
       captureSoundsEnabled: 1,
