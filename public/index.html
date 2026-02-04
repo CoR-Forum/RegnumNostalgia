@@ -2078,6 +2078,13 @@
         }
       });
 
+      // Player log events
+      socket.on('log:message', (data) => {
+        if (window.onLogMessage && typeof window.onLogMessage === 'function') {
+          window.onLogMessage(data);
+        }
+      });
+
       return socket;
     }
 

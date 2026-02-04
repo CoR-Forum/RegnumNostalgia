@@ -1,23 +1,33 @@
 <style>
-/* Dark scrollbar for shoutbox messages */
-#sbMessages {
+/* Dark scrollbar for shoutbox messages and log */
+#sbMessages, #logMessages {
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: rgba(0,0,0,0.6) rgba(0,0,0,0.08);
 }
-#sbMessages::-webkit-scrollbar { width: 8px; height: 8px; }
-#sbMessages::-webkit-scrollbar-track { background: rgba(0,0,0,0.08); border-radius: 6px; }
-#sbMessages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); border-radius: 6px; border: 2px solid rgba(0,0,0,0); background-clip: padding-box; }
-#sbMessages::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.75); }
+#sbMessages::-webkit-scrollbar, #logMessages::-webkit-scrollbar { width: 8px; height: 8px; }
+#sbMessages::-webkit-scrollbar-track, #logMessages::-webkit-scrollbar-track { background: rgba(0,0,0,0.08); border-radius: 6px; }
+#sbMessages::-webkit-scrollbar-thumb, #logMessages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); border-radius: 6px; border: 2px solid rgba(0,0,0,0); background-clip: padding-box; }
+#sbMessages::-webkit-scrollbar-thumb:hover, #logMessages::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.75); }
 </style>
 
 <div id="shoutbox-window" class="ui-window" style="position: absolute; left: 0px; bottom: 52px; width: 300px; z-index: 20005; display: flex; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
   <div id="shoutbox-header" class="ui-window-titlebar" style="display:flex; justify-content: space-between; align-items: center; user-select: none;">
-    <h2 style="margin:0; flex:1; font-size:11px; font-weight:700; color:#ffffff; text-align: center;">Chat</h2>
+    <h2 style="margin:0; flex:1; font-size:11px; font-weight:700; color:#ffffff; text-align: center;">Chat & Log</h2>
     <button id="shoutbox-close-btn" class="ui-window-close-btn" title="Close"></button>
   </div>
 
   <div class="ui-window-body" style="padding:8px; display:flex; flex-direction:column; gap:4px;">
-    <div id="sbMessages" style="height:140px; overflow-y:auto; overflow-x:hidden; padding:4px; background: transparent; color: #e6e6e6; font-size:13px; word-wrap: break-word; overflow-wrap: break-word;"></div>
+    <!-- Log section (30%) -->
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <div style="font-size:11px; font-weight:700; color:#ffd27a; opacity:0.9; padding-top:8px;">Game Log</div>
+      <div id="logMessages" style="height:80px; overflow-y:auto; overflow-x:hidden; padding:4px; background: rgba(0,0,0,0.2); color: #e6e6e6; font-size:12px; word-wrap: break-word; overflow-wrap: break-word; border: 1px solid rgba(255,255,255,0.1); border-radius:4px;"></div>
+    </div>
+
+    <!-- Chat section (70%) -->
+    <div style="display:flex; flex-direction:column; gap:4px;">
+      <div style="font-size:11px; font-weight:700; color:#ffd27a; opacity:0.9;">Chat</div>
+      <div id="sbMessages" style="height:180px; overflow-y:auto; overflow-x:hidden; padding:4px; background: transparent; color: #e6e6e6; font-size:13px; word-wrap: break-word; overflow-wrap: break-word;"></div>
+    </div>
 
     <div style="display:flex; gap:4px; align-items:center;">
       <input id="sbMessage" type="text" placeholder="Message" style="flex:1; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.22); color:#e6e6e6; padding:6px; font-size:13px; border-radius:4px" />
@@ -29,6 +39,7 @@
 <script>
   (async function(){
     const sbMessages = document.getElementById('sbMessages');
+    const logMessages = document.getElementById('logMessages');
     const sbSend = document.getElementById('sbSend');
     const sbMessage = document.getElementById('sbMessage');
     const sbWin = document.getElementById('shoutbox-window');
@@ -58,6 +69,94 @@
 
     try{ const u = localStorage.getItem('shoutbox.username'); if(!currentUsername && u) currentUsername = u; }catch(e){}
 
+    // ==================== LOG MESSAGES ====================
+    
+    function renderLogMessages(logs){
+      logMessages.innerHTML = '';
+      const toShow = (logs || []).slice(-50);
+      toShow.forEach(log => {
+        const el = document.createElement('div');
+        el.style.marginBottom = '2px';
+        el.style.wordWrap = 'break-word';
+        el.style.overflowWrap = 'break-word';
+        
+        let timeStr = '';
+        if(log.createdAt) {
+          try{ 
+            const d = new Date(log.createdAt * 1000);
+            timeStr = d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: false});
+          }catch(e){}
+        }
+        
+        let typeColor = '#9ecbff';
+        if (log.logType === 'success') typeColor = '#7ed321';
+        else if (log.logType === 'error') typeColor = '#ff4757';
+        else if (log.logType === 'warning') typeColor = '#ffa502';
+        else if (log.logType === 'combat') typeColor = '#ff6348';
+        
+        el.innerHTML = `<span style="opacity:0.7; font-size:10px;">[${timeStr}]</span> <span style="color:${typeColor};">${log.message}</span>`;
+        logMessages.appendChild(el);
+      });
+      logMessages.scrollTop = logMessages.scrollHeight;
+    }
+
+    function fetchLogMessages(){
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        console.warn('WebSocket not connected for log fetch');
+        return;
+      }
+
+      socket.emit('log:get', {}, (response) => {
+        if (response && response.success && Array.isArray(response.logs)) {
+          renderLogMessages(response.logs);
+        } else {
+          console.warn('Failed to fetch log messages:', response?.error);
+        }
+      });
+    }
+
+    // Listen for incoming log messages
+    window.onLogMessage = function(data) {
+      if (data && data.message) {
+        const log = {
+          logId: data.logId || 0,
+          createdAt: data.createdAt || Math.floor(Date.now() / 1000),
+          message: data.message,
+          logType: data.logType || 'info'
+        };
+        
+        // Append new log message
+        const el = document.createElement('div');
+        el.style.marginBottom = '2px';
+        el.style.wordWrap = 'break-word';
+        el.style.overflowWrap = 'break-word';
+        
+        let timeStr = '';
+        if(log.createdAt) {
+          try{ 
+            const d = new Date(log.createdAt * 1000);
+            timeStr = d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit', hour12: false});
+          }catch(e){}
+        }
+        
+        let typeColor = '#9ecbff';
+        if (log.logType === 'success') typeColor = '#7ed321';
+        else if (log.logType === 'error') typeColor = '#ff4757';
+        else if (log.logType === 'warning') typeColor = '#ffa502';
+        else if (log.logType === 'combat') typeColor = '#ff6348';
+        
+        el.innerHTML = `<span style="opacity:0.7; font-size:10px;">[${timeStr}]</span> <span style="color:${typeColor};">${log.message}</span>`;
+        logMessages.appendChild(el);
+        
+        // Keep max 50 log entries
+        while (logMessages.children.length > 50) logMessages.removeChild(logMessages.firstChild);
+        logMessages.scrollTop = logMessages.scrollHeight;
+      }
+    };
+
+    // ==================== CHAT MESSAGES ====================
+    
     function renderMessages(messages){
       sbMessages.innerHTML = '';
       // Ensure we never render more than 50 messages
@@ -261,6 +360,7 @@
       const socket = window.getSocket && window.getSocket();
       if (socket && socket.connected) {
         fetchMessages();
+        fetchLogMessages(); // Fetch log messages on start
       } else {
         console.warn('WebSocket not available for shoutbox, will wait for connection');
         // Retry after a short delay
@@ -268,6 +368,7 @@
           const retrySocket = window.getSocket && window.getSocket();
             if (retrySocket && retrySocket.connected) {
               fetchMessages();
+              fetchLogMessages(); // Fetch log messages on retry
             }
         }, 1000);
       }
@@ -277,6 +378,7 @@
     if (window.addEventListener) {
       window.addEventListener('websocket:connected', () => {
         fetchMessages();
+        fetchLogMessages();
       });
     }
 
@@ -330,6 +432,7 @@
       window.openShoutbox = function() {
         try { sbWin.style.display = 'flex'; } catch (e) {}
         try { fetchMessages(); } catch (e) {}
+        try { fetchLogMessages(); } catch (e) {}
         const b = document.getElementById('shoutbox-open-btn'); if (b) b.remove();
       };
     } catch (e) {}

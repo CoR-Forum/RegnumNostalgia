@@ -686,6 +686,9 @@ function initializeSocketHandlers(io) {
           [inventoryId, user.userId]
         );
 
+        // Add log message for equipping item
+        await addPlayerLog(user.userId, `Equipped ${item.name}`, 'info', io);
+
         logger.info('Item equipped', { 
           userId: user.userId, 
           inventoryId, 
@@ -752,11 +755,24 @@ function initializeSocketHandlers(io) {
 
         const inventoryId = equipmentRows[0][slot];
 
+        // Get item name for log
+        const [itemRows] = await gameDb.query(
+          `SELECT i.name FROM inventory inv
+           JOIN items i ON inv.item_id = i.item_id
+           WHERE inv.inventory_id = ?`,
+          [inventoryId]
+        );
+
         // Unequip the item
         await gameDb.query(
           `UPDATE equipment SET ${slot} = NULL, updated_at = UNIX_TIMESTAMP() WHERE user_id = ?`,
           [user.userId]
         );
+
+        // Add log message for unequipping item
+        if (itemRows.length > 0) {
+          await addPlayerLog(user.userId, `Unequipped ${itemRows[0].name}`, 'info', io);
+        }
 
         logger.info('Item unequipped', { 
           userId: user.userId, 
@@ -894,6 +910,52 @@ function initializeSocketHandlers(io) {
           userId: user.userId 
         });
         if (callback) callback({ success: false, error: 'Failed to send message' });
+      }
+    });
+
+    // ==================== PLAYER LOG OPERATIONS ====================
+    
+    /**
+     * Handle log get messages
+     */
+    socket.on('log:get', async (data, callback) => {
+      try {
+        const [logs] = await gameDb.query(
+          `SELECT log_id, user_id, message, log_type, created_at
+           FROM player_logs
+           WHERE user_id = ?
+           ORDER BY created_at DESC
+           LIMIT 50`,
+          [user.userId]
+        );
+
+        // Reverse to get chronological order (oldest first)
+        const chronological = logs.reverse();
+
+        // Normalize keys to camelCase
+        const logEntries = chronological.map(l => ({
+          logId: l.log_id,
+          userId: l.user_id,
+          message: l.message,
+          logType: l.log_type,
+          createdAt: l.created_at
+        }));
+
+        if (callback) {
+          callback({ success: true, logs: logEntries });
+        }
+
+        logger.info('Player logs retrieved', { 
+          userId: user.userId,
+          logCount: logs.length
+        });
+
+      } catch (error) {
+        logger.error('Failed to get player logs', { 
+          error: error.message, 
+          userId: user.userId 
+        });
+        if (callback) callback({ success: false, error: 'Failed to load logs' });
       }
     });
 
@@ -1575,8 +1637,58 @@ function getConnectedUserIds() {
   return Array.from(connectedUsers.keys());
 }
 
+/**
+ * Add a log message for a specific user
+ * @param {number} userId - The user ID to send the log to
+ * @param {string} message - The log message
+ * @param {string} logType - Type of log: 'info', 'success', 'error', 'warning', 'combat'
+ * @param {object} io - The socket.io instance (optional, for real-time sending)
+ */
+async function addPlayerLog(userId, message, logType = 'info', io = null) {
+  try {
+    const timestamp = Math.floor(Date.now() / 1000);
+    
+    const [result] = await gameDb.query(
+      `INSERT INTO player_logs (user_id, message, log_type, created_at)
+       VALUES (?, ?, ?, ?)`,
+      [userId, message, logType, timestamp]
+    );
+
+    const logData = {
+      logId: result.insertId,
+      userId: userId,
+      message: message,
+      logType: logType,
+      createdAt: timestamp
+    };
+
+    // If io is provided and user is connected, send the log in real-time
+    if (io) {
+      const userSocket = getUserSocket(userId);
+      if (userSocket) {
+        userSocket.emit('log:message', logData);
+      }
+    }
+
+    logger.info('Player log added', { 
+      userId: userId,
+      logType: logType,
+      messageLength: message.length
+    });
+
+    return { success: true, log: logData };
+  } catch (error) {
+    logger.error('Failed to add player log', { 
+      error: error.message, 
+      userId: userId 
+    });
+    return { success: false, error: 'Failed to add log' };
+  }
+}
+
 module.exports = {
   initializeSocketHandlers,
   getUserSocket,
-  getConnectedUserIds
+  getConnectedUserIds,
+  addPlayerLog
 };

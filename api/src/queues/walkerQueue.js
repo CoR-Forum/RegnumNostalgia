@@ -2,6 +2,7 @@ const Bull = require('bull');
 const { redis, gameDb } = require('../config/database');
 const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, COLLECTABLE_CONFIG, LOOT_TABLES } = require('../config/constants');
 const logger = require('../config/logger');
+const { addPlayerLog } = require('../sockets');
 
 let io = null; // Socket.io instance, injected later
 // Track last-known region id per user for walker-based movement
@@ -311,6 +312,14 @@ walkerQueue.process('process-walkers', async (job) => {
                         quantity: i.quantity
                       }))
                     });
+
+                    // Add log messages for collected items
+                    for (const item of itemsCollected) {
+                      const logMessage = item.quantity > 1 
+                        ? `Collected ${item.quantity}x ${item.name}`
+                        : `Collected ${item.name}`;
+                      await addPlayerLog(walker.user_id, logMessage, 'success', io);
+                    }
                   }
 
                   logger.debug(`User ${walker.user_id} collected spawn ${walker.collecting_spawn_id}, received ${itemsCollected.length} items`);
@@ -327,6 +336,9 @@ walkerQueue.process('process-walkers', async (job) => {
                       reason: 'already_collected'
                     });
                   }
+
+                  // Add log message for failed collection
+                  await addPlayerLog(walker.user_id, 'Item already collected by another player', 'warning', io);
                 }
                 logger.debug(`User ${walker.user_id} failed to collect spawn ${walker.collecting_spawn_id} - already collected`);
               }

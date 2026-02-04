@@ -316,6 +316,21 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // player_logs - ingame log messages for each player
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS player_logs (
+        log_id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        message TEXT NOT NULL,
+        log_type VARCHAR(32) NOT NULL DEFAULT 'info',
+        created_at INT NOT NULL,
+        INDEX idx_player_logs_user_id (user_id),
+        INDEX idx_player_logs_created_at (created_at),
+        INDEX idx_player_logs_user_created (user_id, created_at),
+        FOREIGN KEY (user_id) REFERENCES players(user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     logger.info('Database initialization completed');
   } catch (err) {
     logger.error('Database initialization failed', { error: err.message });
