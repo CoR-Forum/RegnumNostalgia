@@ -108,35 +108,21 @@ async function spawnItems() {
       continue;
     }
 
-    // Count active items in this location's regions
+    // Count active items per region for this location
     const realmItems = activeItemsByRealm[location.realm] || [];
-    let shouldSkip = false;
+    const regionCounts = {};
     if (location.spawn_regions) {
       for (const regionId of location.spawn_regions) {
         const region = regions.find(r => r.id === regionId);
         if (!region || !region.coordinates) continue;
 
-        // Count how many active items are inside this region
         let countInRegion = 0;
         for (const item of realmItems) {
           if (pointInPolygon(item.x, item.y, region.coordinates)) {
             countInRegion++;
           }
         }
-
-        if (countInRegion >= location.max_spawns_per_region) {
-          logger.info(`Skipping spawn for location ${location.region_id} region ${regionId} - already has ${countInRegion}/${location.max_spawns_per_region} active items`);
-          shouldSkip = true;
-          break;
-        }
-      }
-    }
-    if (shouldSkip) continue;
-
-    // Handle fixed spawn points
-    if (location.spawn_points) {
-      for (const spawnPoint of location.spawn_points) {
-        await trySpawnAtLocation(location, spawnPoint.x, spawnPoint.y, now, spawnedItems);
+        regionCounts[regionId] = countInRegion;
       }
     }
 
@@ -146,8 +132,15 @@ async function spawnItems() {
         const region = regions.find(r => r.id === regionId);
         if (!region || !region.coordinates) continue;
 
-        // Try to spawn up to max_spawns_per_region times
-        for (let i = 0; i < location.max_spawns_per_region; i++) {
+        const currentCount = regionCounts[regionId] || 0;
+        if (currentCount >= location.max_spawns_per_region) {
+          logger.info(`Skipping spawn for location ${location.region_id} region ${regionId} - already has ${currentCount}/${location.max_spawns_per_region} active items`);
+          continue;
+        }
+
+        // Try to spawn up to max_spawns_per_region times, but respect the current count
+        const attempts = Math.min(location.max_spawns_per_region - currentCount, location.max_spawns_per_region);
+        for (let i = 0; i < attempts; i++) {
           const randomPoint = generateRandomPointInPolygon(region.coordinates);
           if (randomPoint) {
             await trySpawnAtLocation(location, randomPoint.x, randomPoint.y, now, spawnedItems);
@@ -220,7 +213,7 @@ function selectItem(items) {
 
 async function collectItem(userId, x, y) {
   const [rows] = await gameDb.query(
-    'SELECT si.spawned_item_id, si.item_id, si.realm, i.template_key, i.name, i.stackable FROM spawned_items si JOIN items i ON si.item_id = i.item_id WHERE si.x = ? AND si.y = ? AND si.collected_at IS NULL',
+    'SELECT si.spawned_item_id, si.item_id, si.realm, i.template_key, i.name, i.stackable, i.drops FROM spawned_items si JOIN items i ON si.item_id = i.item_id WHERE si.x = ? AND si.y = ? AND si.collected_at IS NULL',
     [x, y]
   );
 
@@ -237,17 +230,41 @@ async function collectItem(userId, x, y) {
     [userId, now, spawnedItem.spawned_item_id]
   );
 
+  let collectedItem = spawnedItem;
+  let collectedQuantity = 1;
+
+  // Check if item has drops (node behavior)
+  if (spawnedItem.drops) {
+    const drops = JSON.parse(spawnedItem.drops);
+    const drop = selectItem(drops);
+    if (drop) {
+      // Get the drop item details
+      const [dropRows] = await gameDb.query('SELECT item_id, name, template_key FROM items WHERE template_key = ?', [drop.template_key]);
+      if (dropRows.length > 0) {
+        collectedItem = {
+          item_id: dropRows[0].item_id,
+          name: dropRows[0].name,
+          template_key: dropRows[0].template_key
+        };
+        collectedQuantity = Math.floor(Math.random() * (drop.max_quantity - drop.min_quantity + 1)) + drop.min_quantity;
+      }
+    }
+  }
+
   // Add to inventory - stack if item is stackable
-  if (spawnedItem.stackable) {
+  if (collectedItem.stackable) {
     await gameDb.query(
-      'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, 1, ?) ON DUPLICATE KEY UPDATE quantity = quantity + 1',
-      [userId, spawnedItem.item_id, now]
+      'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE quantity = quantity + ?',
+      [userId, collectedItem.item_id, collectedQuantity, now, collectedQuantity]
     );
   } else {
-    await gameDb.query(
-      'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, 1, ?)',
-      [userId, spawnedItem.item_id, now]
-    );
+    // For non-stackable, add multiple entries if quantity > 1
+    for (let i = 0; i < collectedQuantity; i++) {
+      await gameDb.query(
+        'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, 1, ?)',
+        [userId, collectedItem.item_id, now]
+      );
+    }
   }
 
   // Notify all clients in the realm that the item was collected
@@ -257,11 +274,12 @@ async function collectItem(userId, x, y) {
 
   logger.info('Item collected', {
     userId,
-    item: spawnedItem.template_key,
+    item: collectedItem.template_key,
+    quantity: collectedQuantity,
     location: { x, y }
   });
 
-  return { item: spawnedItem.name, template_key: spawnedItem.template_key };
+  return { item: collectedItem.name, template_key: collectedItem.template_key, quantity: collectedQuantity };
 }
 
 async function getSpawnedItems(realm) {

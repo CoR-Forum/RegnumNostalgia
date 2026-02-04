@@ -129,6 +129,7 @@ async function initDatabase() {
         level INT DEFAULT 1,
         equipment_slot VARCHAR(32) DEFAULT NULL,
         icon_name VARCHAR(255) DEFAULT NULL,
+        drops TEXT NULL,
         INDEX idx_items_type (type)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);

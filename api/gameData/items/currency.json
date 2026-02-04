@@ -75,12 +75,16 @@
     "template_key": "rock",
     "name": "Rock",
     "type": "currency",
-    "description": "A simple rock",
-    "stats": { "value": 1 },
+    "description": "A simple rock that can be mined for resources",
+    "stats": { "value": 0 },
     "rarity": "common",
-    "stackable": 1,
+    "stackable": 0,
     "level": 0,
     "equipment_slot": null,
-    "icon_name": "item-rock.png"
+    "icon_name": "item-rock.png",
+    "drops": [
+      { "template_key": "magnanite", "chance": 0.1, "min_quantity": 1, "max_quantity": 5 },
+      { "template_key": "rock", "chance": 0.2, "min_quantity": 1, "max_quantity": 1 }
+    ]
   }
 ]

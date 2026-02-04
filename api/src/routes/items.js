@@ -69,7 +69,8 @@ router.post('/collect', authenticateJWT, async (req, res) => {
 
   try {
     const result = await collectItem(req.user.userId, x, y);
-    res.json({ success: true, message: `Collected ${result.item}`, item: result.template_key });
+    const quantityText = result.quantity > 1 ? ` x${result.quantity}` : '';
+    res.json({ success: true, message: `Collected ${result.item}${quantityText}`, item: result.template_key, quantity: result.quantity });
   } catch (error) {
     logger.error('Failed to collect item', { error: error.message, userId: req.user.userId, x, y });
     res.status(400).json({ error: error.message });

@@ -36,9 +36,7 @@
     "region_id": "syrtis-magnanite-area-1",
     "realm": "neutral",
     "items": [
-      { "template_key": "magnanite", "chance": 0.2, "min_quantity": 1, "max_quantity": 2 },
-      { "template_key": "magnanite", "chance": 0.6, "min_quantity": 1, "max_quantity": 6 },
-      { "template_key": "magnanite", "chance": 0.05, "min_quantity": 1, "max_quantity": 5 }
+      { "template_key": "rock", "chance": 1.0, "min_quantity": 1, "max_quantity": 1 }
     ],
     "spawn_regions": ["syrtis-inner-1", "syrtis-inner-2"],
     "max_spawns_per_region": 1,
