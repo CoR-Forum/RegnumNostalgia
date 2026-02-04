@@ -1557,33 +1557,6 @@
         }
       });
 
-      socket.on('item:collected', (data) => {
-        if (data.userId === gameState.userId) {
-          // Refresh spawned items
-          loadAndDisplaySpawnedItems();
-          // Show message
-          try { if (window.addLogMessage) window.addLogMessage(`Collected ${data.item}`, 'success'); } catch(e){}
-        } else {
-          // Another player collected an item, remove it from map
-          const key = `${data.position.x}-${data.position.y}`;
-          if (gameState.spawnedItems && gameState.spawnedItems.has(key)) {
-            const marker = gameState.spawnedItems.get(key);
-            map.removeLayer(marker);
-            gameState.spawnedItems.delete(key);
-          }
-        }
-      });
-
-      socket.on('inventory:update', (data) => {
-        if (data.userId === gameState.userId) {
-          // Refresh inventory if window is open
-          const invWindow = document.getElementById('inventory-window');
-          if (invWindow && invWindow.style.display !== 'none') {
-            openWindow('inventory-window');
-          }
-        }
-      });
-
       socket.on('move:started', (data) => {
         // Server confirmed movement started, show destination
         if (data.destination) {
@@ -1663,32 +1636,6 @@
       socket.on('superbosses:health', (data) => {
         if (data && data.superbosses) {
           updateSuperbosses(data.superbosses);
-        }
-      });
-
-      // Spawned items events
-      socket.on('spawned-items:list', (data) => {
-        if (data && data.spawnedItems) {
-          displaySpawnedItemMarkers(data.spawnedItems, true);
-        }
-      });
-
-      socket.on('spawned-items:spawned', (data) => {
-        if (data && data.items && (data.realm === gameState.realm || data.realm === 'neutral')) {
-          // Add new spawned items to the map
-          displaySpawnedItemMarkers(data.items, false);
-        }
-      });
-
-      socket.on('spawned-items:collected', (data) => {
-        if (data && data.x !== undefined && data.y !== undefined && (data.realm === gameState.realm || data.realm === 'neutral')) {
-          // Remove the collected item marker from the map
-          const key = `${data.x}-${data.y}`;
-          if (gameState.spawnedItems && gameState.spawnedItems.has(key)) {
-            const marker = gameState.spawnedItems.get(key);
-            map.removeLayer(marker);
-            gameState.spawnedItems.delete(key);
-          }
         }
       });
 
@@ -2966,9 +2913,7 @@
               if (window.loadAndRenderRegions && typeof window.loadAndRenderRegions === 'function') {
                 window.loadAndRenderRegions();
               }
-              // Load spawned items
-              loadAndDisplaySpawnedItems();
-            } catch (e) { console.debug('loadAndRenderRegions or loadAndDisplaySpawnedItems failed', e); }
+            } catch (e) { console.debug('loadAndRenderRegions failed', e); }
           }, 250);
         } catch (e) {}
 
@@ -3636,79 +3581,6 @@
         if (!currentIds.has(id)) {
           map.removeLayer(marker);
           gameState.screenshots.delete(id);
-        }
-      }
-    }
-
-    // Spawned items management
-    function loadAndDisplaySpawnedItems() {
-      // Request spawned items via WebSocket
-      if (socket && socket.connected) {
-        socket.emit('spawned-items:get', (response) => {
-          if (response && response.success && response.spawnedItems) {
-            displaySpawnedItemMarkers(response.spawnedItems, true);
-          }
-        });
-      }
-    }
-
-    function displaySpawnedItemMarkers(spawnedItems, clearExisting = true) {
-      // Initialize spawnedItems map in gameState if not present
-      if (!gameState.spawnedItems) {
-        gameState.spawnedItems = new Map();
-      }
-
-      const currentKeys = new Set();
-
-      spawnedItems.forEach(item => {
-        const key = `${item.x}-${item.y}`;
-        currentKeys.add(key);
-        const latLng = [totalH - item.y, item.x];
-
-        // Skip if already exists
-        if (gameState.spawnedItems.has(key)) return;
-
-        // Create item icon
-        const itemIcon = L.icon({
-          iconUrl: `assets/v1/items/${item.iconName || item.icon_name}`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-          popupAnchor: [0, -12]
-        });
-
-        const marker = L.marker(latLng, { icon: itemIcon }).addTo(map);
-
-        // Add popup showing item name on hover
-        marker.bindPopup(item.name || item.templateKey || 'Unknown Item');
-
-        // Show popup on mouseover, hide on mouseout
-        marker.on('mouseover', function() {
-          this.openPopup();
-        });
-        marker.on('mouseout', function() {
-          this.closePopup();
-        });
-
-        // On click, walk to collect
-        marker.on('click', async () => {
-          try {
-            await performWalkAtLatLng(L.latLng(latLng));
-          } catch (err) {
-            console.error('Failed to walk to item', err);
-          }
-        });
-
-        gameState.spawnedItems.set(key, marker);
-      });
-
-      // Only remove markers if clearing existing (for full refresh)
-      if (clearExisting) {
-        // Remove markers for collected items
-        for (const [key, marker] of gameState.spawnedItems.entries()) {
-          if (!currentKeys.has(key)) {
-            map.removeLayer(marker);
-            gameState.spawnedItems.delete(key);
-          }
         }
       }
     }

@@ -34,57 +34,5 @@
     "level": 0,
     "equipment_slot": null,
     "icon_name": "item-magnanite-ingot.png"
-  },
-  {
-    "template_key": "gold_ore",
-    "name": "Gold Ore",
-    "type": "currency",
-    "description": "A chunk of gold ore",
-    "stats": { "value": 10 },
-    "rarity": "uncommon",
-    "stackable": 1,
-    "level": 0,
-    "equipment_slot": null,
-    "icon_name": "item-gold-ore.png"
-  },
-  {
-    "template_key": "iron_ore",
-    "name": "Iron Ore",
-    "type": "currency",
-    "description": "A chunk of iron ore",
-    "stats": { "value": 2 },
-    "rarity": "common",
-    "stackable": 1,
-    "level": 0,
-    "equipment_slot": null,
-    "icon_name": "item-iron-ore.png"
-  },
-  {
-    "template_key": "copper_ore",
-    "name": "Copper Ore",
-    "type": "currency",
-    "description": "A chunk of copper ore",
-    "stats": { "value": 3 },
-    "rarity": "common",
-    "stackable": 1,
-    "level": 0,
-    "equipment_slot": null,
-    "icon_name": "item-copper-ore.png"
-  },
-  {
-    "template_key": "rock",
-    "name": "Rock",
-    "type": "currency",
-    "description": "A simple rock that can be mined for resources",
-    "stats": { "value": 0 },
-    "rarity": "common",
-    "stackable": 0,
-    "level": 0,
-    "equipment_slot": null,
-    "icon_name": "item-rock.png",
-    "drops": [
-      { "template_key": "magnanite", "chance": 0.3, "min_quantity": 1, "max_quantity": 5 },
-      { "template_key": "rock", "chance": 0.7, "min_quantity": 1, "max_quantity": 1 }
-    ]
   }
 ]
