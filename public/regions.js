@@ -369,25 +369,20 @@
                 }
               }
 
-            // Paths overview: mirror the regions behaviour so paths are visible
-            // at minimum zoom even if the user hasn't toggled them on.
+            // Paths overview: only render paths when the Region Editor is open.
+            // Paths must not appear on initial load or when zooming out unless
+            // the editor UI (`buildPathMode`) is active.
             try {
-              if (gameStateRef.showPaths) {
-                // user explicitly wants paths: ensure rendered
+              if (gameStateRef.buildPathMode) {
+                // Editor open: render paths if not already rendered
                 if (!gameStateRef.pathsLayer && typeof window.loadAndRenderPaths === 'function') {
                   try { await window.loadAndRenderPaths(); } catch (e) { /* ignore */ }
                 }
               } else {
-                // user hasn't enabled paths: only show them when at min zoom as an overview
-                if (isMinZoom) {
-                  if (!gameStateRef.pathsLayer && typeof window.loadAndRenderPaths === 'function') {
-                    try { await window.loadAndRenderPaths(); } catch (e) { /* ignore */ }
-                  }
-                } else {
-                  if (gameStateRef.pathsLayer) {
-                    try { mapRef.removeLayer(gameStateRef.pathsLayer); } catch (e) {}
-                    gameStateRef.pathsLayer = null;
-                  }
+                // Editor closed: ensure paths are removed and never auto-shown
+                if (gameStateRef.pathsLayer) {
+                  try { mapRef.removeLayer(gameStateRef.pathsLayer); } catch (e) {}
+                  gameStateRef.pathsLayer = null;
                 }
               }
             } catch (err) { /* ignore path overview errors */ }

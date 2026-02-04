@@ -136,7 +136,7 @@ module.exports = {
     },
     {
       regions: ['alsius-inner-1'],
-      maxSpawns: 3,
+      maxSpawns: 2,
       respawnTime: 180,
       realm: 'alsius',
       visual: 'collectable-rock.png',
@@ -146,13 +146,23 @@ module.exports = {
     },
     {
       regions: ['ignis-inner-1'],
-      maxSpawns: 3,
+      maxSpawns: 2,
       respawnTime: 180,
       realm: 'ignis',
       visual: 'collectable-rock.png',
       type: 'loot-container',
       lootTable: 'rock',
       respawnMode: 'pool'
-    }
+    },
+    {
+      regions: ['syrtis-warzone-1', 'ignis-warzone-1', 'alsius-warzone-1'],
+      maxSpawns: 3,
+      respawnTime: 180,
+      realm: 'neutral',
+      visual: 'collectable-rock.png',
+      type: 'loot-container',
+      lootTable: 'rock',
+      respawnMode: 'pool'
+    },
   ]
 };
