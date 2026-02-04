@@ -44,7 +44,8 @@ module.exports = {
     WALKER: 500,     // 2 seconds
     HEALTH: 1000,     // 1 second
     TIME: 10000,      // 10 seconds
-    TERRITORY: 15000  // 15 seconds
+    TERRITORY: 15000,  // 15 seconds
+    SPAWN: 5000       // 5 seconds
   },
   
   // Health Regeneration Rates
@@ -69,5 +70,89 @@ module.exports = {
       type: 'exponential',
       delay: 2000
     }
-  }
+  },
+
+  // Collectable Items Configuration
+  COLLECTABLE_CONFIG: {
+    PICKUP_RADIUS: 10, // pixels - distance tolerance for collection
+    RESPAWN_TIME: 5, // seconds - 5 minutes default respawn
+  },
+
+  // Collectable Visual Icons
+  COLLECTABLE_VISUALS: {
+    ROCK: 'collectable-rock.png',
+    GOLD_PILE: 'collectable-gold.png',
+    CHEST: 'collectable-chest.png',
+    HERB: 'collectable-herb.png',
+    ORE: 'collectable-ore.png'
+  },
+
+  // Loot Tables
+  // Modes: 'weighted' (pick one item), 'multi-drop' (pick N times), 'independent' (each item rolls separately)
+  LOOT_TABLES: {
+    rock: {
+      mode: 'weighted',
+      pool: [
+        { item: 'gold_coin', weight: 7, quantity: [1, 20] },
+        { item: 'magnanite', weight: 2, quantity: [1, 5] }
+      ]
+    },
+    gold_pile: {
+      mode: 'independent',
+      pool: [
+        { item: 'gold_coin', weight: 10, quantity: [5, 15] }
+      ]
+    }
+  },
+
+  // Fixed Spawn Points
+  // respawnMode: 'fixed' (always same item) or 'pool' (random from item pool)
+  FIXED_SPAWN_POINTS: [
+
+    {
+      id: 'neutral-rock-1',
+      x: 3000,
+      y: 3000,
+      realm: 'neutral',
+      visual: 'collectable-rock.png',
+      type: 'loot-container',
+      lootTable: 'rock',
+      respawnTime: 600,
+      respawnMode: 'fixed'
+    }
+  ],
+
+  // Region-Based Spawns
+  REGION_SPAWN_RULES: [
+    {
+      regions: ['syrtis-inner-1', 'syrtis-inner-2'],
+      maxSpawns: 5,
+      respawnTime: 180,
+      realm: 'syrtis',
+      visual: 'collectable-rock.png',
+      type: 'loot-container',
+      lootTable: 'rock',
+      respawnMode: 'pool'
+    },
+    {
+      regions: ['alsius-inner-1'],
+      maxSpawns: 3,
+      respawnTime: 180,
+      realm: 'alsius',
+      visual: 'collectable-rock.png',
+      type: 'loot-container',
+      lootTable: 'rock',
+      respawnMode: 'pool'
+    },
+    {
+      regions: ['ignis-inner-1'],
+      maxSpawns: 3,
+      respawnTime: 180,
+      realm: 'ignis',
+      visual: 'collectable-rock.png',
+      type: 'loot-container',
+      lootTable: 'rock',
+      respawnMode: 'pool'
+    }
+  ]
 };

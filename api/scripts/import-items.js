@@ -43,8 +43,8 @@ async function importItems() {
       for (const item of items) {
         try {
           await gameDb.query(
-            `INSERT INTO items (template_key, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name, drops)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO items (template_key, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                name = VALUES(name),
                type = VALUES(type),
@@ -54,8 +54,7 @@ async function importItems() {
                stackable = VALUES(stackable),
                level = VALUES(level),
                equipment_slot = VALUES(equipment_slot),
-               icon_name = VALUES(icon_name),
-               drops = VALUES(drops)`,
+               icon_name = VALUES(icon_name)`,
             [
               item.template_key,
               item.name,
@@ -66,8 +65,7 @@ async function importItems() {
               item.stackable ? 1 : 0,
               item.level || 1,
               item.equipment_slot || null,
-              item.icon_name || null,
-              item.drops ? JSON.stringify(item.drops) : null
+              item.icon_name || null
             ]
           );
           totalImported++;

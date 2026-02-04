@@ -1,6 +1,6 @@
 const Bull = require('bull');
 const { redis, gameDb } = require('../config/database');
-const { QUEUE_INTERVALS, BULL_JOB_OPTIONS } = require('../config/constants');
+const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, COLLECTABLE_CONFIG, LOOT_TABLES } = require('../config/constants');
 const logger = require('../config/logger');
 
 let io = null; // Socket.io instance, injected later
@@ -25,6 +25,153 @@ function pointInPolygon(px, py, polygon) {
 }
 
 /**
+ * Calculate distance between two points
+ */
+function distance(x1, y1, x2, y2) {
+  const dx = x1 - x2;
+  const dy = y1 - y2;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/**
+ * Resolve loot table and return items to give
+ * Returns array of { itemId, quantity }
+ */
+async function resolveLootTable(lootTableKey) {
+  const lootTable = LOOT_TABLES[lootTableKey];
+  if (!lootTable) {
+    logger.warn(`Loot table not found: ${lootTableKey}`);
+    return [];
+  }
+
+  const rewards = [];
+
+  if (lootTable.mode === 'weighted') {
+    // Pick ONE item from pool using weights
+    const totalWeight = lootTable.pool.reduce((sum, item) => sum + item.weight, 0);
+    let roll = Math.random() * totalWeight;
+    let selectedItem = null;
+
+    for (const item of lootTable.pool) {
+      roll -= item.weight;
+      if (roll <= 0) {
+        selectedItem = item;
+        break;
+      }
+    }
+
+    if (!selectedItem) selectedItem = lootTable.pool[0];
+
+    // Get item_id from template_key
+    const [rows] = await gameDb.query(
+      'SELECT item_id FROM items WHERE template_key = ?',
+      [selectedItem.item]
+    );
+
+    if (rows.length > 0) {
+      const [minQty, maxQty] = selectedItem.quantity;
+      const quantity = Math.floor(Math.random() * (maxQty - minQty + 1)) + minQty;
+      rewards.push({ itemId: rows[0].item_id, templateKey: selectedItem.item, quantity });
+    }
+
+  } else if (lootTable.mode === 'multi-drop') {
+    // Pick N times from pool
+    const dropCount = lootTable.drops || 1;
+    for (let i = 0; i < dropCount; i++) {
+      const totalWeight = lootTable.pool.reduce((sum, item) => sum + item.weight, 0);
+      let roll = Math.random() * totalWeight;
+      let selectedItem = null;
+
+      for (const item of lootTable.pool) {
+        roll -= item.weight;
+        if (roll <= 0) {
+          selectedItem = item;
+          break;
+        }
+      }
+
+      if (!selectedItem) selectedItem = lootTable.pool[0];
+
+      const [rows] = await gameDb.query(
+        'SELECT item_id FROM items WHERE template_key = ?',
+        [selectedItem.item]
+      );
+
+      if (rows.length > 0) {
+        const [minQty, maxQty] = selectedItem.quantity;
+        const quantity = Math.floor(Math.random() * (maxQty - minQty + 1)) + minQty;
+        rewards.push({ itemId: rows[0].item_id, templateKey: selectedItem.item, quantity });
+      }
+    }
+
+  } else if (lootTable.mode === 'independent') {
+    // Each item rolls independently
+    for (const item of lootTable.pool) {
+      const totalWeight = lootTable.pool.reduce((sum, i) => sum + i.weight, 0);
+      const roll = Math.random() * totalWeight;
+
+      if (roll <= item.weight) {
+        const [rows] = await gameDb.query(
+          'SELECT item_id FROM items WHERE template_key = ?',
+          [item.item]
+        );
+
+        if (rows.length > 0) {
+          const [minQty, maxQty] = item.quantity;
+          const quantity = Math.floor(Math.random() * (maxQty - minQty + 1)) + minQty;
+          rewards.push({ itemId: rows[0].item_id, templateKey: item.item, quantity });
+        }
+      }
+    }
+  }
+
+  return rewards;
+}
+
+/**
+ * Add item to player inventory
+ */
+async function addToInventory(userId, itemId, quantity) {
+  const now = Math.floor(Date.now() / 1000);
+
+  // Check if item is stackable and already exists in inventory
+  const [itemInfo] = await gameDb.query(
+    'SELECT stackable FROM items WHERE item_id = ?',
+    [itemId]
+  );
+
+  if (itemInfo.length === 0) {
+    logger.warn(`Item not found: ${itemId}`);
+    return null;
+  }
+
+  if (itemInfo[0].stackable) {
+    // Try to stack with existing item
+    const [existing] = await gameDb.query(
+      'SELECT inventory_id, quantity FROM inventory WHERE user_id = ? AND item_id = ?',
+      [userId, itemId]
+    );
+
+    if (existing.length > 0) {
+      // Update existing stack
+      await gameDb.query(
+        'UPDATE inventory SET quantity = quantity + ? WHERE inventory_id = ?',
+        [quantity, existing[0].inventory_id]
+      );
+      return existing[0].inventory_id;
+    }
+  }
+
+  // Create new inventory entry
+  const [result] = await gameDb.query(
+    'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, ?)',
+    [userId, itemId, quantity, now]
+  );
+
+  return result.insertId;
+}
+
+/**
  * Set Socket.io instance for emitting events
  */
 function setSocketIO(socketIO) {
@@ -46,7 +193,7 @@ walkerQueue.process('process-walkers', async (job) => {
   try {
     // Get all active walkers
     const [walkers] = await gameDb.query(
-      `SELECT walker_id, user_id, positions, current_index, status
+      `SELECT walker_id, user_id, positions, current_index, status, collecting_x, collecting_y, collecting_spawn_id
        FROM walkers
        WHERE status = 'walking'`
     );
@@ -66,6 +213,133 @@ walkerQueue.process('process-walkers', async (job) => {
 
       if (nextIndex >= positions.length) {
         // Walker has reached destination
+        
+        // Check if we need to collect an item
+        if (walker.collecting_spawn_id && walker.collecting_x !== null && walker.collecting_y !== null) {
+          const finalPos = positions[positions.length - 1];
+          const dist = distance(finalPos[0], finalPos[1], walker.collecting_x, walker.collecting_y);
+
+          if (dist <= COLLECTABLE_CONFIG.PICKUP_RADIUS) {
+            // Within pickup range - attempt collection
+            try {
+              // Atomic check and mark as collected (first-arrival wins)
+              const [updateResult] = await gameDb.query(
+                `UPDATE spawned_items 
+                 SET collected_at = ?, collected_by = ?
+                 WHERE spawn_id = ? AND collected_at IS NULL`,
+                [now, walker.user_id, walker.collecting_spawn_id]
+              );
+
+              if (updateResult.affectedRows > 0) {
+                // Successfully collected!
+                
+                // Get spawn details to resolve loot
+                const [spawnDetails] = await gameDb.query(
+                  `SELECT item_id, type, loot_table_key, x, y, visual_icon FROM spawned_items WHERE spawn_id = ?`,
+                  [walker.collecting_spawn_id]
+                );
+
+                if (spawnDetails.length > 0) {
+                  const spawn = spawnDetails[0];
+                  const itemsCollected = [];
+
+                  if (spawn.type === 'standard') {
+                    // Standard item - just add it
+                    if (spawn.item_id) {
+                      const inventoryId = await addToInventory(walker.user_id, spawn.item_id, 1);
+                      
+                      // Get item details for notification
+                      const [itemData] = await gameDb.query(
+                        'SELECT template_key, name, icon_name FROM items WHERE item_id = ?',
+                        [spawn.item_id]
+                      );
+
+                      if (itemData.length > 0) {
+                        itemsCollected.push({
+                          ...itemData[0],
+                          quantity: 1,
+                          inventoryId
+                        });
+                      }
+                    }
+                  } else if (spawn.type === 'loot-container') {
+                    // Resolve loot table
+                    const rewards = await resolveLootTable(spawn.loot_table_key);
+                    
+                    for (const reward of rewards) {
+                      const inventoryId = await addToInventory(walker.user_id, reward.itemId, reward.quantity);
+                      
+                      // Get item details
+                      const [itemData] = await gameDb.query(
+                        'SELECT template_key, name, icon_name FROM items WHERE item_id = ?',
+                        [reward.itemId]
+                      );
+
+                      if (itemData.length > 0) {
+                        itemsCollected.push({
+                          ...itemData[0],
+                          quantity: reward.quantity,
+                          inventoryId
+                        });
+                      }
+                    }
+                  }
+
+                  // Emit individual item-added events to the collecting player
+                  if (io) {
+                    const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+                    const userSocket = sockets.find(s => s && s.user && s.user.userId === walker.user_id);
+
+                    if (userSocket) {
+                      for (const item of itemsCollected) {
+                        userSocket.emit('inventory:item-added', {
+                          templateKey: item.template_key,
+                          name: item.name,
+                          iconName: item.icon_name,
+                          quantity: item.quantity,
+                          inventoryId: item.inventoryId
+                        });
+                      }
+                    }
+
+                    // Broadcast collection to all clients to remove marker
+                    io.emit('collectable:collected', {
+                      spawnId: walker.collecting_spawn_id,
+                      userId: walker.user_id,
+                      items: itemsCollected.map(i => ({
+                        name: i.name,
+                        quantity: i.quantity
+                      }))
+                    });
+                  }
+
+                  logger.debug(`User ${walker.user_id} collected spawn ${walker.collecting_spawn_id}, received ${itemsCollected.length} items`);
+                }
+              } else {
+                // Item already collected by someone else
+                if (io) {
+                  const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+                  const userSocket = sockets.find(s => s && s.user && s.user.userId === walker.user_id);
+
+                  if (userSocket) {
+                    userSocket.emit('collectable:failed', {
+                      spawnId: walker.collecting_spawn_id,
+                      reason: 'already_collected'
+                    });
+                  }
+                }
+                logger.debug(`User ${walker.user_id} failed to collect spawn ${walker.collecting_spawn_id} - already collected`);
+              }
+            } catch (collectErr) {
+              logger.error(`Error collecting item for user ${walker.user_id}:`, collectErr);
+            }
+          } else {
+            // Not within pickup range
+            logger.warn(`User ${walker.user_id} reached destination but not within pickup range (${dist.toFixed(1)}px from target)`);
+          }
+        }
+
+        // Mark walker as done
         await gameDb.query(
           `UPDATE walkers SET status = 'done', finished_at = ?, updated_at = ?
            WHERE walker_id = ?`,

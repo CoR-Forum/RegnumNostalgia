@@ -236,7 +236,7 @@ function initializeSocketHandlers(io) {
      * Handle movement requests (pathfinding)
      */
     socket.on('move:request', async (data) => {
-      const { x, y } = data;
+      const { x, y, collectableSpawnId } = data;
 
       if (typeof x !== 'number' || typeof y !== 'number') {
         return socket.emit('error', { message: 'Invalid coordinates' });
@@ -247,8 +247,38 @@ function initializeSocketHandlers(io) {
       }
 
       try {
+        // If collecting an item, validate it
+        let collectingData = null;
+        if (collectableSpawnId) {
+          const [spawns] = await gameDb.query(
+            'SELECT spawn_id, x, y, realm, collected_at FROM spawned_items WHERE spawn_id = ?',
+            [collectableSpawnId]
+          );
+
+          if (spawns.length === 0 || spawns[0].collected_at !== null) {
+            return socket.emit('error', { message: 'Item not available' });
+          }
+
+          const spawn = spawns[0];
+          if (spawn.realm !== 'neutral' && spawn.realm !== user.realm) {
+            return socket.emit('error', { message: 'Cannot collect items from other realms' });
+          }
+
+          collectingData = {
+            collectingX: spawn.x,
+            collectingY: spawn.y,
+            collectingSpawnId: collectableSpawnId
+          };
+
+          // Broadcast collecting state
+          io.emit('collectable:collecting', {
+            spawnId: collectableSpawnId,
+            userId: user.userId
+          });
+        }
+
         const positions = await findPath(user.userId, x, y, user.realm);
-        const walker = await createWalker(user.userId, positions);
+        const walker = await createWalker(user.userId, positions, collectingData);
 
         socket.emit('move:started', walker);
 
@@ -414,19 +444,19 @@ function initializeSocketHandlers(io) {
     socket.on('spawned-items:get', async (callback) => {
       try {
         const [spawnedItems] = await gameDb.query(
-          `SELECT si.x, si.y, i.template_key, i.icon_name, i.name
-           FROM spawned_items si
-           JOIN items i ON si.item_id = i.item_id
-           WHERE (si.realm = ? OR si.realm = 'neutral') AND si.collected_at IS NULL`,
+          `SELECT spawn_id, x, y, visual_icon, realm, type
+           FROM spawned_items
+           WHERE (realm = ? OR realm = 'neutral') AND collected_at IS NULL`,
           [user.realm]
         );
 
         const spawnedItemsPayload = spawnedItems.map(si => ({
+          spawnId: si.spawn_id,
           x: si.x,
           y: si.y,
-          templateKey: si.template_key,
-          iconName: si.icon_name,
-          name: si.name
+          visualIcon: si.visual_icon,
+          realm: si.realm,
+          type: si.type
         }));
 
         if (callback) {
@@ -437,6 +467,86 @@ function initializeSocketHandlers(io) {
       } catch (error) {
         logger.error('Failed to get spawned items', { error: error.message, userId: user.userId });
         if (callback) callback({ success: false, error: 'Failed to load spawned items' });
+      }
+    });
+
+    /**
+     * Handle collectable item click - initiate pathfinding to collect
+     */
+    socket.on('collectable:click', async (data, callback) => {
+      try {
+        const { spawnId } = data;
+
+        if (!spawnId) {
+          if (callback) callback({ success: false, error: 'Spawn ID required' });
+          return;
+        }
+
+        // Validate spawn exists and is not collected
+        const [spawns] = await gameDb.query(
+          'SELECT spawn_id, x, y, realm, collected_at FROM spawned_items WHERE spawn_id = ?',
+          [spawnId]
+        );
+
+        if (spawns.length === 0) {
+          if (callback) callback({ success: false, error: 'Item not found' });
+          return;
+        }
+
+        const spawn = spawns[0];
+
+        if (spawn.collected_at !== null) {
+          if (callback) callback({ success: false, error: 'Item already collected' });
+          return;
+        }
+
+        // Check realm access
+        if (spawn.realm !== 'neutral' && spawn.realm !== user.realm) {
+          if (callback) callback({ success: false, error: 'Cannot collect items from other realms' });
+          return;
+        }
+
+        // Start pathfinding to the item
+        try {
+          const positions = await findPath(user.userId, spawn.x, spawn.y, user.realm);
+          const walker = await createWalker(user.userId, positions, {
+            collectingX: spawn.x,
+            collectingY: spawn.y,
+            collectingSpawnId: spawnId
+          });
+
+          // Broadcast that this user is collecting this item (orange border)
+          io.emit('collectable:collecting', {
+            spawnId: spawnId,
+            userId: user.userId
+          });
+
+          if (callback) {
+            callback({ success: true, walker });
+          } else {
+            socket.emit('move:started', walker);
+          }
+
+        } catch (pathError) {
+          logger.error('Failed to calculate path to collectable', {
+            error: pathError.message,
+            userId: user.userId,
+            spawnId
+          });
+
+          if (callback) {
+            callback({ 
+              success: false, 
+              error: pathError.message.includes('cannot') || pathError.message.includes('swim') 
+                ? pathError.message 
+                : 'Failed to calculate path' 
+            });
+          }
+        }
+
+      } catch (error) {
+        logger.error('Collectable click failed', { error: error.message, userId: user.userId });
+        if (callback) callback({ success: false, error: 'Failed to process collection request' });
       }
     });
 
@@ -1134,18 +1244,19 @@ async function sendInitialGameState(socket, user) {
 
     // Get spawned items for user's realm
     const [spawnedItems] = await gameDb.query(
-      `SELECT si.x, si.y, i.template_key, i.icon_name
-       FROM spawned_items si
-       JOIN items i ON si.item_id = i.item_id
-       WHERE si.realm = ? AND si.collected_at IS NULL`,
+      `SELECT spawn_id, x, y, visual_icon, realm, type
+       FROM spawned_items
+       WHERE (realm = ? OR realm = 'neutral') AND collected_at IS NULL`,
       [user.realm]
     );
 
     const spawnedItemsPayload = spawnedItems.map(si => ({
+      spawnId: si.spawn_id,
       x: si.x,
       y: si.y,
-      templateKey: si.template_key,
-      iconName: si.icon_name
+      visualIcon: si.visual_icon,
+      realm: si.realm,
+      type: si.type
     }));
 
     socket.emit('spawned-items:list', { spawnedItems: spawnedItemsPayload });
@@ -1206,7 +1317,7 @@ async function sendInitialGameState(socket, user) {
 
     // Get active walker for this player
     const [walkerRows] = await gameDb.query(
-      `SELECT walker_id, positions, current_index, started_at
+      `SELECT walker_id, positions, current_index, started_at, collecting_x, collecting_y, collecting_spawn_id
        FROM walkers
        WHERE user_id = ? AND status = 'walking'
        ORDER BY walker_id DESC
@@ -1223,7 +1334,8 @@ async function sendInitialGameState(socket, user) {
         walkerId: walker.walker_id,
         positions: positions,
         currentIndex: walker.current_index,
-        destination: destination
+        destination: destination,
+        collectingSpawnId: walker.collecting_spawn_id
       });
     }
 

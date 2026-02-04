@@ -2,7 +2,10 @@ const { walkerQueue, initWalkerQueue, setSocketIO: setWalkerIO } = require('./wa
 const { healthQueue, initHealthQueue, setSocketIO: setHealthIO } = require('./healthQueue');
 const { timeQueue, initTimeQueue, setSocketIO: setTimeIO } = require('./timeQueue');
 const { territoryQueue, initTerritoryQueue, setSocketIO: setTerritoryIO } = require('./territoryQueue');
+const { initSpawnQueue } = require('./spawnQueue');
 const logger = require('../config/logger');
+
+let spawnQueue = null;
 
 /**
  * Initialize all Bull queues with Socket.io instance
@@ -21,6 +24,7 @@ async function initializeQueues(io) {
   await initHealthQueue();
   await initTimeQueue();
   await initTerritoryQueue();
+  spawnQueue = initSpawnQueue(io);
 
   logger.info('All queues initialized successfully');
 }
@@ -35,6 +39,7 @@ async function closeQueues() {
   await healthQueue.close();
   await timeQueue.close();
   await territoryQueue.close();
+  if (spawnQueue) await spawnQueue.close();
 
   logger.info('All queues closed');
 }
@@ -44,6 +49,7 @@ module.exports = {
   healthQueue,
   timeQueue,
   territoryQueue,
+  spawnQueue,
   initializeQueues,
   closeQueues
 };

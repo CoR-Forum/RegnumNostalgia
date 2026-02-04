@@ -1290,6 +1290,8 @@
       otherPlayers: new Map(),
       territories: new Map(),
       superbosses: new Map(),
+      collectables: new Map(), // spawnId -> marker
+      collectingSpawnIds: new Set(), // tracks items being collected (orange border)
       pathsData: [],
       regionsData: [],
     pathsLayer: null,
@@ -1554,6 +1556,9 @@
           }
           gameState.walkingTarget = null;
           try { if (window.buildPath && typeof window.buildPath.clearWalkerPath === 'function') window.buildPath.clearWalkerPath(); } catch (e) { console.debug('clear walk path failed', e); }
+          
+          // Clear collecting marks if this was our walker
+          clearAllCollectingMarks();
         }
       });
 
@@ -1574,6 +1579,9 @@
             try { window.buildPath.setWalkerPositions(data.positions, typeof data.currentIndex === 'number' ? data.currentIndex : 0); } catch (e) { console.debug('drawWalkPath failed', e); }
           }
         }
+        
+        // Clear old collecting marks when starting new movement
+        clearAllCollectingMarks();
       });
 
       socket.on('walker:restore', (data) => {
@@ -1592,6 +1600,18 @@
           if (data.positions && window.buildPath && typeof window.buildPath.setWalkerPositions === 'function') {
             try { window.buildPath.setWalkerPositions(data.positions, typeof data.currentIndex === 'number' ? data.currentIndex : 0); } catch (e) { console.debug('drawWalkPath failed', e); }
           }
+        }
+        
+        // Restore collecting state if present
+        if (data.collectingSpawnId) {
+          gameState.collectingSpawnIds.add(data.collectingSpawnId);
+          // Try to update marker, will work once markers are loaded
+          updateCollectableMarker(data.collectingSpawnId, true);
+          
+          // Also try again after a short delay in case markers aren't loaded yet
+          setTimeout(() => {
+            updateCollectableMarker(data.collectingSpawnId, true);
+          }, 100);
         }
       });
 
@@ -1671,6 +1691,245 @@
           try { if (window.loadAndRenderRegions && typeof window.loadAndRenderRegions === 'function') window.loadAndRenderRegions(); } catch (e) { console.debug('loadAndRenderRegions call failed', e); }
         }
       });
+
+      // Collectable items events
+      socket.on('spawned-items:list', (data) => {
+        if (data && data.spawnedItems) {
+          // Clear existing markers
+          gameState.collectables.forEach(marker => marker.remove());
+          gameState.collectables.clear();
+
+          // Add new markers
+          data.spawnedItems.forEach(item => {
+            createCollectableMarker(item);
+          });
+          
+          // Reapply collecting marks for any items we were collecting
+          gameState.collectingSpawnIds.forEach(spawnId => {
+            updateCollectableMarker(spawnId, true);
+          });
+        }
+      });
+
+      socket.on('collectable:spawned', (data) => {
+        if (data && data.spawnId) {
+          // Check if marker already exists
+          if (!gameState.collectables.has(data.spawnId)) {
+            createCollectableMarker(data);
+          }
+        }
+      });
+
+      socket.on('collectable:collecting', (data) => {
+        if (data && data.spawnId) {
+          // Clear previous collecting states if this is our player
+          if (data.userId === gameState.userId) {
+            clearAllCollectingMarks();
+          }
+          
+          // Mark item as being collected (add orange border)
+          gameState.collectingSpawnIds.add(data.spawnId);
+          updateCollectableMarker(data.spawnId, true);
+        }
+      });
+
+      socket.on('collectable:collected', (data) => {
+        if (data && data.spawnId) {
+          // Remove marker
+          const marker = gameState.collectables.get(data.spawnId);
+          if (marker) {
+            marker.remove();
+            gameState.collectables.delete(data.spawnId);
+          }
+          gameState.collectingSpawnIds.delete(data.spawnId);
+
+          // Show notification if items were collected
+          if (data.items && data.items.length > 0) {
+            const itemNames = data.items.map(i => `${i.quantity}x ${i.name}`).join(', ');
+            showNotification(`Collected: ${itemNames}`, 'success');
+          }
+        }
+      });
+
+      socket.on('collectable:failed', (data) => {
+        if (data && data.spawnId) {
+          // Remove collecting state but keep marker
+          gameState.collectingSpawnIds.delete(data.spawnId);
+          updateCollectableMarker(data.spawnId, false);
+
+          showNotification('Item already collected by another player', 'error');
+        }
+      });
+
+      socket.on('inventory:item-added', (data) => {
+        if (data) {
+          showNotification(`+${data.quantity} ${data.name}`, 'success');
+          
+          // Refresh inventory if window is open
+          try {
+            const inventoryWindow = document.getElementById('inventory-window');
+            if (inventoryWindow && inventoryWindow.style.display !== 'none') {
+              socket.emit('inventory:get', (invData) => {
+                if (invData && invData.success) {
+                  const displayInventory = window.displayInventory;
+                  if (typeof displayInventory === 'function') {
+                    displayInventory(invData.items);
+                  }
+                }
+              });
+            }
+          } catch (e) {
+            console.debug('Failed to refresh inventory:', e);
+          }
+        }
+      });
+
+      // Helper function to clear all collecting marks
+      function clearAllCollectingMarks() {
+        gameState.collectingSpawnIds.forEach(spawnId => {
+          updateCollectableMarker(spawnId, false);
+        });
+        gameState.collectingSpawnIds.clear();
+      }
+
+      // Helper function to update collectable marker border
+      function updateCollectableMarker(spawnId, isCollecting) {
+        const marker = gameState.collectables.get(spawnId);
+        if (marker && marker.getElement) {
+          const elem = marker.getElement();
+          if (elem) {
+            const innerDiv = elem.querySelector('div');
+            if (innerDiv) {
+              if (isCollecting) {
+                innerDiv.style.border = '3px solid #ff8800';
+                innerDiv.style.borderRadius = '50%';
+              } else {
+                innerDiv.style.border = '';
+                innerDiv.style.borderRadius = '';
+              }
+            }
+          }
+        }
+      }
+
+      // Helper function to create collectable marker
+      function createCollectableMarker(item) {
+        if (!item || !item.x || !item.y) return;
+
+        const latLng = [totalH - item.y, item.x];
+        const isCollecting = gameState.collectingSpawnIds.has(item.spawnId);
+
+        const iconHtml = `
+          <div style="
+            width: 32px;
+            height: 32px;
+            background: url('assets/markers/${item.visualIcon}') center center / contain no-repeat;
+            ${isCollecting ? 'border: 3px solid #ff8800; border-radius: 50%;' : ''}
+            cursor: pointer;
+            filter: drop-shadow(0 0 4px rgba(0,0,0,0.5));
+          "></div>
+        `;
+
+        const customIcon = L.divIcon({
+          className: 'collectable-marker',
+          html: iconHtml,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+
+        // Click handler to collect
+        marker.on('click', () => {
+          if (!socket || !socket.connected) {
+            showNotification('Not connected to server', 'error');
+            return;
+          }
+
+          socket.emit('collectable:click', { spawnId: item.spawnId }, (response) => {
+            if (response && response.success) {
+              // Draw the path if we have positions
+              if (response.walker && response.walker.positions) {
+                // Show destination marker
+                const [dx, dy] = response.walker.destination;
+                if (!gameState.walkDestinationMarker) {
+                  gameState.walkDestinationMarker = L.marker([totalH - dy, dx], {
+                    icon: buildGoHereIcon(),
+                    riseOnHover: true
+                  }).addTo(map);
+                } else {
+                  gameState.walkDestinationMarker.setLatLng([totalH - dy, dx]);
+                }
+                gameState.walkingTarget = { x: dx, y: dy };
+                
+                // Draw path line
+                if (window.buildPath && typeof window.buildPath.setWalkerPositions === 'function') {
+                  try {
+                    window.buildPath.setWalkerPositions(
+                      response.walker.positions, 
+                      typeof response.walker.currentIndex === 'number' ? response.walker.currentIndex : 0
+                    );
+                  } catch (e) {
+                    console.debug('drawWalkPath failed', e);
+                  }
+                }
+              }
+            } else if (response && !response.success) {
+              showNotification(response.error || 'Failed to collect item', 'error');
+            }
+          });
+        });
+
+        gameState.collectables.set(item.spawnId, marker);
+      }
+
+      // Helper function to show notifications
+      function showNotification(message, type = 'info') {
+        const notifContainer = document.getElementById('notification-container') || (() => {
+          const container = document.createElement('div');
+          container.id = 'notification-container';
+          container.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+          `;
+          document.body.appendChild(container);
+          return container;
+        })();
+
+        const notif = document.createElement('div');
+        const bgColor = type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3';
+        notif.style.cssText = `
+          background: ${bgColor};
+          color: white;
+          padding: 12px 20px;
+          border-radius: 4px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          font-family: Arial, sans-serif;
+          font-size: 14px;
+          max-width: 300px;
+          word-wrap: break-word;
+          opacity: 0;
+          transition: opacity 0.3s;
+          pointer-events: auto;
+        `;
+        notif.textContent = message;
+        notifContainer.appendChild(notif);
+
+        // Fade in
+        setTimeout(() => notif.style.opacity = '1', 10);
+
+        // Fade out and remove
+        setTimeout(() => {
+          notif.style.opacity = '0';
+          setTimeout(() => notif.remove(), 300);
+        }, 3000);
+      }
 
       // Audio manager - handle music and sfx pushed by server
       (function(){

@@ -681,15 +681,24 @@ async function createWalker(userId, positions, collecting = null) {
 
   // Insert new walker
   const [result] = await gameDb.query(
-    `INSERT INTO walkers (user_id, positions, current_index, started_at, updated_at, status, finished_at, collecting_x, collecting_y)
-     VALUES (?, ?, 0, ?, ?, 'walking', NULL, ?, ?)`,
-    [userId, JSON.stringify(positions), now, now, collecting ? collecting.x : null, collecting ? collecting.y : null]
+    `INSERT INTO walkers (user_id, positions, current_index, started_at, updated_at, status, finished_at, collecting_x, collecting_y, collecting_spawn_id)
+     VALUES (?, ?, 0, ?, ?, 'walking', NULL, ?, ?, ?)`,
+    [
+      userId, 
+      JSON.stringify(positions), 
+      now, 
+      now, 
+      collecting ? collecting.collectingX : null, 
+      collecting ? collecting.collectingY : null,
+      collecting ? collecting.collectingSpawnId : null
+    ]
   );
 
   logger.info('Walker created', { 
     walkerId: result.insertId, 
     userId, 
-    steps: positions.length 
+    steps: positions.length,
+    collecting: collecting ? true : false
   });
 
   return {
