@@ -1850,16 +1850,8 @@
             if (response && response.success) {
               // Draw the path if we have positions
               if (response.walker && response.walker.positions) {
-                // Show destination marker
+                // Don't show destination marker when collecting items (item itself is already marked)
                 const [dx, dy] = response.walker.destination;
-                if (!gameState.walkDestinationMarker) {
-                  gameState.walkDestinationMarker = L.marker([totalH - dy, dx], {
-                    icon: buildGoHereIcon(),
-                    riseOnHover: true
-                  }).addTo(map);
-                } else {
-                  gameState.walkDestinationMarker.setLatLng([totalH - dy, dx]);
-                }
                 gameState.walkingTarget = { x: dx, y: dy };
                 
                 // Draw path line
