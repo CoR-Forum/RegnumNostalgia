@@ -83,8 +83,8 @@
     "equipment_slot": null,
     "icon_name": "item-rock.png",
     "drops": [
-      { "template_key": "magnanite", "chance": 0.1, "min_quantity": 1, "max_quantity": 5 },
-      { "template_key": "rock", "chance": 0.2, "min_quantity": 1, "max_quantity": 1 }
+      { "template_key": "magnanite", "chance": 0.3, "min_quantity": 1, "max_quantity": 5 },
+      { "template_key": "rock", "chance": 0.7, "min_quantity": 1, "max_quantity": 1 }
     ]
   }
 ]

@@ -669,7 +669,7 @@ async function findPath(userId, targetX, targetY, realm) {
 /**
  * Create a walker job for player movement
  */
-async function createWalker(userId, positions) {
+async function createWalker(userId, positions, collecting = null) {
   const now = Math.floor(Date.now() / 1000);
 
   // Mark any active walks as interrupted
@@ -681,9 +681,9 @@ async function createWalker(userId, positions) {
 
   // Insert new walker
   const [result] = await gameDb.query(
-    `INSERT INTO walkers (user_id, positions, current_index, started_at, updated_at, status, finished_at)
-     VALUES (?, ?, 0, ?, ?, 'walking', NULL)`,
-    [userId, JSON.stringify(positions), now, now]
+    `INSERT INTO walkers (user_id, positions, current_index, started_at, updated_at, status, finished_at, collecting_x, collecting_y)
+     VALUES (?, ?, 0, ?, ?, 'walking', NULL, ?, ?)`,
+    [userId, JSON.stringify(positions), now, now, collecting ? collecting.x : null, collecting ? collecting.y : null]
   );
 
   logger.info('Walker created', { 
