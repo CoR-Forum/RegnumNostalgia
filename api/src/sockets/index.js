@@ -316,7 +316,7 @@ function initializeSocketHandlers(io) {
         // must be requested individually via `item:details` on hover.
         let query = `
           SELECT inv.inventory_id, inv.item_id, inv.quantity, inv.acquired_at,
-                 i.template_key, i.name, i.icon_name
+                 i.template_key, i.name, i.icon_name, i.type, i.rarity
           FROM inventory inv
           JOIN items i ON inv.item_id = i.item_id
           WHERE inv.user_id = ?
@@ -329,7 +329,7 @@ function initializeSocketHandlers(io) {
           params.push(equippedIds);
         }
 
-        query += ' ORDER BY inv.acquired_at DESC';
+        query += ' ORDER BY i.type, i.name, inv.inventory_id';
 
         const [items] = await gameDb.query(query, params);
 
@@ -341,7 +341,9 @@ function initializeSocketHandlers(io) {
           acquiredAt: item.acquired_at,
           templateKey: item.template_key,
           name: item.name,
-          iconName: item.icon_name
+          iconName: item.icon_name,
+          type: item.type,
+          rarity: item.rarity
         }));
 
         if (callback) callback({ success: true, items: inventory });
