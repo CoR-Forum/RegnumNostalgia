@@ -24,7 +24,9 @@ async function importItems() {
       'consumables.json',
       'currency.json',
       'misc.json',
-      'alasthor.json'
+      'alasthor.json',
+      'magicgems.json',
+      'premium.json'
     ];
 
     let totalImported = 0;

@@ -8,7 +8,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-slash-minor.png"
+    "icon_name": "gem-magic/gem-magic-slash-minor.png"
   },
   {
     "template_key": "major_achroite",
@@ -19,7 +19,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-slash-mayor.png"
+    "icon_name": "gem-magic/gem-magic-slash-mayor.png"
   },
   {
     "template_key": "great_achroite",
@@ -30,7 +30,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-slash-great.png"
+    "icon_name": "gem-magic/gem-magic-slash-great.png"
   },
   {
     "template_key": "minor_jade",
@@ -41,7 +41,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-pierce-minor.png"
+    "icon_name": "gem-magic/gem-magic-pierce-minor.png"
   },
   {
     "template_key": "major_jade",
@@ -52,7 +52,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-pierce-mayor.png"
+    "icon_name": "gem-magic/gem-magic-pierce-mayor.png"
   },
   {
     "template_key": "great_jade",
@@ -63,7 +63,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-pierce-great.png"
+    "icon_name": "gem-magic/gem-magic-pierce-great.png"
   },
   {
     "template_key": "minor_jasper",
@@ -74,7 +74,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-blunt-minor.png"
+    "icon_name": "gem-magic/gem-magic-blunt-minor.png"
   },
   {
     "template_key": "major_jasper",
@@ -85,7 +85,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-blunt-mayor.png"
+    "icon_name": "gem-magic/gem-magic-blunt-mayor.png"
   },
   {
     "template_key": "great_jasper",
@@ -96,7 +96,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-blunt-great.png"
+    "icon_name": "gem-magic/gem-magic-blunt-great.png"
   },
   {
     "template_key": "minor_aragonite",
@@ -107,7 +107,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-fire-minor.png"
+    "icon_name": "gem-magic/gem-magic-fire-minor.png"
   },
   {
     "template_key": "major_aragonite",
@@ -118,7 +118,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-fire-mayor.png"
+    "icon_name": "gem-magic/gem-magic-fire-mayor.png"
   },
   {
     "template_key": "great_aragonite",
@@ -129,7 +129,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-fire-great.png"
+    "icon_name": "gem-magic/gem-magic-fire-great.png"
   },
   {
     "template_key": "minor_cyanite",
@@ -140,7 +140,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-ice-minor.png"
+    "icon_name": "gem-magic/gem-magic-ice-minor.png"
   },
   {
     "template_key": "major_cyanite",
@@ -151,7 +151,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-ice-mayor.png"
+    "icon_name": "gem-magic/gem-magic-ice-mayor.png"
   },
   {
     "template_key": "great_cyanite",
@@ -162,7 +162,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-ice-great.png"
+    "icon_name": "gem-magic/gem-magic-ice-great.png"
   },
   {
     "template_key": "minor_azurite",
@@ -173,7 +173,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-lightning-minor.png"
+    "icon_name": "gem-magic/gem-magic-lightning-minor.png"
   },
   {
     "template_key": "major_azurite",
@@ -184,7 +184,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-lightning-mayor.png"
+    "icon_name": "gem-magic/gem-magic-lightning-mayor.png"
   },
   {
     "template_key": "great_azurite",
@@ -195,7 +195,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-lightning-great.png"
+    "icon_name": "gem-magic/gem-magic-lightning-great.png"
   },
   {
     "template_key": "minor_aventurine",
@@ -206,7 +206,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-hit-minor.png"
+    "icon_name": "gem-magic/gem-magic-hit-minor.png"
   },
   {
     "template_key": "major_aventurine",
@@ -217,7 +217,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-hit-mayor.png"
+    "icon_name": "gem-magic/gem-magic-hit-mayor.png"
   },
   {
     "template_key": "great_aventurine",
@@ -228,7 +228,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-hit-great.png"
+    "icon_name": "gem-magic/gem-magic-hit-great.png"
   },
   {
     "template_key": "minor_almandine",
@@ -239,7 +239,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-attack-minor.png"
+    "icon_name": "gem-magic/gem-magic-attack-minor.png"
   },
   {
     "template_key": "major_almandine",
@@ -250,7 +250,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-attack-mayor.png"
+    "icon_name": "gem-magic/gem-magic-attack-mayor.png"
   },
   {
     "template_key": "great_almandine",
@@ -261,7 +261,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-attack-great.png"
+    "icon_name": "gem-magic/gem-magic-attack-great.png"
   },
   {
     "template_key": "minor_nephrite",
@@ -272,7 +272,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-casting-minor.png"
+    "icon_name": "gem-magic/gem-magic-casting-minor.png"
   },
   {
     "template_key": "major_nephrite",
@@ -283,7 +283,7 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-casting-mayor.png"
+    "icon_name": "gem-magic/gem-magic-casting-mayor.png"
   },
   {
     "template_key": "great_nephrite",
@@ -294,6 +294,6 @@
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic-casting-great.png"
+    "icon_name": "gem-magic/gem-magic-casting-great.png"
   }
 ]

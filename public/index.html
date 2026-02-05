@@ -2704,23 +2704,74 @@
           } catch (e) {}
         });
 
-        // Right-click to equip
+        // Right-click context menu
         itemDiv.addEventListener('contextmenu', async (e) => {
           try {
             e.preventDefault();
             const id = itemDiv.dataset.inventoryId;
             if (!id) return;
-            const form = new URLSearchParams();
-            form.append('inventoryId', id);
-            try {
-              await emitOrApi('equipment:equip', { inventoryId: id }, '/equipment/equip', form);
-            } catch (err) {
-              const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
-              if (window.addLogMessage) window.addLogMessage(msg, 'error');
+
+            // Fetch full item details to check if it's usable
+            const getItemDetails = () => new Promise((resolve, reject) => {
+              if (window.socket && socket && socket.connected) {
+                socket.emit('item:details', { inventoryId: id }, (resp) => {
+                  if (resp && resp.success) {
+                    resolve(resp.item);
+                  } else {
+                    reject(new Error('Failed to fetch item details'));
+                  }
+                });
+              } else {
+                reject(new Error('Not connected'));
+              }
+            });
+
+            const itemDetails = await getItemDetails();
+            const isUsable = itemDetails.type === 'premium' && itemDetails.stats && itemDetails.stats.loot_table;
+
+            if (isUsable) {
+              // Use item (open box)
+              try {
+                const useItem = () => new Promise((resolve, reject) => {
+                  if (window.socket && socket && socket.connected) {
+                    socket.emit('item:use', { inventoryId: id }, (resp) => {
+                      if (resp && resp.success) {
+                        resolve(resp);
+                      } else {
+                        reject(new Error(resp?.error || 'Failed to use item'));
+                      }
+                    });
+                  } else {
+                    reject(new Error('Not connected'));
+                  }
+                });
+
+                const result = await useItem();
+                if (result && result.rewards && result.rewards.length > 0) {
+                  const rewardNames = result.rewards.map(r => r.name).join(', ');
+                  if (window.addLogMessage) {
+                    window.addLogMessage(`You received: ${rewardNames}`, 'success');
+                  }
+                }
+              } catch (err) {
+                const msg = (err && err.message) ? err.message : 'Failed to use item';
+                if (window.addLogMessage) window.addLogMessage(msg, 'error');
+              }
+            } else {
+              // Try to equip item
+              const form = new URLSearchParams();
+              form.append('inventoryId', id);
+              try {
+                await emitOrApi('equipment:equip', { inventoryId: id }, '/equipment/equip', form);
+              } catch (err) {
+                const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
+                if (window.addLogMessage) window.addLogMessage(msg, 'error');
+              }
             }
+
             try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openWindow('character-window'); } catch(e){}
             try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openWindow('inventory-window'); } catch(e){}
-          } catch (e) { console.error('inventory right-click equip failed', e); }
+          } catch (e) { console.error('inventory right-click failed', e); }
         });
 
         container.appendChild(itemDiv);

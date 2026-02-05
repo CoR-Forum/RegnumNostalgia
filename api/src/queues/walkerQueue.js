@@ -494,5 +494,7 @@ async function initWalkerQueue() {
 module.exports = {
   walkerQueue,
   initWalkerQueue,
-  setSocketIO
+  setSocketIO,
+  resolveLootTable,
+  addToInventory
 };

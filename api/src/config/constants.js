@@ -33,7 +33,18 @@ module.exports = {
     { template_key: 'wooden_shield', quantity: 1 },
     { template_key: 'iron_helmet', quantity: 1 },
     { template_key: 'leather_pauldrons', quantity: 1 },
-    { template_key: 'silver_amulet', quantity: 1 }
+    { template_key: 'silver_amulet', quantity: 1 },
+    { template_key: 'minor_achroite', quantity: 1 },
+    { template_key: 'minor_jade', quantity: 1 },
+    { template_key: 'minor_jasper', quantity: 1 },
+    { template_key: 'minor_aragonite', quantity: 1 },
+    { template_key: 'minor_cyanite', quantity: 1 },
+    { template_key: 'minor_azurite', quantity: 1 },
+    { template_key: 'minor_aventurine', quantity: 1 },
+    { template_key: 'minor_aquamarine', quantity: 1 },
+    { template_key: 'minor_ruby', quantity: 1 },
+    { template_key: 'minor_nephrite', quantity: 1 },
+    { template_key: 'great_magic_gem_lucky_box', quantity: 1000 }
   ],
   
   // Online Status
@@ -41,7 +52,7 @@ module.exports = {
   
   // Queue Intervals (milliseconds)
   QUEUE_INTERVALS: {
-    WALKER: 500,     // 2 seconds
+    WALKER: 100,     // 2 seconds
     HEALTH: 1000,     // 1 second
     TIME: 10000,      // 10 seconds
     TERRITORY: 15000,  // 15 seconds
@@ -110,6 +121,51 @@ module.exports = {
       mode: 'independent',
       pool: [
         { item: 'gold_coin', weight: 10, quantity: [5, 15] }
+      ]
+    },
+    minor_gem_lucky_box: {
+      mode: 'weighted',
+      pool: [
+        { item: 'minor_achroite', weight: 1, quantity: [1, 1] },
+        { item: 'minor_jade', weight: 1, quantity: [1, 1] },
+        { item: 'minor_jasper', weight: 1, quantity: [1, 1] },
+        { item: 'minor_aragonite', weight: 1, quantity: [1, 1] },
+        { item: 'minor_cyanite', weight: 1, quantity: [1, 1] },
+        { item: 'minor_azurite', weight: 1, quantity: [1, 1] },
+        { item: 'minor_aventurine', weight: 1, quantity: [1, 1] },
+        { item: 'minor_aquamarine', weight: 1, quantity: [1, 1] },
+        { item: 'minor_ruby', weight: 1, quantity: [1, 1] },
+        { item: 'minor_nephrite', weight: 1, quantity: [1, 1] }
+      ]
+    },
+    major_gem_lucky_box: {
+      mode: 'weighted',
+      pool: [
+        { item: 'major_achroite', weight: 1, quantity: [1, 1] },
+        { item: 'major_jade', weight: 1, quantity: [1, 1] },
+        { item: 'major_jasper', weight: 1, quantity: [1, 1] },
+        { item: 'major_aragonite', weight: 1, quantity: [1, 1] },
+        { item: 'major_cyanite', weight: 1, quantity: [1, 1] },
+        { item: 'major_azurite', weight: 1, quantity: [1, 1] },
+        { item: 'major_aventurine', weight: 1, quantity: [1, 1] },
+        { item: 'major_aquamarine', weight: 1, quantity: [1, 1] },
+        { item: 'major_ruby', weight: 1, quantity: [1, 1] },
+        { item: 'major_nephrite', weight: 1, quantity: [1, 1] }
+      ]
+    },
+    great_gem_lucky_box: {
+      mode: 'weighted',
+      pool: [
+        { item: 'great_achroite', weight: 1, quantity: [1, 1] },
+        { item: 'great_jade', weight: 1, quantity: [1, 1] },
+        { item: 'great_jasper', weight: 1, quantity: [1, 1] },
+        { item: 'great_aragonite', weight: 1, quantity: [1, 1] },
+        { item: 'great_cyanite', weight: 1, quantity: [1, 1] },
+        { item: 'great_azurite', weight: 1, quantity: [1, 1] },
+        { item: 'great_aventurine', weight: 1, quantity: [1, 1] },
+        { item: 'great_aquamarine', weight: 1, quantity: [1, 1] },
+        { item: 'great_ruby', weight: 1, quantity: [1, 1] },
+        { item: 'great_nephrite', weight: 1, quantity: [1, 1] }
       ]
     }
   },

@@ -812,6 +812,133 @@ function initializeSocketHandlers(io) {
     });
 
     /**
+     * Handle item use (e.g., opening lucky boxes)
+     */
+    socket.on('item:use', async (data, callback) => {
+      const { inventoryId } = data;
+
+      if (!inventoryId) {
+        if (callback) callback({ success: false, error: 'Inventory ID required' });
+        return;
+      }
+
+      try {
+        // Get item from inventory
+        const [invRows] = await gameDb.query(
+          `SELECT i.inventory_id, i.item_id, i.quantity, it.name, it.type, it.stats, it.template_key
+           FROM inventory i
+           JOIN items it ON i.item_id = it.item_id
+           WHERE i.inventory_id = ? AND i.user_id = ?`,
+          [inventoryId, user.userId]
+        );
+
+        if (invRows.length === 0) {
+          if (callback) callback({ success: false, error: 'Item not found in inventory' });
+          return;
+        }
+
+        const inventoryItem = invRows[0];
+        const stats = typeof inventoryItem.stats === 'string' 
+          ? JSON.parse(inventoryItem.stats) 
+          : inventoryItem.stats;
+
+        // Check if item has a loot table (premium boxes, etc.)
+        if (!stats || !stats.loot_table) {
+          if (callback) callback({ success: false, error: 'This item cannot be used' });
+          return;
+        }
+
+        const lootTableKey = stats.loot_table;
+        const { LOOT_TABLES } = require('../config/constants');
+
+        if (!LOOT_TABLES[lootTableKey]) {
+          if (callback) callback({ success: false, error: 'Invalid item configuration' });
+          return;
+        }
+
+        // Import the loot table resolver
+        const { resolveLootTable } = require('../queues/walkerQueue');
+
+        // Resolve loot table to get rewards
+        const rewards = await resolveLootTable(lootTableKey);
+
+        if (rewards.length === 0) {
+          if (callback) callback({ success: false, error: 'No rewards found' });
+          return;
+        }
+
+        // Remove one lucky box from inventory
+        if (inventoryItem.quantity > 1) {
+          await gameDb.query(
+            'UPDATE inventory SET quantity = quantity - 1 WHERE inventory_id = ?',
+            [inventoryId]
+          );
+        } else {
+          await gameDb.query(
+            'DELETE FROM inventory WHERE inventory_id = ?',
+            [inventoryId]
+          );
+        }
+
+        // Add rewards to inventory
+        const { addToInventory } = require('../queues/walkerQueue');
+        const rewardItems = [];
+
+        for (const reward of rewards) {
+          await addToInventory(user.userId, reward.itemId, reward.quantity);
+
+          // Get item details for response
+          const [itemRows] = await gameDb.query(
+            'SELECT name, icon_name, rarity FROM items WHERE item_id = ?',
+            [reward.itemId]
+          );
+
+          if (itemRows.length > 0) {
+            rewardItems.push({
+              name: itemRows[0].name,
+              iconName: itemRows[0].icon_name,
+              rarity: itemRows[0].rarity,
+              quantity: reward.quantity
+            });
+          }
+        }
+
+        // Log the action
+        await addPlayerLog(
+          user.userId, 
+          `Opened ${inventoryItem.name} and received ${rewardItems.map(r => r.name).join(', ')}`, 
+          'info', 
+          io
+        );
+
+        logger.info('Item used successfully', {
+          userId: user.userId,
+          itemName: inventoryItem.name,
+          rewards: rewardItems
+        });
+
+        // Emit inventory update
+        socket.emit('inventory:update', { userId: user.userId });
+
+        if (callback) {
+          callback({ 
+            success: true, 
+            message: `Opened ${inventoryItem.name}!`,
+            rewards: rewardItems
+          });
+        }
+
+      } catch (error) {
+        logger.error('Failed to use item', { 
+          error: error.message, 
+          userId: user.userId,
+          inventoryId
+        });
+        if (callback) callback({ success: false, error: 'Failed to use item' });
+      }
+    });
+
+    /**
      * Handle shoutbox get messages
      */
     socket.on('shoutbox:get', async (data, callback) => {

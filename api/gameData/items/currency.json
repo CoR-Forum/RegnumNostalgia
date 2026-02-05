@@ -12,6 +12,18 @@
     "icon_name": "item-gold-coin.png"
   },
   {
+    "template_key": "ximerin",
+    "name": "Ximerin",
+    "type": "currency",
+    "description": "A rare and valuable currency used for high-end transactions",
+    "stats": { "value": 100 },
+    "rarity": "uncommon",
+    "stackable": 1,
+    "level": 0,
+    "equipment_slot": null,
+    "icon_name": "item-ximerin.png"
+  },
+  {
     "template_key": "magnanite",
     "name": "Magnanite",
     "type": "currency",

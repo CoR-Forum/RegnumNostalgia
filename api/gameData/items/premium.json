@@ -1,0 +1,38 @@
+[
+  {
+    "template_key": "minor_magic_gem_lucky_box",
+    "name": "Minor Magic Gem Lucky Box",
+    "type": "premium",
+    "description": "A mysterious box containing a random minor magic gem",
+    "stats": { "loot_table": "minor_gem_lucky_box" },
+    "rarity": "uncommon",
+    "stackable": 1,
+    "level": 0,
+    "equipment_slot": null,
+    "icon_name": "gem-lucky-box-1.png"
+  },
+  {
+    "template_key": "major_magic_gem_lucky_box",
+    "name": "Major Magic Gem Lucky Box",
+    "type": "premium",
+    "description": "A mysterious box containing a random major magic gem",
+    "stats": { "loot_table": "major_gem_lucky_box" },
+    "rarity": "rare",
+    "stackable": 1,
+    "level": 0,
+    "equipment_slot": null,
+    "icon_name": "gem-lucky-box-2.png"
+  },
+  {
+    "template_key": "great_magic_gem_lucky_box",
+    "name": "Great Magic Gem Lucky Box",
+    "type": "premium",
+    "description": "A mysterious box containing a random great magic gem",
+    "stats": { "loot_table": "great_gem_lucky_box" },
+    "rarity": "epic",
+    "stackable": 1,
+    "level": 0,
+    "equipment_slot": null,
+    "icon_name": "gem-lucky-box-3.png"
+  }
+]
