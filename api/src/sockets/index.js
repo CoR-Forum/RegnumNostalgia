@@ -865,7 +865,9 @@ function initializeSocketHandlers(io) {
         const rewards = await resolveLootTable(lootTableKey);
 
         if (rewards.length === 0) {
-          if (callback) callback({ success: false, error: 'No rewards found' });
+          await addPlayerLog(user.userId, 'No rewards found', 'error', io);
+          // Don't show toast notification, only log it
+          if (callback) callback({ success: true, message: 'Box opened', rewards: [] });
           return;
         }
 

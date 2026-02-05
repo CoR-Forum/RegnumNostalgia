@@ -2772,9 +2772,6 @@
                 const result = await useItem();
                 if (result && result.rewards && result.rewards.length > 0) {
                   const rewardNames = result.rewards.map(r => r.name).join(', ');
-                  if (window.addLogMessage) {
-                    window.addLogMessage(`You received: ${rewardNames}`, 'success');
-                  }
                 }
               } catch (err) {
                 const msg = (err && err.message) ? err.message : 'Failed to use item';
