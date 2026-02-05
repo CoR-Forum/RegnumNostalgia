@@ -304,8 +304,8 @@ async function initDatabase() {
     await gameDb.query(`
       CREATE TABLE IF NOT EXISTS user_settings (
         user_id INT PRIMARY KEY,
-        music_enabled TINYINT(1) NOT NULL DEFAULT 1,
-        music_volume DOUBLE NOT NULL DEFAULT 0.6,
+        music_enabled TINYINT(1) NOT NULL DEFAULT 0,
+        music_volume DOUBLE NOT NULL DEFAULT 0.20,
         sounds_enabled TINYINT(1) NOT NULL DEFAULT 1,
         sound_volume DOUBLE NOT NULL DEFAULT 1.0,
         capture_sounds_enabled TINYINT(1) NOT NULL DEFAULT 1,
