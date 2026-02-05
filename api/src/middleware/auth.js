@@ -59,11 +59,12 @@ async function authenticateSocket(socket, next) {
       soundVolume: 1.0,
       captureSoundsEnabled: 1,
       captureSoundsVolume: 1.0,
+      collectionSoundsEnabled: 1,
       mapVersion: 'v1'
     };
 
     try {
-      const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version FROM user_settings WHERE user_id = ?', [decoded.userId]);
+      const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, map_version FROM user_settings WHERE user_id = ?', [decoded.userId]);
       if (rows && rows.length > 0) {
         settings = {
           musicEnabled: rows[0].music_enabled === 1 ? 1 : 0,
@@ -72,6 +73,7 @@ async function authenticateSocket(socket, next) {
           soundVolume: typeof rows[0].sound_volume === 'number' ? rows[0].sound_volume : parseFloat(rows[0].sound_volume) || 1.0,
           captureSoundsEnabled: rows[0].capture_sounds_enabled === 1 ? 1 : 0,
           captureSoundsVolume: typeof rows[0].capture_sounds_volume === 'number' ? rows[0].capture_sounds_volume : parseFloat(rows[0].capture_sounds_volume) || 1.0,
+          collectionSoundsEnabled: rows[0].collection_sounds_enabled === 1 ? 1 : 0,
           mapVersion: rows[0].map_version || 'v1'
         };
       }

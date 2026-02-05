@@ -8,7 +8,7 @@ const logger = require('../config/logger');
 router.get('/', authenticateJWT, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version FROM user_settings WHERE user_id = ?', [userId]);
+    const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, map_version FROM user_settings WHERE user_id = ?', [userId]);
     if (rows && rows.length > 0) {
       const row = rows[0];
       return res.json({ success: true, settings: {
@@ -18,6 +18,7 @@ router.get('/', authenticateJWT, async (req, res) => {
         soundVolume: typeof row.sound_volume === 'number' ? row.sound_volume : parseFloat(row.sound_volume) || 1.0,
         captureSoundsEnabled: row.capture_sounds_enabled === 1 ? 1 : 0,
         captureSoundsVolume: typeof row.capture_sounds_volume === 'number' ? row.capture_sounds_volume : parseFloat(row.capture_sounds_volume) || 1.0,
+        collectionSoundsEnabled: row.collection_sounds_enabled === 1 ? 1 : 0,
         mapVersion: row.map_version || 'v1'
       }});
     }
@@ -29,6 +30,7 @@ router.get('/', authenticateJWT, async (req, res) => {
       soundVolume: 1.0,
       captureSoundsEnabled: 1,
       captureSoundsVolume: 1.0,
+      collectionSoundsEnabled: 1,
       mapVersion: 'v1'
     }});
   } catch (err) {
@@ -49,12 +51,13 @@ router.post('/', authenticateJWT, async (req, res) => {
     const sound_volume = typeof body.soundVolume === 'number' ? body.soundVolume : parseFloat(body.soundVolume) || 1.0;
     const capture_sounds_enabled = body.captureSoundsEnabled ? 1 : 0;
     const capture_sounds_volume = typeof body.captureSoundsVolume === 'number' ? body.captureSoundsVolume : parseFloat(body.captureSoundsVolume) || 1.0;
+    const collection_sounds_enabled = body.collectionSoundsEnabled ? 1 : 0;
     const map_version = typeof body.mapVersion === 'string' ? body.mapVersion : (body.mapVersion || 'v1');
     const updatedAt = Math.floor(Date.now() / 1000);
 
     await gameDb.query(
-      `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, map_version, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          music_enabled = VALUES(music_enabled),
          music_volume = VALUES(music_volume),
@@ -62,9 +65,10 @@ router.post('/', authenticateJWT, async (req, res) => {
          sound_volume = VALUES(sound_volume),
          capture_sounds_enabled = VALUES(capture_sounds_enabled),
          capture_sounds_volume = VALUES(capture_sounds_volume),
+         collection_sounds_enabled = VALUES(collection_sounds_enabled),
          map_version = VALUES(map_version),
          updated_at = VALUES(updated_at)`,
-      [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, map_version, updatedAt]
+      [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, map_version, updatedAt]
     );
 
     return res.json({ success: true });

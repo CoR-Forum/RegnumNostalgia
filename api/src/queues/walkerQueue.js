@@ -320,7 +320,7 @@ walkerQueue.process('process-walkers', async (job) => {
                     // Play collection sound for the collecting player
                     if (userSocket) {
                       const settings = userSocket.user && userSocket.user.settings;
-                      if (settings && settings.soundsEnabled) {
+                      if (settings && settings.soundsEnabled && settings.collectionSoundsEnabled) {
                         const volume = typeof settings.soundVolume === 'number' 
                           ? settings.soundVolume 
                           : parseFloat(settings.soundVolume) || 1.0;

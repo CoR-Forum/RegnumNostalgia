@@ -310,6 +310,7 @@ async function initDatabase() {
         sound_volume DOUBLE NOT NULL DEFAULT 1.0,
         capture_sounds_enabled TINYINT(1) NOT NULL DEFAULT 1,
         capture_sounds_volume DOUBLE NOT NULL DEFAULT 1.0,
+        collection_sounds_enabled TINYINT(1) NOT NULL DEFAULT 1,
         map_version VARCHAR(8) NOT NULL DEFAULT 'v1',
         updated_at INT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES players(user_id)
