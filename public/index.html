@@ -2662,8 +2662,8 @@
       const container = document.getElementById('inventory-items');
       const footer = document.getElementById('inventory-footer');
       
-      // Save scroll position before clearing
-      const scrollTop = container.scrollTop;
+      // Reset scroll to top on refresh
+      container.scrollTop = 0;
       
       container.innerHTML = '';
 
@@ -2799,9 +2799,6 @@
 
         container.appendChild(itemDiv);
       });
-      
-      // Restore scroll position after rendering
-      container.scrollTop = scrollTop;
       
       // Update gold display
       document.getElementById('inventory-gold').textContent = `${totalGold.toLocaleString()} Gold`;
