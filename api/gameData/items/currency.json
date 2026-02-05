@@ -1,7 +1,7 @@
 [
   {
     "template_key": "gold_coin",
-    "name": "Gold Coin",
+    "name": "Gold",
     "type": "currency",
     "description": "A shiny gold coin",
     "stats": { "value": 1 },

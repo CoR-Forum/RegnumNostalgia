@@ -505,6 +505,16 @@
       min-height: 0;
     }
 
+    /* Dark scrollbar for inventory */
+    #inventory-list {
+      scrollbar-width: thin; /* Firefox */
+      scrollbar-color: rgba(0,0,0,0.6) rgba(0,0,0,0.08);
+    }
+    #inventory-list::-webkit-scrollbar { width: 8px; height: 8px; }
+    #inventory-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.08); border-radius: 6px; }
+    #inventory-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); border-radius: 6px; border: 2px solid rgba(0,0,0,0); background-clip: padding-box; }
+    #inventory-list::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.75); }
+
     /* Equipment Slot Styles */
     .equipment-area{ padding: 8px; border: 2px solid #1a2538; border-radius: 3px; margin-bottom: 8px; background: transparent;}    
     .equipment-row{ display:flex; gap:6px; justify-content: flex-start; margin-bottom:6px; }
@@ -791,7 +801,7 @@
       </div>
     </div>
 
-    <div id="inventory-list" class="ui-window-body" style="padding: 20px;">
+    <div id="inventory-list" class="ui-window-body" style="padding: 20px 8px;">
       <div id="inventory-loading" style="text-align: center; color: #e0e0e0; padding: 40px;">
         <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
         <div style="font-size: 11px;">Loading inventory...</div>
@@ -801,7 +811,7 @@
         Your inventory is empty
       </div>
     </div>
-    <div id="inventory-footer" class="ui-window-body" style="padding: 20px; display: none;">
+    <div id="inventory-footer" class="ui-window-body" style="padding: 20px 8px; display: none;">
       <div style="display: flex; align-items: center; gap: 4px; color: #e0e0e0; font-size: 11px;">
         <img src="assets/v1/ui/ui-icon-gold.png" alt="Gold" style="width: 14px; height: 14px; display: inline-block;" draggable="false" ondragstart="return false;">
         <span id="inventory-gold" style="font-weight: 400;">0 Gold</span>
@@ -2682,7 +2692,7 @@
       // Render items as list
       items.forEach(item => {
         // Track gold
-        if (getItemName(item) === 'Gold Coin') {
+        if (getItemName(item) === 'Gold') {
           totalGold += item.quantity;
         }
 
