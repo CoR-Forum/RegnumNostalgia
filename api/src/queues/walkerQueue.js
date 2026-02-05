@@ -321,9 +321,9 @@ walkerQueue.process('process-walkers', async (job) => {
                     if (userSocket) {
                       const settings = userSocket.user && userSocket.user.settings;
                       if (settings && settings.soundsEnabled && settings.collectionSoundsEnabled) {
-                        const volume = typeof settings.soundVolume === 'number' 
-                          ? settings.soundVolume 
-                          : parseFloat(settings.soundVolume) || 1.0;
+                        const volume = typeof settings.collectionSoundsVolume === 'number' 
+                          ? settings.collectionSoundsVolume 
+                          : parseFloat(settings.collectionSoundsVolume) || 1.0;
                         userSocket.emit('audio:play', {
                           type: 'sfx',
                           file: 'notification.ogg',

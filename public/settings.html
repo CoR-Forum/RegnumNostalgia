@@ -46,6 +46,10 @@
 
     <div style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-collection-enabled"> Enable Collection Sounds</label>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#ccc;">Collection Volume</span>
+        <input id="setting-collection-volume" type="range" min="0" max="1" step="0.01" value="1.0">
+      </div>
     </div>
 
     <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -81,6 +85,7 @@
         document.getElementById('setting-capture-enabled').checked = !!r.settings.captureSoundsEnabled;
         document.getElementById('setting-capture-volume').value = (typeof r.settings.captureSoundsVolume === 'number' ? r.settings.captureSoundsVolume : parseFloat(r.settings.captureSoundsVolume)) || 1.0;
         document.getElementById('setting-collection-enabled').checked = !!r.settings.collectionSoundsEnabled;
+        document.getElementById('setting-collection-volume').value = (typeof r.settings.collectionSoundsVolume === 'number' ? r.settings.collectionSoundsVolume : parseFloat(r.settings.collectionSoundsVolume)) || 1.0;
         document.getElementById('setting-map-version').value = r.settings.mapVersion || 'v1';
         // Apply to AudioManager immediately
         try { window.AudioManager && window.AudioManager.setMusicEnabled(!!r.settings.musicEnabled); } catch (e) {}
@@ -126,6 +131,7 @@
           captureSoundsEnabled: document.getElementById('setting-capture-enabled').checked ? 1 : 0,
           captureSoundsVolume: parseFloat(document.getElementById('setting-capture-volume').value),
           collectionSoundsEnabled: document.getElementById('setting-collection-enabled').checked ? 1 : 0,
+          collectionSoundsVolume: parseFloat(document.getElementById('setting-collection-volume').value),
           mapVersion: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1'
         };
         if (window.socket && window.socket.emit) window.socket.emit('user:settings:update', payload);
@@ -147,6 +153,7 @@
   const captureEnabledEl = document.getElementById('setting-capture-enabled');
   const captureVolEl = document.getElementById('setting-capture-volume');
   const collectionEnabledEl = document.getElementById('setting-collection-enabled');
+  const collectionVolEl = document.getElementById('setting-collection-volume');
   const mapVersionEl = document.getElementById('setting-map-version');
 
   if (musicEnabledEl) {
@@ -197,6 +204,12 @@
 
   if (collectionEnabledEl) {
     collectionEnabledEl.addEventListener('change', (e) => {
+      scheduleEmitSettings();
+    });
+  }
+
+  if (collectionVolEl) {
+    collectionVolEl.addEventListener('input', (e) => {
       scheduleEmitSettings();
     });
   }

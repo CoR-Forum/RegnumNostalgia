@@ -86,8 +86,8 @@ router.post('/', async (req, res) => {
 
       // Create default user settings
       await gameDb.query(
-        `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, map_version, updated_at)
-         VALUES (?, 1, 0.5, 1, 0.75, 1, 0.75, 1, 'v1', UNIX_TIMESTAMP())`,
+        `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, updated_at)
+         VALUES (?, 1, 0.5, 1, 0.75, 1, 0.75, 1, 1.0, 'v1', UNIX_TIMESTAMP())`,
         [userId]
       );
 
