@@ -1766,6 +1766,13 @@
             gameState.collectables.delete(data.spawnId);
           }
           gameState.collectingSpawnIds.delete(data.spawnId);
+          
+          // Toast notifications disabled
+          // if (data.userId === gameState.userId && data.items && data.items.length > 0) {
+          //   data.items.forEach(item => {
+          //     showNotification(`+${item.quantity} ${item.name}`, 'success');
+          //   });
+          // }
         }
       });
 
@@ -1779,7 +1786,8 @@
 
       socket.on('inventory:item-added', (data) => {
         if (data) {
-          showNotification(`+${data.quantity} ${data.name}`, 'success');
+          // Toast notifications disabled
+          // showNotification(`+${data.quantity} ${data.name}`, 'success');
           
           // Refresh inventory if window is open
           try {
@@ -1906,7 +1914,8 @@
         // Click handler to collect
         marker.on('click', () => {
           if (!socket || !socket.connected) {
-            showNotification('Not connected to server', 'error');
+            // Toast notifications disabled
+            // showNotification('Not connected to server', 'error');
             return;
           }
 
@@ -1945,50 +1954,8 @@
 
       // Helper function to show notifications
       function showNotification(message, type = 'info') {
-        const notifContainer = document.getElementById('notification-container') || (() => {
-          const container = document.createElement('div');
-          container.id = 'notification-container';
-          container.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            z-index: 10000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            pointer-events: none;
-          `;
-          document.body.appendChild(container);
-          return container;
-        })();
-
-        const notif = document.createElement('div');
-        const bgColor = type === 'success' ? '#4caf50' : type === 'error' ? '#f44336' : '#2196f3';
-        notif.style.cssText = `
-          background: ${bgColor};
-          color: white;
-          padding: 12px 20px;
-          border-radius: 4px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          font-family: Arial, sans-serif;
-          font-size: 14px;
-          max-width: 300px;
-          word-wrap: break-word;
-          opacity: 0;
-          transition: opacity 0.3s;
-          pointer-events: auto;
-        `;
-        notif.textContent = message;
-        notifContainer.appendChild(notif);
-
-        // Fade in
-        setTimeout(() => notif.style.opacity = '1', 10);
-
-        // Fade out and remove
-        setTimeout(() => {
-          notif.style.opacity = '0';
-          setTimeout(() => notif.remove(), 300);
-        }, 3000);
+        // Toast notifications disabled
+        return;
       }
 
       // Audio manager - handle music and sfx pushed by server

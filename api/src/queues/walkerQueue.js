@@ -301,6 +301,8 @@ walkerQueue.process('process-walkers', async (job) => {
                           inventoryId: item.inventoryId
                         });
                       }
+                    } else {
+                      logger.warn(`User socket not found for userId ${walker.user_id} - toast notification may not show`);
                     }
 
                     // Broadcast collection to all clients to remove marker
@@ -309,7 +311,9 @@ walkerQueue.process('process-walkers', async (job) => {
                       userId: walker.user_id,
                       items: itemsCollected.map(i => ({
                         name: i.name,
-                        quantity: i.quantity
+                        quantity: i.quantity,
+                        templateKey: i.template_key,
+                        iconName: i.icon_name
                       }))
                     });
 
