@@ -313,6 +313,22 @@ walkerQueue.process('process-walkers', async (job) => {
                       }))
                     });
 
+                    // Play collection sound for the collecting player
+                    if (userSocket) {
+                      const settings = userSocket.user && userSocket.user.settings;
+                      if (settings && settings.soundsEnabled) {
+                        const volume = typeof settings.soundVolume === 'number' 
+                          ? settings.soundVolume 
+                          : parseFloat(settings.soundVolume) || 1.0;
+                        userSocket.emit('audio:play', {
+                          type: 'sfx',
+                          file: 'notification.ogg',
+                          volume: volume,
+                          loop: false
+                        });
+                      }
+                    }
+
                     // Add log messages for collected items
                     for (const item of itemsCollected) {
                       const logMessage = item.quantity > 1 
