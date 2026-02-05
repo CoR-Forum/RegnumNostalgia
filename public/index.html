@@ -1891,13 +1891,11 @@
         // Tooltip for collectable (consistent with other map entries)
         try {
           const name = item.visualName || item.name || item.itemName || item.displayName || ('Item ' + (item.spawnId || ''));
-          const itemType = item.type || '';
           const qty = item.quantity ? String(item.quantity) : null;
           const desc = item.description || '';
           const rarity = item.rarity || '';
           const ttHtml = `
             <div class="tooltip-title">${escapeHtml(name)}</div>
-            ${itemType ? `<div class="tooltip-row"><strong>Type:</strong> ${escapeHtml(itemType)}</div>` : ''}
             ${qty ? `<div class="tooltip-row"><strong>Qty:</strong> ${escapeHtml(qty)}</div>` : ''}
             ${rarity ? `<div class="tooltip-row"><strong>Rarity:</strong> ${escapeHtml(rarity)}</div>` : ''}
             ${desc ? `<div class="tooltip-row" style="color:#cfcfcf">${escapeHtml(desc)}</div>` : ''}
