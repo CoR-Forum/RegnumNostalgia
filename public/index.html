@@ -1945,6 +1945,13 @@
                   }
                 }
               }
+            } else if (response && response.error) {
+              // Show error message to user
+              if (window.addLogMessage) {
+                window.addLogMessage(response.error, 'error');
+              } else {
+                console.error('Collection failed:', response.error);
+              }
             }
           });
         });
