@@ -919,8 +919,11 @@ function initializeSocketHandlers(io) {
           rewards: rewardItems
         });
 
-        // Emit inventory update
-        socket.emit('inventory:update', { userId: user.userId });
+        // Refresh inventory for this user
+        const userSocket = connectedUsers.get(user.userId);
+        if (userSocket) {
+          userSocket.emit('inventory:refresh');
+        }
 
         if (callback) {
           callback({ 

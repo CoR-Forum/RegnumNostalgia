@@ -1789,6 +1789,25 @@
         }
       });
 
+      socket.on('inventory:refresh', () => {
+        // Refresh inventory if window is open
+        try {
+          const inventoryWindow = document.getElementById('inventory-window');
+          if (inventoryWindow && inventoryWindow.style.display !== 'none') {
+            socket.emit('inventory:get', (invData) => {
+              if (invData && invData.success) {
+                const displayInventory = window.displayInventory;
+                if (typeof displayInventory === 'function') {
+                  displayInventory(invData.items);
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.debug('Failed to refresh inventory:', e);
+        }
+      });
+
       // Helper function to clear all collecting marks
       function clearAllCollectingMarks() {
         gameState.collectingSpawnIds.forEach(spawnId => {
@@ -2642,6 +2661,10 @@
 
       const container = document.getElementById('inventory-items');
       const footer = document.getElementById('inventory-footer');
+      
+      // Save scroll position before clearing
+      const scrollTop = container.scrollTop;
+      
       container.innerHTML = '';
 
       if (items.length === 0) {
@@ -2767,15 +2790,18 @@
                 const msg = (err && err.body && err.body.error) ? err.body.error : (err && err.message) ? err.message : 'Failed to equip item';
                 if (window.addLogMessage) window.addLogMessage(msg, 'error');
               }
+              // Only refresh windows after equipping (not after using items)
+              try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openWindow('character-window'); } catch(e){}
+              try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openWindow('inventory-window'); } catch(e){}
             }
-
-            try { if (document.getElementById('character-window') && document.getElementById('character-window').style.display !== 'none') await openWindow('character-window'); } catch(e){}
-            try { if (document.getElementById('inventory-window') && document.getElementById('inventory-window').style.display !== 'none') await openWindow('inventory-window'); } catch(e){}
           } catch (e) { console.error('inventory right-click failed', e); }
         });
 
         container.appendChild(itemDiv);
       });
+      
+      // Restore scroll position after rendering
+      container.scrollTop = scrollTop;
       
       // Update gold display
       document.getElementById('inventory-gold').textContent = `${totalGold.toLocaleString()} Gold`;
