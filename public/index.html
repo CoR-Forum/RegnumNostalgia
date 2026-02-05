@@ -3159,6 +3159,16 @@
             // Non-auth HTTP error (network/etc) — fall back to socket data if present
           }
 
+          // Check if realm is selected after getting server data
+          // If data has no realm or realm is null/empty, show realm selection
+          if (data && (!data.realm || data.realm === null || data.realm === '')) {
+            console.debug('No realm selected (from server), showing realm selection screen');
+            if (typeof window.showRealmSelection === 'function') {
+              window.showRealmSelection();
+              return;
+            }
+          }
+
           // Only reveal UI if we have a valid player state. If the realm
           // selection flow already populated `gameState.position`, use it as
           // a fallback to avoid returning to login on first-time realm select.
