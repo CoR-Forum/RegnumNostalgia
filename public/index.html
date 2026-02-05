@@ -494,6 +494,16 @@
       border-radius: 3px;
     }
 
+    /* Dark scrollbar - reusable class */
+    .dark-scrollbar {
+      scrollbar-width: thin; /* Firefox */
+      scrollbar-color: rgba(0,0,0,0.6) rgba(0,0,0,0.08);
+    }
+    .dark-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+    .dark-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.08); border-radius: 6px; }
+    .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); border-radius: 6px; border: 2px solid rgba(0,0,0,0); background-clip: padding-box; }
+    .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.75); }
+
     /* Inventory window sizing */
     #inventory-window{
       height: 600px;
@@ -503,17 +513,8 @@
       overflow-y: auto;
       flex: 1 1 auto;
       min-height: 0;
+      padding-right: 30px;
     }
-
-    /* Dark scrollbar for inventory */
-    #inventory-list {
-      scrollbar-width: thin; /* Firefox */
-      scrollbar-color: rgba(0,0,0,0.6) rgba(0,0,0,0.08);
-    }
-    #inventory-list::-webkit-scrollbar { width: 8px; height: 8px; }
-    #inventory-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.08); border-radius: 6px; }
-    #inventory-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); border-radius: 6px; border: 2px solid rgba(0,0,0,0); background-clip: padding-box; }
-    #inventory-list::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.75); }
 
     /* Equipment Slot Styles */
     .equipment-area{ padding: 8px; border: 2px solid #1a2538; border-radius: 3px; margin-bottom: 8px; background: transparent;}    
@@ -801,7 +802,7 @@
       </div>
     </div>
 
-    <div id="inventory-list" class="ui-window-body" style="padding: 20px 8px;">
+    <div id="inventory-list" class="ui-window-body dark-scrollbar" style="padding: 20px 8px;">
       <div id="inventory-loading" style="text-align: center; color: #e0e0e0; padding: 40px;">
         <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
         <div style="font-size: 11px;">Loading inventory...</div>
