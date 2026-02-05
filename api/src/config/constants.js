@@ -52,7 +52,7 @@ module.exports = {
   
   // Queue Intervals (milliseconds)
   QUEUE_INTERVALS: {
-    WALKER: 100,     // 2 seconds
+    WALKER: 200,     // 2 seconds
     HEALTH: 1000,     // 1 second
     TIME: 10000,      // 10 seconds
     TERRITORY: 15000,  // 15 seconds
