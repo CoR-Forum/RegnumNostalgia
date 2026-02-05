@@ -282,112 +282,65 @@
     // wire map mouseout
     try { mapRef.on('mouseout', () => { const indicator = document.getElementById('walk-indicator'); if (indicator) indicator.classList.remove('show'); }); } catch(e){}
 
-    // zoomend overview rendering - show regions on min zoom after user interaction
+    // Regions and paths should ONLY show when Region Manager is explicitly open
     try {
-      // Track if user has zoomed (to differentiate initial load from user zoom)
-      let userHasZoomed = false;
-      mapRef.on('zoomstart', () => { userHasZoomed = true; });
-      
       mapRef.on('zoomend', async () => {
         try {
-          const currentZoom = mapRef.getZoom();
-          const isMinZoom = typeof mapRef.getMinZoom === 'function' && currentZoom === mapRef.getMinZoom();
-
-          // If user has interacted by zooming, show an overview of regions at min zoom
-          // even if the user hasn't explicitly toggled regions on. If the user has
-          // toggled regions on, keep them visible at all zoom levels.
-          if (userHasZoomed) {
-            if (gameStateRef.showRegions) {
-              // User explicitly enabled regions: ensure they're rendered at any zoom.
-              if (!gameStateRef.regionsLayer) {
-                try {
-                  const regions = gameStateRef.regionsData || [];
-                  if (regions.length === 0) {
-                    console.warn('No regions data available yet');
-                    return;
+          // Regions: only render when explicitly enabled (Region Manager open)
+          if (gameStateRef.showRegions) {
+            if (!gameStateRef.regionsLayer) {
+              try {
+                const regions = gameStateRef.regionsData || [];
+                if (regions.length === 0) {
+                  console.warn('No regions data available yet');
+                  return;
+                }
+                const layers = [];
+                for (const r of regions) {
+                  const pos = r.coordinates || r.positions || [];
+                  const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
+                  if (!latlngs || latlngs.length === 0) continue;
+                  // Determine fill/stroke: cities are always light orange, otherwise use realm color
+                  let fill, stroke;
+                  if (r && String(r.type) === 'city') {
+                    fill = CITY_FILL;
+                    stroke = CITY_STROKE;
+                  } else {
+                    const realmColor = resolveRealmColor(r.owner);
+                    fill = realmColor;
+                    stroke = darkenHex(realmColor, -30);
                   }
-                  const layers = [];
-                  for (const r of regions) {
-                    const pos = r.coordinates || r.positions || [];
-                    const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
-                    if (!latlngs || latlngs.length === 0) continue;
-                    // Determine fill/stroke: cities are always light orange, otherwise use realm color
-                    let fill, stroke;
-                    if (r && String(r.type) === 'city') {
-                      fill = CITY_FILL;
-                      stroke = CITY_STROKE;
-                    } else {
-                      const realmColor = resolveRealmColor(r.owner);
-                      fill = realmColor;
-                      stroke = darkenHex(realmColor, -30);
-                    }
-                    const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
-                    layers.push(poly);
-                  }
-                  if (layers.length > 0) {
-                    gameStateRef.regionsLayer = L.layerGroup(layers).addTo(mapRef);
-                  }
-                } catch (err) { /* ignore */ }
-              }
-            } else {
-              // User hasn't enabled regions: only show them when at min zoom as an overview.
-              if (isMinZoom) {
-                if (!gameStateRef.regionsLayer) {
-                  try {
-                    const regions = gameStateRef.regionsData || [];
-                    if (regions.length === 0) {
-                      console.warn('No regions data available yet');
-                      return;
-                    }
-                    const layers = [];
-                    for (const r of regions) {
-                      const pos = r.coordinates || r.positions || [];
-                      const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
-                      if (!latlngs || latlngs.length === 0) continue;
-                      // Determine fill/stroke: cities are always light orange, otherwise use realm color
-                      let fill, stroke;
-                      if (r && String(r.type) === 'city') {
-                        fill = CITY_FILL;
-                        stroke = CITY_STROKE;
-                      } else {
-                        const realmColor = resolveRealmColor(r.owner);
-                        fill = realmColor;
-                        stroke = darkenHex(realmColor, -30);
-                      }
-                      const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
-                      layers.push(poly);
-                    }
-                    if (layers.length > 0) {
-                      gameStateRef.regionsLayer = L.layerGroup(layers).addTo(mapRef);
-                    }
-                  } catch (err) { /* ignore */ }
+                  const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
+                  layers.push(poly);
                 }
-              } else {
-                if (gameStateRef.regionsLayer) {
-                  try { mapRef.removeLayer(gameStateRef.regionsLayer); } catch (e) {}
-                  gameStateRef.regionsLayer = null;
+                if (layers.length > 0) {
+                  gameStateRef.regionsLayer = L.layerGroup(layers).addTo(mapRef);
                 }
-              }
-
-            // Paths overview: only render paths when the Region Editor is open.
-            // Paths must not appear on initial load or when zooming out unless
-            // the editor UI (`buildPathMode`) is active.
-            try {
-              if (gameStateRef.buildPathMode) {
-                // Editor open: render paths if not already rendered
-                if (!gameStateRef.pathsLayer && typeof window.loadAndRenderPaths === 'function') {
-                  try { await window.loadAndRenderPaths(); } catch (e) { /* ignore */ }
-                }
-              } else {
-                // Editor closed: ensure paths are removed and never auto-shown
-                if (gameStateRef.pathsLayer) {
-                  try { mapRef.removeLayer(gameStateRef.pathsLayer); } catch (e) {}
-                  gameStateRef.pathsLayer = null;
-                }
-              }
-            } catch (err) { /* ignore path overview errors */ }
+              } catch (err) { /* ignore */ }
+            }
+          } else {
+            // Region Manager closed: remove regions
+            if (gameStateRef.regionsLayer) {
+              try { mapRef.removeLayer(gameStateRef.regionsLayer); } catch (e) {}
+              gameStateRef.regionsLayer = null;
             }
           }
+
+          // Paths: only render when Region Editor is open
+          try {
+            if (gameStateRef.buildPathMode) {
+              // Editor open: render paths if not already rendered
+              if (!gameStateRef.pathsLayer && typeof window.loadAndRenderPaths === 'function') {
+                try { await window.loadAndRenderPaths(); } catch (e) { /* ignore */ }
+              }
+            } else {
+              // Editor closed: ensure paths are removed
+              if (gameStateRef.pathsLayer) {
+                try { mapRef.removeLayer(gameStateRef.pathsLayer); } catch (e) {}
+                gameStateRef.pathsLayer = null;
+              }
+            }
+          } catch (err) { /* ignore path overview errors */ }
         } catch (err) { console.debug('zoomend regions error', err); }
       });
     } catch(e){}
