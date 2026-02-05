@@ -1817,6 +1817,12 @@
         }
       }
 
+      // Simple HTML escaper for tooltip content
+      function escapeHtml(str){
+        if (str === null || typeof str === 'undefined') return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+      }
+
       // Helper function to create collectable marker
       function createCollectableMarker(item) {
         if (!item || !item.x || !item.y) return;
@@ -1851,6 +1857,23 @@
         });
 
         const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+
+        // Tooltip for collectable (consistent with other map entries)
+        try {
+          const name = item.visualName || item.name || item.itemName || item.displayName || ('Item ' + (item.spawnId || ''));
+          const itemType = item.type || '';
+          const qty = item.quantity ? String(item.quantity) : null;
+          const desc = item.description || '';
+          const rarity = item.rarity || '';
+          const ttHtml = `
+            <div class="tooltip-title">${escapeHtml(name)}</div>
+            ${itemType ? `<div class="tooltip-row"><strong>Type:</strong> ${escapeHtml(itemType)}</div>` : ''}
+            ${qty ? `<div class="tooltip-row"><strong>Qty:</strong> ${escapeHtml(qty)}</div>` : ''}
+            ${rarity ? `<div class="tooltip-row"><strong>Rarity:</strong> ${escapeHtml(rarity)}</div>` : ''}
+            ${desc ? `<div class="tooltip-row" style="color:#cfcfcf">${escapeHtml(desc)}</div>` : ''}
+          `;
+          marker.bindTooltip(ttHtml, { className: 'info-tooltip', direction: 'top', offset: [0, -20] });
+        } catch (e) { /* ignore tooltip failures */ }
 
         // Click handler to collect
         marker.on('click', () => {
@@ -3291,6 +3314,15 @@
       // store original player color for later restore when walking finishes
 
       gameState.playerMarker.bindPopup(`<b>${gameState.username}</b><br>Realm: ${gameState.realm}`);
+      try {
+        const name = escapeHtml(gameState.username || 'You');
+        const tt = `
+          <div class="tooltip-title">${name}</div>
+          <div class="tooltip-row"><strong>Realm:</strong> ${escapeHtml(gameState.realm)}</div>
+          <div class="tooltip-row"><strong>HP:</strong> ${escapeHtml(gameState.health)}/${escapeHtml(gameState.maxHealth)}</div>
+        `;
+        gameState.playerMarker.bindTooltip(tt, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
+      } catch (e) { /* ignore tooltip binding errors */ }
       // Ensure player marker is rendered above other markers (spawn/territory icons)
       try {
         if (typeof gameState.playerMarker.setZIndexOffset === 'function') gameState.playerMarker.setZIndexOffset(1000);
@@ -3569,8 +3601,16 @@
           });
           
           const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
-          marker.bindPopup(`<b>${player.username}</b><br>Realm: ${player.realm}<br>Health: ${player.health}/${player.maxHealth}`);
-          marker.bindTooltip(`${player.username}`, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
+          marker.bindPopup(`<b>${escapeHtml(player.username)}</b><br>Realm: ${escapeHtml(player.realm)}<br>Health: ${escapeHtml(player.health)}/${escapeHtml(player.maxHealth)}`);
+          const playerName = escapeHtml(player.username || 'Unknown');
+          const levelHtml = (typeof player.level !== 'undefined') ? `<div class="tooltip-row"><strong>Level:</strong> ${escapeHtml(player.level)}</div>` : '';
+          const ttHtml = `
+            <div class="tooltip-title">${playerName}</div>
+            <div class="tooltip-row"><strong>Realm:</strong> ${escapeHtml(player.realm)}</div>
+            <div class="tooltip-row"><strong>HP:</strong> ${escapeHtml(player.health)}/${escapeHtml(player.maxHealth)}</div>
+            ${levelHtml}
+          `;
+          marker.bindTooltip(ttHtml, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
           gameState.otherPlayers.set(pid, marker);
         } else {
           // Create new marker with health bar
@@ -3589,8 +3629,16 @@
           });
 
           const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
-          marker.bindPopup(`<b>${player.username}</b><br>Realm: ${player.realm}<br>Health: ${player.health}/${player.maxHealth}`);
-          marker.bindTooltip(`${player.username}`, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
+          marker.bindPopup(`<b>${escapeHtml(player.username)}</b><br>Realm: ${escapeHtml(player.realm)}<br>Health: ${escapeHtml(player.health)}/${escapeHtml(player.maxHealth)}`);
+          const playerNameNew = escapeHtml(player.username || 'Unknown');
+          const levelHtmlNew = (typeof player.level !== 'undefined') ? `<div class="tooltip-row"><strong>Level:</strong> ${escapeHtml(player.level)}</div>` : '';
+          const ttHtmlNew = `
+            <div class="tooltip-title">${playerNameNew}</div>
+            <div class="tooltip-row"><strong>Realm:</strong> ${escapeHtml(player.realm)}</div>
+            <div class="tooltip-row"><strong>HP:</strong> ${escapeHtml(player.health)}/${escapeHtml(player.maxHealth)}</div>
+            ${levelHtmlNew}
+          `;
+          marker.bindTooltip(ttHtmlNew, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
           gameState.otherPlayers.set(pid, marker);
         }
       });

@@ -7,7 +7,8 @@ const {
   COLLECTABLE_CONFIG,
   LOOT_TABLES,
   FIXED_SPAWN_POINTS,
-  REGION_SPAWN_RULES
+  REGION_SPAWN_RULES,
+  COLLECTABLE_VISUAL_NAMES
 } = require('../config/constants');
 
 const regionsData = require('../../gameData/regions.json');
@@ -197,6 +198,7 @@ async function spawnFixedPoint(spawnPoint, now) {
         y: spawnPoint.y,
         realm: spawnPoint.realm,
         visualIcon: spawnPoint.visual,
+        visualName: COLLECTABLE_VISUAL_NAMES[spawnPoint.visual] || 'Container',
         type: spawnPoint.type
       });
     }
@@ -306,6 +308,7 @@ async function spawnRegionItems(rule, now) {
             y: point.y,
             realm: rule.realm,
             visualIcon: rule.visual,
+            visualName: COLLECTABLE_VISUAL_NAMES[rule.visual] || 'Container',
             type: rule.type
           });
         }
@@ -376,6 +379,7 @@ async function spawnRegionItems(rule, now) {
           y: point.y,
           realm: rule.realm,
           visualIcon: rule.visual,
+          visualName: COLLECTABLE_VISUAL_NAMES[rule.visual] || 'Container',
           type: rule.type
         });
       }

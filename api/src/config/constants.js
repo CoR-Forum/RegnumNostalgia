@@ -87,6 +87,15 @@ module.exports = {
     ORE: 'collectable-ore.png'
   },
 
+  // Collectable Visual Names (for tooltips)
+  COLLECTABLE_VISUAL_NAMES: {
+    'collectable-rock.png': 'Rock',
+    'collectable-gold.png': 'Gold Pile',
+    'collectable-chest.png': 'Treasure Chest',
+    'collectable-herb.png': 'Herb',
+    'collectable-ore.png': 'Ore Vein'
+  },
+
   // Loot Tables
   // Modes: 'weighted' (pick one item), 'multi-drop' (pick N times), 'independent' (each item rolls separately)
   LOOT_TABLES: {

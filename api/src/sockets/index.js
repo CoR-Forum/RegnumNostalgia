@@ -443,6 +443,7 @@ function initializeSocketHandlers(io) {
      */
     socket.on('spawned-items:get', async (callback) => {
       try {
+        const { COLLECTABLE_VISUAL_NAMES } = require('../config/constants');
         const [spawnedItems] = await gameDb.query(
           `SELECT spawn_id, x, y, visual_icon, realm, type
            FROM spawned_items
@@ -455,6 +456,7 @@ function initializeSocketHandlers(io) {
           x: si.x,
           y: si.y,
           visualIcon: si.visual_icon,
+          visualName: COLLECTABLE_VISUAL_NAMES[si.visual_icon] || 'Container',
           realm: si.realm,
           type: si.type
         }));
@@ -1305,6 +1307,7 @@ async function sendInitialGameState(socket, user) {
     socket.emit('superbosses:list', { superbosses: superbossesPayload });
 
     // Get spawned items for user's realm
+    const { COLLECTABLE_VISUAL_NAMES } = require('../config/constants');
     const [spawnedItems] = await gameDb.query(
       `SELECT spawn_id, x, y, visual_icon, realm, type
        FROM spawned_items
@@ -1317,6 +1320,7 @@ async function sendInitialGameState(socket, user) {
       x: si.x,
       y: si.y,
       visualIcon: si.visual_icon,
+      visualName: COLLECTABLE_VISUAL_NAMES[si.visual_icon] || 'Container',
       realm: si.realm,
       type: si.type
     }));
