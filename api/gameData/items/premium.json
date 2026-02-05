@@ -9,7 +9,7 @@
     "stackable": 1,
     "level": 0,
     "equipment_slot": null,
-    "icon_name": "gem-lucky-box-1.png"
+    "icon_name": "gem-magic/gem-lucky-box-1.png"
   },
   {
     "template_key": "major_magic_gem_lucky_box",
@@ -21,7 +21,7 @@
     "stackable": 1,
     "level": 0,
     "equipment_slot": null,
-    "icon_name": "gem-lucky-box-2.png"
+    "icon_name": "gem-magic/gem-lucky-box-2.png"
   },
   {
     "template_key": "great_magic_gem_lucky_box",
@@ -33,6 +33,6 @@
     "stackable": 1,
     "level": 0,
     "equipment_slot": null,
-    "icon_name": "gem-lucky-box-3.png"
+    "icon_name": "gem-magic/gem-lucky-box-3.png"
   }
 ]
