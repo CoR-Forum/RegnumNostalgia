@@ -23,8 +23,8 @@ router.get('/', authenticateJWT, async (req, res) => {
     }
     // return defaults
     return res.json({ success: true, settings: {
-      musicEnabled: 1,
-      musicVolume: 0.6,
+      musicEnabled: 0,
+      musicVolume: 0.20,
       soundsEnabled: 1,
       soundVolume: 1.0,
       captureSoundsEnabled: 1,

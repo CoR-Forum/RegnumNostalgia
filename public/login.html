@@ -164,13 +164,31 @@
             body: formData
           });
 
-          // Realm is now stored in database, no need to update token
-          gameState.realm = data.realm;
-          gameState.position = data.position;
+          if (!data || !data.sessionToken) {
+            throw new Error('Invalid response from server');
+          }
 
+          // Update session token and game state
+          gameState.sessionToken = data.sessionToken;
+          gameState.realm = data.realm;
+          // Map spawnX/spawnY to position object
+          gameState.position = {
+            x: data.spawnX,
+            y: data.spawnY
+          };
+
+          // Store token
+          try { 
+            localStorage.setItem('sessionToken', data.sessionToken); 
+          } catch (e) {
+            console.error('[Realm] Failed to store token:', e);
+          }
+
+          // Initialize game with new realm
           await initGame();
         } catch (error) {
-          errorEl.textContent = error.message;
+          console.error('[Realm] Selection failed:', error);
+          errorEl.textContent = error.message || 'Failed to select realm';
           errorEl.classList.remove('hidden');
         }
       });

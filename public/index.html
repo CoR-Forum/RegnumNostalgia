@@ -3370,12 +3370,28 @@
         } catch (e) { console.debug('initGame: error while evaluating auth failure', e); }
 
         try {
+          // Hide loading spinner and show login form
+          const loginForm = document.getElementById('login-form');
+          const autoLoginLoading = document.getElementById('auto-login-loading');
+          if (loginForm) loginForm.style.display = 'block';
+          if (autoLoginLoading) autoLoginLoading.classList.add('hidden');
+          
           // Hide authenticated UI and show login modal
           document.body.classList.remove('authenticated');
-          const overlay = document.getElementById('modal-overlay'); if (overlay) overlay.classList.remove('hidden');
+          const overlay = document.getElementById('modal-overlay');
+          if (overlay) overlay.classList.remove('hidden');
+          
           // Ensure login step is active
-          try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
-        } catch (e) {}
+          try { 
+            document.getElementById('step-login').classList.add('active'); 
+            document.getElementById('step-realm').classList.remove('active'); 
+          } catch (e) {}
+        } catch (e) {
+          console.error('[InitGame] Error resetting UI:', e);
+        }
+        
+        // Re-throw to propagate to caller
+        throw error;
       }
     }
 
@@ -4039,8 +4055,8 @@
           initGame().then(() => {
             try { if (window.__autoLoginFallback) { clearTimeout(window.__autoLoginFallback); window.__autoLoginFallback = null; } } catch (e) {}
           }).catch((err) => {
-            // Auto-login failed. Do not forcibly remove the stored session token here;
-            // `initGame` already clears it if the server reported an auth failure.
+            console.debug('[Auto-login] Failed:', err);
+            // Auto-login failed. `initGame` already clears token if auth failure.
             try {
               // Hide loading and show login form
               const loginForm = document.getElementById('login-form');
@@ -4053,10 +4069,15 @@
               if (overlay) { 
                 overlay.classList.remove('hidden');
               }
-              try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
-            } catch (e) {}
+              try { 
+                document.getElementById('step-login').classList.add('active'); 
+                document.getElementById('step-realm').classList.remove('active'); 
+              } catch (e) {}
+            } catch (e) {
+              console.error('[Auto-login] Error showing login form:', e);
+            }
           });
-        }, 1000);
+        }, 500);
       } else {
         // Ensure modal is visible and login screen is active
         try {
