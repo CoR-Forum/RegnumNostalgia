@@ -26,6 +26,7 @@
           <button id="tab-regions" class="editor-tab active" style="flex:1;padding:6px;background:#333;color:#fff;border:none;cursor:pointer;font-size:11px;">Regions</button>
           <button id="tab-paths" class="editor-tab" style="flex:1;padding:6px;background:#222;color:#aaa;border:none;cursor:pointer;font-size:11px;">Paths</button>
           <button id="tab-walls" class="editor-tab" style="flex:1;padding:6px;background:#222;color:#aaa;border:none;cursor:pointer;font-size:11px;">Walls</button>
+          <button id="tab-water" class="editor-tab" style="flex:1;padding:6px;background:#222;color:#aaa;border:none;cursor:pointer;font-size:11px;">Water</button>
         </div>
         
         <!-- List containers -->
@@ -48,6 +49,13 @@
             <button id="btn-new-wall" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Wall</button>
           </div>
           <div id="walls-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
+        </div>
+        
+        <div id="water-list-container" class="list-container" style="display:none;">
+          <div style="margin-bottom:8px;">
+            <button id="btn-new-water" style="width:100%;padding:6px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:11px;">+ New Water</button>
+          </div>
+          <div id="water-list" style="max-height:200px;overflow-y:auto;background:#111;border:1px solid #222;padding:4px;"></div>
         </div>
       </div>
       
@@ -99,6 +107,16 @@
                 <input id="edit-loop" type="checkbox" style="transform:scale(1.1)" />
                 <span>Loop</span>
               </label>
+            </div>
+          </div>
+          <div id="water-fields" style="display:none;">
+            <div style="margin-bottom:8px;">
+              <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Opacity (0.0-1.0):</label>
+              <input id="edit-water-opacity" type="number" step="0.1" min="0" max="1" value="0.4" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Color:</label>
+              <input id="edit-water-color" type="color" value="#3b82f6" style="width:100%;padding:4px;background:#222;border:1px solid #333;height:36px;" />
             </div>
           </div>
           <div style="display:flex;gap:8px;">
@@ -480,12 +498,13 @@
     regions: [],
     paths: [],
     walls: [],
+    water: [],
     initialized: false
   };
 
   // Tab switching
   function initEditorTabs() {
-    const tabs = ['regions', 'paths', 'walls'];
+    const tabs = ['regions', 'paths', 'walls', 'water'];
     tabs.forEach(tab => {
       const btn = document.getElementById(`tab-${tab}`);
       if (!btn) return;
@@ -518,17 +537,20 @@
     await Promise.all([
       loadRegionsList(),
       loadPathsList(),
-      loadWallsList()
+      loadWallsList(),
+      loadWaterList()
     ]);
 
     // Wire new buttons
     const btnNewRegion = document.getElementById('btn-new-region');
     const btnNewPath = document.getElementById('btn-new-path');
     const btnNewWall = document.getElementById('btn-new-wall');
+    const btnNewWater = document.getElementById('btn-new-water');
 
     if (btnNewRegion) btnNewRegion.addEventListener('click', () => createNewItem('region'));
     if (btnNewPath) btnNewPath.addEventListener('click', () => createNewItem('path'));
     if (btnNewWall) btnNewWall.addEventListener('click', () => createNewItem('wall'));
+    if (btnNewWater) btnNewWater.addEventListener('click', () => createNewItem('water'));
   }
 
   async function loadRegionsList() {
@@ -655,6 +677,47 @@
     });
   }
 
+  async function loadWaterList() {
+    try {
+      const socket = window.getSocket && window.getSocket();
+      if (!socket || !socket.connected) {
+        console.error('WebSocket not connected');
+        return;
+      }
+      
+      socket.emit('editor:water:get', (response) => {
+        if (response.success) {
+          editorState.water = response.data;
+          renderWaterList();
+        } else {
+          console.error('Failed to load water:', response.error);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load water:', error);
+    }
+  }
+
+  function renderWaterList() {
+    const container = document.getElementById('water-list');
+    if (!container) return;
+    
+    container.innerHTML = editorState.water.map(water => `
+      <div class="list-item" data-id="${water.id}" style="padding:4px 6px;margin:2px 0;background:#222;border:1px solid #333;cursor:pointer;color:#e0e0e0;font-size:11px;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#222'">
+        <strong>${water.name}</strong><br>
+        <small style="color:#999;">ID: ${water.id} | Points: ${(water.positions || []).length} | Opacity: ${water.opacity || 0.4}</small>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.list-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const id = item.getAttribute('data-id');
+        const water = editorState.water.find(w => w.id === id);
+        if (water) editItem('water', water);
+      });
+    });
+  }
+
   function createNewItem(type) {
     const newItem = {
       id: '',
@@ -677,6 +740,16 @@
       } catch (e) { /* ignore if DOM not ready */ }
     } else if (type === 'path') {
       newItem.loop = false;
+    } else if (type === 'water') {
+      newItem.opacity = 0.4;
+      newItem.color = '#3b82f6';
+      // Water is rendered as area/polygon
+      try {
+        gameState.buildMode = 'area';
+        const modeSelect = document.getElementById('build-path-mode');
+        if (modeSelect) modeSelect.value = 'area';
+        updateBuildPathPolyline();
+      } catch (e) { /* ignore if DOM not ready */ }
     }
 
     editItem(type, newItem, true);
@@ -927,6 +1000,7 @@
     const form = document.getElementById('editor-form');
     const regionFields = document.getElementById('region-fields');
     const pathFields = document.getElementById('path-fields');
+    const waterFields = document.getElementById('water-fields');
     const ta = document.getElementById('build-path-textarea');
 
     if (!form) return;
@@ -946,6 +1020,7 @@
     // Show/hide type-specific fields
     if (regionFields) regionFields.style.display = type === 'region' ? 'block' : 'none';
     if (pathFields) pathFields.style.display = type === 'path' ? 'block' : 'none';
+    if (waterFields) waterFields.style.display = type === 'water' ? 'block' : 'none';
 
     // Populate type-specific fields
     if (type === 'region') {
@@ -981,6 +1056,29 @@
         // Create draggable markers for editing
         if (item.coordinates.length > 0) {
           createEditMarkers(item.coordinates);
+        }
+      }
+    } else if (type === 'water') {
+      // Water-specific fields
+      const opacityInput = document.getElementById('edit-water-opacity');
+      const colorInput = document.getElementById('edit-water-color');
+      if (opacityInput) opacityInput.value = item.opacity || 0.4;
+      if (colorInput) colorInput.value = item.color || '#3b82f6';
+
+      // Show positions in textarea
+      if (ta && item.positions) {
+        ta.value = formatPointsToTextarea(item.positions);
+        gameState.buildPathPoints = [...item.positions];
+        // Ensure build mode is area when editing water so it renders as a polygon
+        try {
+          gameState.buildMode = 'area';
+          const modeSelect = document.getElementById('build-path-mode');
+          if (modeSelect) modeSelect.value = 'area';
+        } catch (e) {}
+        updateBuildPathPolyline();
+        // Create draggable markers for editing
+        if (item.positions.length > 0) {
+          createEditMarkers(item.positions);
         }
       }
     } else {
@@ -1052,6 +1150,10 @@
       item.walkable = document.getElementById('edit-walkable')?.checked !== false;
       item.music = document.getElementById('edit-music')?.value || '';
       item.coordinates = positions;
+    } else if (editingType === 'water') {
+      item.opacity = parseFloat(document.getElementById('edit-water-opacity')?.value) || 0.4;
+      item.color = document.getElementById('edit-water-color')?.value || '#3b82f6';
+      item.positions = positions;
     } else {
       item.positions = positions;
       if (editingType === 'path') {
@@ -1073,6 +1175,7 @@
           if (editingType === 'region') loadRegionsList();
           else if (editingType === 'path') loadPathsList();
           else if (editingType === 'wall') loadWallsList();
+          else if (editingType === 'water') loadWaterList();
 
           // Reload rendered layers if they're visible
           if (gameState.showRegions && typeof loadAndRenderRegions === 'function') loadAndRenderRegions();
@@ -1131,6 +1234,7 @@
           if (editingType === 'region') loadRegionsList();
           else if (editingType === 'path') loadPathsList();
           else if (editingType === 'wall') loadWallsList();
+          else if (editingType === 'water') loadWaterList();
 
           // Reload rendered layers if they're visible
           if (gameState.showRegions && typeof loadAndRenderRegions === 'function') loadAndRenderRegions();

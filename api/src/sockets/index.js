@@ -1108,6 +1108,7 @@ function initializeSocketHandlers(io) {
     const REGIONS_FILE = path.join(__dirname, '../../gameData/regions.json');
     const PATHS_FILE = path.join(__dirname, '../../gameData/paths.json');
     const WALLS_FILE = path.join(__dirname, '../../gameData/walls.json');
+    const WATER_FILE = path.join(__dirname, '../../gameData/water.json');
 
     async function readJsonFile(filePath) {
       const data = await fs.readFile(filePath, 'utf8');
@@ -1148,6 +1149,17 @@ function initializeSocketHandlers(io) {
       } catch (error) {
         logger.error('Failed to get walls', { error: error.message, userId: user.userId });
         callback({ success: false, error: 'Failed to load walls' });
+      }
+    });
+
+    // Get all water
+    socket.on('editor:water:get', async (callback) => {
+      try {
+        const water = await readJsonFile(WATER_FILE);
+        callback({ success: true, data: water });
+      } catch (error) {
+        logger.error('Failed to get water', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to load water' });
       }
     });
 
@@ -1264,6 +1276,46 @@ function initializeSocketHandlers(io) {
       }
     });
 
+    // Create or update water
+    socket.on('editor:water:save', async (data, callback) => {
+      try {
+        const water = await readJsonFile(WATER_FILE);
+        const { item, isNew } = data;
+
+        if (!item.id || !item.name) {
+          return callback({ success: false, error: 'Water must have id and name' });
+        }
+
+        if (!item.positions) item.positions = [];
+        if (typeof item.opacity === 'undefined') item.opacity = 0.4;
+        if (!item.color) item.color = '#3b82f6';
+
+        if (isNew) {
+          if (water.find(w => w.id === item.id)) {
+            return callback({ success: false, error: 'Water with this id already exists' });
+          }
+          water.push(item);
+        } else {
+          const index = water.findIndex(w => w.id === item.id);
+          if (index === -1) {
+            return callback({ success: false, error: 'Water not found' });
+          }
+          water[index] = item;
+        }
+
+        await writeJsonFile(WATER_FILE, water);
+        logger.info('Water saved', { id: item.id, userId: user.userId });
+        
+        // Broadcast to all clients that water was updated
+        io.emit('editor:water:updated');
+        
+        callback({ success: true, data: item });
+      } catch (error) {
+        logger.error('Failed to save water', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to save water' });
+      }
+    });
+
     // Delete region
     socket.on('editor:region:delete', async (data, callback) => {
       try {
@@ -1336,6 +1388,31 @@ function initializeSocketHandlers(io) {
       } catch (error) {
         logger.error('Failed to delete wall', { error: error.message, userId: user.userId });
         callback({ success: false, error: 'Failed to delete wall' });
+      }
+    });
+
+    // Delete water
+    socket.on('editor:water:delete', async (data, callback) => {
+      try {
+        const water = await readJsonFile(WATER_FILE);
+        const { id } = data;
+
+        const index = water.findIndex(w => w.id === id);
+        if (index === -1) {
+          return callback({ success: false, error: 'Water not found' });
+        }
+
+        water.splice(index, 1);
+        await writeJsonFile(WATER_FILE, water);
+        logger.info('Water deleted', { id, userId: user.userId });
+        
+        // Broadcast to all clients that water was updated
+        io.emit('editor:water:updated');
+        
+        callback({ success: true });
+      } catch (error) {
+        logger.error('Failed to delete water', { error: error.message, userId: user.userId });
+        callback({ success: false, error: 'Failed to delete water' });
       }
     });
 

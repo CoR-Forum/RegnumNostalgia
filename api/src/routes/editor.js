@@ -7,6 +7,7 @@ const logger = require('../config/logger');
 const REGIONS_FILE = path.join(__dirname, '../../gameData/regions.json');
 const PATHS_FILE = path.join(__dirname, '../../gameData/paths.json');
 const WALLS_FILE = path.join(__dirname, '../../gameData/walls.json');
+const WATER_FILE = path.join(__dirname, '../../gameData/water.json');
 
 // Helper function to read JSON file
 async function readJsonFile(filePath) {
@@ -323,6 +324,113 @@ router.delete('/walls/:id', async (req, res) => {
     res.json({ message: 'Wall deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete wall' });
+  }
+});
+
+// ==================== WATER ====================
+
+// GET all water
+router.get('/water', async (req, res) => {
+  try {
+    const water = await readJsonFile(WATER_FILE);
+    res.json(water);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load water' });
+  }
+});
+
+// GET single water by id
+router.get('/water/:id', async (req, res) => {
+  try {
+    const water = await readJsonFile(WATER_FILE);
+    const item = water.find(w => w.id === req.params.id);
+    if (!item) {
+      return res.status(404).json({ error: 'Water not found' });
+    }
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load water' });
+  }
+});
+
+// POST create new water
+router.post('/water', async (req, res) => {
+  try {
+    const water = await readJsonFile(WATER_FILE);
+    const newWater = req.body;
+    
+    // Validate required fields
+    if (!newWater.id || !newWater.name) {
+      return res.status(400).json({ error: 'Water must have id and name' });
+    }
+    
+    // Check for duplicate id
+    if (water.find(w => w.id === newWater.id)) {
+      return res.status(400).json({ error: 'Water with this id already exists' });
+    }
+    
+    // Ensure positions array exists
+    if (!newWater.positions) {
+      newWater.positions = [];
+    }
+    
+    // Ensure water-specific properties exist
+    if (typeof newWater.opacity === 'undefined') {
+      newWater.opacity = 0.4;
+    }
+    if (!newWater.color) {
+      newWater.color = '#3b82f6';
+    }
+    
+    water.push(newWater);
+    await writeJsonFile(WATER_FILE, water);
+    
+    logger.info(`Water created: ${newWater.id}`);
+    res.status(201).json(newWater);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create water' });
+  }
+});
+
+// PUT update existing water
+router.put('/water/:id', async (req, res) => {
+  try {
+    const water = await readJsonFile(WATER_FILE);
+    const index = water.findIndex(w => w.id === req.params.id);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Water not found' });
+    }
+    
+    const updatedWater = { ...water[index], ...req.body, id: req.params.id };
+    water[index] = updatedWater;
+    
+    await writeJsonFile(WATER_FILE, water);
+    
+    logger.info(`Water updated: ${req.params.id}`);
+    res.json(updatedWater);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update water' });
+  }
+});
+
+// DELETE water
+router.delete('/water/:id', async (req, res) => {
+  try {
+    const water = await readJsonFile(WATER_FILE);
+    const index = water.findIndex(w => w.id === req.params.id);
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Water not found' });
+    }
+    
+    water.splice(index, 1);
+    await writeJsonFile(WATER_FILE, water);
+    
+    logger.info(`Water deleted: ${req.params.id}`);
+    res.json({ message: 'Water deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete water' });
   }
 });
 
