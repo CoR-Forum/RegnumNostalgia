@@ -25,6 +25,8 @@ async function importItems() {
       'currency.json',
       'misc.json',
       'alasthor.json',
+      'tenax.json',
+      'vesper.json',
       'magicgems.json',
       'premium.json'
     ];
@@ -45,30 +47,32 @@ async function importItems() {
       for (const item of items) {
         try {
           await gameDb.query(
-            `INSERT INTO items (template_key, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE
-               name = VALUES(name),
-               type = VALUES(type),
-               description = VALUES(description),
-               stats = VALUES(stats),
-               rarity = VALUES(rarity),
-               stackable = VALUES(stackable),
-               level = VALUES(level),
-               equipment_slot = VALUES(equipment_slot),
-               icon_name = VALUES(icon_name)`,
-            [
-              item.template_key,
-              item.name,
-              item.type,
-              item.description || null,
-              item.stats ? JSON.stringify(item.stats) : null,
-              item.rarity || 'common',
-              item.stackable ? 1 : 0,
-              item.level || 1,
-              item.equipment_slot || null,
-              item.icon_name || null
-            ]
+            `INSERT INTO items (template_key, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name, weight)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON DUPLICATE KEY UPDATE
+                 name = VALUES(name),
+                 type = VALUES(type),
+                 description = VALUES(description),
+                 stats = VALUES(stats),
+                 rarity = VALUES(rarity),
+                 stackable = VALUES(stackable),
+                 level = VALUES(level),
+                 equipment_slot = VALUES(equipment_slot),
+                 icon_name = VALUES(icon_name),
+                 weight = VALUES(weight)`,
+              [
+                item.template_key,
+                item.name,
+                item.type,
+                item.description || null,
+                item.stats ? JSON.stringify(item.stats) : null,
+                item.rarity || 'common',
+                item.stackable ? 1 : 0,
+                item.level || 1,
+                item.equipment_slot || null,
+                item.icon_name || null,
+                typeof item.weight !== 'undefined' ? item.weight : null
+              ]
           );
           totalImported++;
         } catch (err) {

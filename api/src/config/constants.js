@@ -44,7 +44,10 @@ module.exports = {
     { template_key: 'minor_aquamarine', quantity: 1 },
     { template_key: 'minor_ruby', quantity: 1 },
     { template_key: 'minor_nephrite', quantity: 1 },
-    { template_key: 'great_magic_gem_lucky_box', quantity: 1000 }
+    { template_key: 'great_magic_gem_lucky_box', quantity: 1000 },
+    { template_key: 'vesper_amulet', quantity: 1 },
+    { template_key: 'tenax_amulet', quantity: 1 },
+    { template_key: 'alasthor_amulet', quantity: 1 }
   ],
   
   // Online Status

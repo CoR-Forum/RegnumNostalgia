@@ -12,7 +12,7 @@ router.get('/', optionalAuth, async (req, res) => {
   try {
     const [items] = await gameDb.query(
       `SELECT item_id, template_key, name, type, description, stats, 
-              rarity, stackable, level, equipment_slot, icon_name
+              rarity, stackable, level, equipment_slot, icon_name, weight
        FROM items
        ORDER BY type, level, name`
     );
@@ -29,7 +29,8 @@ router.get('/', optionalAuth, async (req, res) => {
       stackable: !!item.stackable,
       level: item.level,
       equipmentSlot: item.equipment_slot,
-      iconName: item.icon_name
+      iconName: item.icon_name,
+      weight: item.weight
     }));
 
     res.json({ items: parsedItems });
