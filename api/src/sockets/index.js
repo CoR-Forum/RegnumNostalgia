@@ -715,6 +715,20 @@ function initializeSocketHandlers(io) {
           });
         }
 
+        // Play equip sound
+        const settings = socket.user && socket.user.settings;
+        if (settings && settings.soundsEnabled) {
+          const volume = typeof settings.soundVolume === 'number' 
+            ? settings.soundVolume 
+            : parseFloat(settings.soundVolume) || 1.0;
+          socket.emit('audio:play', {
+            type: 'sfx',
+            file: 'equip-armor.ogg',
+            volume: volume,
+            loop: false
+          });
+        }
+
         // Emit updated player stats to the player who equipped the item
         try {
           const updatedState = await buildPlayerState(user.userId);
