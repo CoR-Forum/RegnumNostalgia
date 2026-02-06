@@ -1097,13 +1097,42 @@ function initializeSocketHandlers(io) {
           createdAt: l.created_at
         }));
 
+        // Also include recent territory capture events (do NOT persist these to player_logs)
+        // Fetch the most recent 50 captures and merge them with player logs for display.
+        let mergedLogs = logEntries;
+        try {
+          const [captures] = await gameDb.query(
+            `SELECT tc.capture_id, tc.territory_id, tc.previous_realm, tc.new_realm, tc.captured_at, t.name as territory_name
+             FROM territory_captures tc
+             LEFT JOIN territories t ON tc.territory_id = t.territory_id
+             ORDER BY tc.captured_at DESC
+             LIMIT 50`
+          );
+
+          const capturesChron = captures.reverse();
+
+          const captureEntries = capturesChron.map(c => ({
+            logId: null,
+            userId: null,
+            message: `${c.territory_name || 'Territory'} captured by ${c.new_realm}${c.previous_realm ? ' from ' + c.previous_realm : ''}`,
+            logType: 'capture',
+            createdAt: c.captured_at
+          }));
+
+          // Merge and sort chronologically
+          mergedLogs = logEntries.concat(captureEntries).sort((a, b) => a.createdAt - b.createdAt);
+        } catch (e) {
+          logger.error('Failed to fetch territory captures for logs', { error: e && e.message ? e.message : String(e), userId: user.userId });
+        }
+
         if (callback) {
-          callback({ success: true, logs: logEntries });
+          callback({ success: true, logs: mergedLogs });
         }
 
         logger.info('Player logs retrieved', { 
           userId: user.userId,
-          logCount: logs.length
+          logCount: logs.length,
+          captureCount: mergedLogs.length - logEntries.length
         });
 
       } catch (error) {
