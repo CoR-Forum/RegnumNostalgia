@@ -3599,12 +3599,18 @@
     // loadAndRenderPaths moved into public/build-path.js
 
     function enableClickToMove() {
-      // Use right-click (contextmenu) to start walking; Shift+right-click opens context menu
-      map.on('contextmenu', async (e) => {
-        // Prevent the browser default context menu in all cases
-        if (e.originalEvent && typeof e.originalEvent.preventDefault === 'function') e.originalEvent.preventDefault();
+      // Use left-click to start walking; Shift+left-click opens context menu
+      map.on('click', async (e) => {
+        // If build-path mode is active, let the builder handle the click
+        if (gameState.buildPathMode && window.buildPath && typeof window.buildPath.onMapClick === 'function') {
+          try { window.buildPath.onMapClick(e); } catch (err) { console.error(err); }
+          return;
+        }
 
-        // If user holds Shift while right-clicking, show the context menu
+        // Hide any existing context menu
+        hideMapContextMenu();
+
+        // If user holds Shift while left-clicking, show the context menu
         const shiftPressed = !!(e.originalEvent && e.originalEvent.shiftKey);
         if (shiftPressed) {
           try {
@@ -3620,19 +3626,22 @@
           if (!allowed) { try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch(e){ alert('Cannot walk to that region.'); } return; }
           await performWalkAtLatLng(e.latlng);
         } catch (err) {
-          console.error('Right-click walk failed', err);
+          console.error('Click walk failed', err);
           try { if (window.addLogMessage) window.addLogMessage('Failed to start walking: ' + (err && err.message ? err.message : 'Unknown error'), 'error'); } catch(e){}
         }
       });
 
       // Hide menu when map viewport changes
       map.on('movestart zoomstart', () => hideMapContextMenu());
-      map.on('click', (e) => {
-        if (gameState.buildPathMode && window.buildPath && typeof window.buildPath.onMapClick === 'function') {
-          try { window.buildPath.onMapClick(e); } catch (err) { console.error(err); }
-          return;
-        }
-        hideMapContextMenu();
+
+      // Right-click (contextmenu) opens the map context menu
+      map.on('contextmenu', async (e) => {
+        // Prevent the browser default context menu
+        if (e.originalEvent && typeof e.originalEvent.preventDefault === 'function') e.originalEvent.preventDefault();
+        try {
+          __lastContextAllowed = await isLatLngWalkAllowedAsync(e.latlng);
+        } catch (err) { __lastContextAllowed = false; }
+        showMapContextMenuAt(e.containerPoint, e.latlng);
       });
     }
 
