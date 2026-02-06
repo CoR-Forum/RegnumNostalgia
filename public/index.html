@@ -814,7 +814,7 @@
     </div>
     <div id="inventory-footer" class="ui-window-body" style="padding: 20px 8px; display: none;">
       <div style="display: flex; align-items: center; gap: 4px; color: #e0e0e0; font-size: 11px;">
-        <img src="assets/v1/ui/ui-icon-gold.png" alt="Gold" style="width: 14px; height: 14px; display: inline-block;" draggable="false" ondragstart="return false;">
+        <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-gold.png" alt="Gold" style="width: 14px; height: 14px; display: inline-block;" draggable="false" ondragstart="return false;">
         <span id="inventory-gold" style="font-weight: 400;">0 Gold</span>
       </div>
     </div>
@@ -977,7 +977,7 @@
   <div id="ui-image-overlay" aria-hidden="true">
     <div class="ui-bar-repeat"></div>
     <div class="ui-bar-right">
-      <img src="assets/v1/ui/ui-bottom-right-premium.png" alt="">
+      <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bottom-right-premium.png" alt="">
       <div class="ui-hud-group" aria-hidden="false">
         <button id="inventory-hud-btn" class="ui-hud-btn" data-action="inventory" aria-label="Open Inventory"></button>
         <button id="character-hud-btn" class="ui-hud-btn" data-action="character" aria-label="Open Character"></button>
@@ -992,7 +992,7 @@
   </div>
   <!-- Top-right compass with interactive controls (map settings + logout) -->
     <div id="ui-compass" aria-hidden="false">
-    <img src="assets/v1/ui/ui-compass.png" alt="" draggable="false" ondragstart="return false;">
+    <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-compass.png" alt="" draggable="false" ondragstart="return false;">
     <div class="compass-controls" aria-hidden="false">
       <button class="btn-logout" id="settings-btn">Settings</button>
       <button class="btn-logout" id="logout-btn">Logout</button>
@@ -1005,7 +1005,7 @@
   </div>
   <!-- Top-left character status (non-interactive) -->
   <div id="ui-character-status" aria-hidden="true">
-    <img src="assets/v1/ui/ui-character-status.png" alt="" draggable="false" ondragstart="return false;">
+    <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-character-status.png" alt="" draggable="false" ondragstart="return false;">
     <div class="ui-character-overlay" aria-hidden="true">
       <div class="status-top">
         <div id="player-level" style="font-weight:700; color:#ffd700; font-size:13px; min-width:28px; text-align:left;">1</div>
@@ -2673,7 +2673,7 @@
         itemDiv.className = 'inventory-item';
 
         const iconName = item.iconName;
-        const iconSrc = iconName ? `assets/v1/items/${iconName}` : '';
+        const iconSrc = iconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${iconName}` : '';
         const iconHtml = iconSrc ? `<img src="${iconSrc}" alt="${getItemName(item)}">` : '';
 
         const rarityClass = (item.rarity || 'common');
@@ -2839,7 +2839,7 @@
 
       const anchorEl = event.currentTarget || event.target;
       const tooltipIconName = item.iconName;
-      const tooltipIconSrc = tooltipIconName ? `assets/v1/items/${tooltipIconName}` : '';
+      const tooltipIconSrc = tooltipIconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${tooltipIconName}` : '';
       const rarityClass = (item.rarity || 'common');
 
       // Schedule tooltip creation after 200ms. If the pointer moves away
@@ -2890,7 +2890,7 @@
                   }
 
                   const newIconName = det.iconName || null;
-                  const newIconSrc = newIconName ? `assets/v1/items/${newIconName}` : (tooltipIconSrc || '');
+                  const newIconSrc = newIconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${newIconName}` : (tooltipIconSrc || '');
                   const newRarity = det.rarity || rarityClass;
 
                   tooltip.innerHTML = `
@@ -2944,7 +2944,7 @@
     // Equipment rendering and drag/drop handlers
     function getEquipIconSrc(item){
       const iconName = item.iconName;
-      return iconName ? `assets/v1/items/${iconName}` : '';
+      return iconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${iconName}` : '';
     }
 
     // Friendly label for item type + equipment slot
@@ -3127,7 +3127,7 @@
       healthFill.style.borderWidth = '0 2px 0 2px';
       healthFill.style.borderStyle = 'solid';
       healthFill.style.boxSizing = 'border-box';
-      healthFill.style.borderImage = "url('assets/v1/ui/ui-bar-health.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch";
+      healthFill.style.borderImage = "url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bar-health.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch";
 
       // Update mana bar
       const manaPercent = (gameState.mana / gameState.maxMana) * 100;
@@ -4153,7 +4153,7 @@
     #ui-image-overlay .ui-bar-repeat{
       flex: 1 1 auto;
       height: 73px;
-      background-image: url('assets/v1/ui/ui-bottom-bar-left.png');
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bottom-bar-left.png');
       background-repeat: repeat-x;
       background-position: left top;
       background-size: auto 100%;
@@ -4161,7 +4161,7 @@
     #ui-image-overlay .ui-bar-repeat-right{
       flex: 1 1 auto;
       height: 73px;
-      background-image: url('assets/v1/ui/ui-bottom-bar-left.png');
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bottom-bar-left.png');
       background-repeat: repeat-x;
       background-position: right top;
       background-size: auto 100%;
@@ -4223,7 +4223,7 @@
       height:100%;
       border-width: 0 2px 0 2px;
       border-style: solid;
-      border-image: url('assets/v1/ui/ui-bar-health.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch;
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bar-health.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch;
       box-sizing: border-box;
     }
     #ui-character-status .ui-character-overlay #player-mana-fill{
@@ -4231,7 +4231,7 @@
       height:100%;
       border-width: 0 2px 0 2px;
       border-style: solid;
-      border-image: url('assets/v1/ui/ui-bar-mana.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch;
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bar-mana.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch;
       box-sizing: border-box;
     }
     /* Nudge health/mana fills vertically: health down 1px, mana up 2px */
@@ -4264,37 +4264,37 @@
       z-index: 20002;
       background-color: transparent;
     }
-    .ui-hud-btn[data-action="spellbook"]{ right: 303px; background-image: url('assets/v1/ui/ui-icon-spellbook-base.png'); }
-    .ui-hud-btn[data-action="spellbook"]:hover{ background-image: url('assets/v1/ui/ui-icon-spellbook-hover.png'); }
-    .ui-hud-btn[data-action="spellbook"]:active{ background-image: url('assets/v1/ui/ui-icon-spellbook-pressed.png'); }
+    .ui-hud-btn[data-action="spellbook"]{ right: 303px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-spellbook-base.png'); }
+    .ui-hud-btn[data-action="spellbook"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-spellbook-hover.png'); }
+    .ui-hud-btn[data-action="spellbook"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-spellbook-pressed.png'); }
 
-    .ui-hud-btn[data-action="character"]{ right: 251px; background-image: url('assets/v1/ui/ui-icon-character-base.png'); }
-    .ui-hud-btn[data-action="character"]:hover{ background-image: url('assets/v1/ui/ui-icon-character-hover.png'); }
-    .ui-hud-btn[data-action="character"]:active{ background-image: url('assets/v1/ui/ui-icon-character-pressed.png'); }
+    .ui-hud-btn[data-action="character"]{ right: 251px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-base.png'); }
+    .ui-hud-btn[data-action="character"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-hover.png'); }
+    .ui-hud-btn[data-action="character"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-pressed.png'); }
 
-    .ui-hud-btn[data-action="inventory"]{ right: 207px; background-image: url('assets/v1/ui/ui-icon-inventory-base.png'); }
-    .ui-hud-btn[data-action="inventory"]:hover{ background-image: url('assets/v1/ui/ui-icon-inventory-hover.png'); }
-    .ui-hud-btn[data-action="inventory"]:active{ background-image: url('assets/v1/ui/ui-icon-inventory-pressed.png'); }
+    .ui-hud-btn[data-action="inventory"]{ right: 207px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-base.png'); }
+    .ui-hud-btn[data-action="inventory"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-hover.png'); }
+    .ui-hud-btn[data-action="inventory"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-pressed.png'); }
 
     /* Persisted pressed state (ensure correct ui asset path used) */
-    .ui-hud-btn.pressed[data-action="inventory"]{ background-image: url('assets/v1/ui/ui-icon-inventory-pressed.png'); }
-    .ui-hud-btn.pressed[data-action="character"]{ background-image: url('assets/v1/ui/ui-icon-character-pressed.png'); }
+    .ui-hud-btn.pressed[data-action="inventory"]{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-pressed.png'); }
+    .ui-hud-btn.pressed[data-action="character"]{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-pressed.png'); }
 
-    .ui-hud-btn[data-action="actions"]{ right: 164px; background-image: url('assets/v1/ui/ui-icon-actions-base.png'); }
-    .ui-hud-btn[data-action="actions"]:hover{ background-image: url('assets/v1/ui/ui-icon-actions-hover.png'); }
-    .ui-hud-btn[data-action="actions"]:active{ background-image: url('assets/v1/ui/ui-icon-actions-pressed.png'); }
+    .ui-hud-btn[data-action="actions"]{ right: 164px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-actions-base.png'); }
+    .ui-hud-btn[data-action="actions"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-actions-hover.png'); }
+    .ui-hud-btn[data-action="actions"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-actions-pressed.png'); }
 
-    .ui-hud-btn[data-action="party"]{ right: 123px; background-image: url('assets/v1/ui/ui-icon-party-base.png'); }
-    .ui-hud-btn[data-action="party"]:hover{ background-image: url('assets/v1/ui/ui-icon-party-hover.png'); }
-    .ui-hud-btn[data-action="party"]:active{ background-image: url('assets/v1/ui/ui-icon-party-pressed.png'); }
+    .ui-hud-btn[data-action="party"]{ right: 123px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-party-base.png'); }
+    .ui-hud-btn[data-action="party"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-party-hover.png'); }
+    .ui-hud-btn[data-action="party"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-party-pressed.png'); }
 
-    .ui-hud-btn[data-action="quests"]{ right: 78px; background-image: url('assets/v1/ui/ui-icon-quests-base.png'); }
-    .ui-hud-btn[data-action="quests"]:hover{ background-image: url('assets/v1/ui/ui-icon-quests-hover.png'); }
-    .ui-hud-btn[data-action="quests"]:active{ background-image: url('assets/v1/ui/ui-icon-quests-pressed.png'); }
+    .ui-hud-btn[data-action="quests"]{ right: 78px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-quests-base.png'); }
+    .ui-hud-btn[data-action="quests"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-quests-hover.png'); }
+    .ui-hud-btn[data-action="quests"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-quests-pressed.png'); }
 
-    .ui-hud-btn[data-action="premium"]{ right: 34px; background-image: url('assets/v1/ui/ui-icon-premium-base.png'); }
-    .ui-hud-btn[data-action="premium"]:hover{ background-image: url('assets/v1/ui/ui-icon-premium-hover.png'); }
-    .ui-hud-btn[data-action="premium"]:active{ background-image: url('assets/v1/ui/ui-icon-premium-pressed.png'); }
+    .ui-hud-btn[data-action="premium"]{ right: 34px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-premium-base.png'); }
+    .ui-hud-btn[data-action="premium"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-premium-hover.png'); }
+    .ui-hud-btn[data-action="premium"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-premium-pressed.png'); }
 
     /* 9-slice window styling (title bar + body) */
     .ui-window{
@@ -4306,13 +4306,13 @@
       position: relative;
       z-index: 1;
       /* 9-slice: repeat center 10px strip horizontally (128px - 59px - 59px = 10px) */
-      border-image: url('assets/v1/ui/ui-window-title-bar.png') 0 59 0 59 fill / 0 59px 0 59px / 0 repeat;
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-title-bar.png') 0 59 0 59 fill / 0 59px 0 59px / 0 repeat;
     }
     .ui-window-body{
       margin-top: -16px;
       padding-top: 16px;
       /* 9-slice: repeat center 10px horizontally, 1px vertically (128px - 49px - 78px = 1px), moved 10px up */
-      border-image: url('assets/v1/ui/ui-window-main.png') 49 59 78 59 fill / 49px 59px 78px 59px / 0 repeat repeat;
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-main.png') 49 59 78 59 fill / 49px 59px 78px 59px / 0 repeat repeat;
       background: rgba(0,0,0,0.3);
     }
     .ui-window-close-btn{
@@ -4321,15 +4321,15 @@
       padding: 0;
       border: none;
       cursor: pointer;
-      background: url('assets/v1/ui/ui-window-close-base.png') center center no-repeat;
+      background: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-close-base.png') center center no-repeat;
       background-size: 16px 16px;
       flex-shrink: 0;
     }
     .ui-window-close-btn:hover{
-      background-image: url('assets/v1/ui/ui-window-close-hover.png');
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-close-hover.png');
     }
     .ui-window-close-btn:active{
-      background-image: url('assets/v1/ui/ui-window-close-pressed.png');
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-close-pressed.png');
     }
   </style>
   
