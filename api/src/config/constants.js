@@ -31,6 +31,7 @@ module.exports = {
     { template_key: 'health_potion', quantity: 100 },
     { template_key: 'mana_potion', quantity: 100 },
     { template_key: 'iron_sword', quantity: 2 },
+    { template_key: 'gm_crown', quantity: 1 },
     { template_key: 'gm_shield', quantity: 1 },
     { template_key: 'gm_pauldrons', quantity: 1 },
     { template_key: 'gm_chestplate', quantity: 1 },
