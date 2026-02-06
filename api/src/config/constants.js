@@ -29,15 +29,17 @@ module.exports = {
   STARTER_ITEMS: [
     { template_key: 'gold_coin', quantity: 1000 },
     { template_key: 'health_potion', quantity: 100 },
+    { template_key: 'mana_potion', quantity: 100 },
     { template_key: 'iron_sword', quantity: 2 },
-    { template_key: 'wooden_shield', quantity: 1 },
-    { template_key: 'iron_helmet', quantity: 1 },
-    { template_key: 'leather_pauldrons', quantity: 1 },
+    { template_key: 'gm_shield', quantity: 1 },
+    { template_key: 'gm_pauldrons', quantity: 1 },
+    { template_key: 'gm_chestplate', quantity: 1 },
+    { template_key: 'gm_leggings', quantity: 1 },
+    { template_key: 'gm_gloves', quantity: 1 },
     { template_key: 'great_magic_gem_lucky_box', quantity: 100 },
     { template_key: 'vesper_amulet', quantity: 1 },
     { template_key: 'tenax_amulet', quantity: 1 },
     { template_key: 'alasthor_amulet', quantity: 1 },
-    { template_key: 'gm_leggings_walk_speed', quantity: 1 },
   ],
   
   // Online Status

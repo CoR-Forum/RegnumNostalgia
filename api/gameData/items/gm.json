@@ -1,6 +1,42 @@
 [
+    {
+    "template_key": "gm_crown",
+    "name": "GM Crown",
+    "type": "armor",
+    "description": "Special crown for game masters, offering extreme armor and health.",
+    "stats": { "armor": 1000, "health": 1000 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "head",
+    "icon_name": "gm.png"
+  },
   {
-    "template_key": "gm_leggings_walk_speed",
+    "template_key": "gm_pauldrons",
+    "name": "GM Pauldrons of Strength",
+    "type": "armor",
+    "description": "Special pauldrons for game masters, offering extreme strength.",
+    "stats": { "armor": 500, "strength": 100 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "shoulders",
+    "icon_name": "gm.png"
+  },
+    {
+    "template_key": "gm_chestplate",
+    "name": "GM Chestplate",
+    "type": "armor",
+    "description": "Special chestplate for game masters, offering extreme armor and health.",
+    "stats": { "armor": 1000, "health": 1000 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "body",
+    "icon_name": "gm.png"
+  },
+  {
+    "template_key": "gm_leggings",
     "name": "GM Leggings of Walk Speed",
     "type": "armor",
     "description": "Special leggings for game masters, offering extreme walk speed.",
@@ -9,6 +45,18 @@
     "stackable": 0,
     "level": 1,
     "equipment_slot": "legs",
+    "icon_name": "gm.png"
+  },
+    {
+    "template_key": "gm_gloves",
+    "name": "GM Gloves",
+    "type": "armor",
+    "description": "Special gloves for game masters, offering extreme armor.",
+    "stats": { "armor": 1000 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "weapon_right",
     "icon_name": "gm.png"
   },
   {
@@ -25,7 +73,7 @@
   },
   {
     "template_key": "gm_ring",
-    "name": "GM Ringgg",
+    "name": "GM Ring",
     "type": "armor",
     "description": "Special ring for game masters, offering extreme damage and armor.",
     "stats": { "damage": 100000, "armor": 100000 },
@@ -36,39 +84,27 @@
     "icon_name": "gm.png"
   },
   {
-    "template_key": "gm_boots6",
-    "name": "GM Boots",
+    "template_key": "gm_shield",
+    "name": "GM Shield",
     "type": "armor",
-    "description": "Special boots for game masters, offering extreme armor and jump height.",
-    "stats": { "armor": 1000, "jump_height": 100 },
-    "rarity": "rare",
-    "stackable": 0,
-    "level": 1,
-    "equipment_slot": "ring",
-    "icon_name": "gm.png"
-  },
-  {
-    "template_key": "gm_crown",
-    "name": "GM Crown",
-    "type": "armor",
-    "description": "Special crown for game masters, offering extreme armor and health.",
+    "description": "Special shield for game masters, offering extreme armor and health.",
     "stats": { "armor": 1000, "health": 1000 },
     "rarity": "rare",
     "stackable": 0,
     "level": 1,
-    "equipment_slot": "head",
+    "equipment_slot": "weapon_left",
     "icon_name": "gm.png"
   },
   {
-    "template_key": "gm_chestplate",
-    "name": "GM Chestplate",
+    "template_key": "gm_sword",
+    "name": "GM Sword",
     "type": "armor",
-    "description": "Special chestplate for game masters, offering extreme armor and health.",
-    "stats": { "armor": 1000, "health": 1000 },
+    "description": "Special sword for game masters, offering extreme damage.",
+    "stats": { "damage": 1000, "damage_fire": 1000, "damage_ice": 1000, "damage_lightning": 1000, "damage_blunt": 1000, "damage_slash": 1000, "damage_pierce": 1000 },
     "rarity": "rare",
     "stackable": 0,
     "level": 1,
-    "equipment_slot": "chest",
+    "equipment_slot": "weapon_left",
     "icon_name": "gm.png"
   }
 ]
