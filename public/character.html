@@ -1,5 +1,5 @@
 <!-- Character Window (equipment + stats) -->
-<div id="character-window" class="ui-window" style="position: absolute; left: 12px; bottom: 195px; width: 240px; height: 360px; overflow: auto; z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+<div id="character-window" class="ui-window" style="position: absolute; left: 12px; bottom: 195px; width: 240px; max-height: 85vh; overflow-y: auto; overflow-x: hidden; z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
   <div id="character-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
     <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; text-align: center;">Character</h2>
     <button id="character-close-btn" class="ui-window-close-btn"></button>
@@ -256,7 +256,7 @@
         el.parentNode.replaceChild(newEl, el);
         const target = newEl;
 
-        if(info && info.inventoryId){
+          if(info && info.inventoryId){
           const it = info.item || {};
           const iconSrc = getEquipIconSrc(it || {});
           target.innerHTML = iconSrc ? `<div class="slot-icon"><img src="${iconSrc}" alt="${it.name || it.itemName || 'Item'}"></div>` : '';
@@ -270,8 +270,9 @@
               stats: it.stats || {},
               rarity: it.rarity || 'common',
               quantity: it.quantity || 1,
-              level: typeof it.level !== 'undefined' ? it.level : 1,
-              iconName: it.iconName || null
+                level: typeof it.level !== 'undefined' ? it.level : 1,
+                iconName: it.iconName || null,
+                inventoryId: info.inventoryId || null
             };
             showTooltip(e, tooltipItem);
           });

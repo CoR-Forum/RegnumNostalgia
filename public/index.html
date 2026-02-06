@@ -2878,41 +2878,67 @@
         if (invId && window.getSocket) {
           try {
             const sock = window.getSocket();
-            if (sock && sock.connected) {
-              tooltip.__requestInventoryId = String(invId);
-              sock.emit('item:details', { inventoryId: invId }, (resp) => {
-                try {
-                  if (!resp || !resp.success) return;
-                  const det = resp.item || {};
-                  if (!currentTooltip || currentTooltip !== tooltip) return;
-                  if (String(tooltip.__requestInventoryId) !== String(invId)) return;
+            const doEmit = (s) => {
+              try {
+                tooltip.__requestInventoryId = String(invId);
+                s.emit('item:details', { inventoryId: invId }, (resp) => {
+                  try {
+                    if (!resp || !resp.success) return;
+                    const det = resp.item || {};
+                    if (!currentTooltip || currentTooltip !== tooltip) return;
+                    if (String(tooltip.__requestInventoryId) !== String(invId)) return;
 
-                  let newStatsHtml = '';
-                  if (det.stats && Object.keys(det.stats || {}).length > 0) {
-                    const parts = Object.entries(det.stats).map(([k,v]) => `+${v} ${k.replace('_',' ')}`);
-                    newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
-                  }
+                    let newStatsHtml = '';
+                    if (det.stats && Object.keys(det.stats || {}).length > 0) {
+                      const parts = Object.entries(det.stats).map(([k,v]) => `+${v} ${k.replace('_',' ')}`);
+                      newStatsHtml = `<div class="tooltip-stats">${parts.join('<br>')}</div>`;
+                    }
 
-                  const newIconName = det.iconName || null;
-                  const newIconSrc = newIconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${newIconName}` : (tooltipIconSrc || '');
-                  const newRarity = det.rarity || rarityClass;
+                    const newIconName = det.iconName || null;
+                    const newIconSrc = newIconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${newIconName}` : (tooltipIconSrc || '');
+                    const newRarity = det.rarity || rarityClass;
 
-                  tooltip.innerHTML = `
-                    <div class="tooltip-header">
-                      <div class="tooltip-icon">${newIconSrc ? `<img src="${newIconSrc}" alt="${getItemName(det)}">` : ''}</div>
-                      <div class="tooltip-title">
-                        <div class="tooltip-name ${newRarity}">${getItemName(det)} ${typeof det.level !== 'undefined' ? `<span class="tooltip-level">Lv ${det.level}</span>` : ''}</div>
+                    tooltip.innerHTML = `
+                      <div class="tooltip-header">
+                        <div class="tooltip-icon">${newIconSrc ? `<img src="${newIconSrc}" alt="${getItemName(det)}">` : ''}</div>
+                        <div class="tooltip-title">
+                          <div class="tooltip-name ${newRarity}">${getItemName(det)} ${typeof det.level !== 'undefined' ? `<span class="tooltip-level">Lv ${det.level}</span>` : ''}</div>
+                        </div>
                       </div>
-                    </div>
-                    <div class="tooltip-type">${getItemTypeLabel(det)}</div>
-                    ${det.description ? `<div class="tooltip-description">"${det.description}"</div>` : ''}
-                    ${newStatsHtml}
-                    <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
-                  `;
+                      <div class="tooltip-type">${getItemTypeLabel(det)}</div>
+                      ${det.description ? `<div class="tooltip-description">"${det.description}"</div>` : ''}
+                      ${newStatsHtml}
+                      <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
+                    `;
 
-                  requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
-                } catch (e) { console.error('Failed to apply item details to tooltip', e); }
-              });
+                    requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
+                  } catch (e) { console.error('Failed to apply item details to tooltip', e); }
+                });
+              } catch (e) { /* ignore socket emit errors */ }
+            };
+
+            if (sock && sock.connected) {
+              doEmit(sock);
+            } else if (sock) {
+              // Socket exists but isn't connected yet: retry until connected or timeout
+              let retries = 0;
+              const maxRetries = 20; // ~5 seconds at 250ms interval
+              tooltip.__socketRetry = setInterval(() => {
+                try {
+                  const s2 = window.getSocket && window.getSocket();
+                  if (s2 && s2.connected) {
+                    clearInterval(tooltip.__socketRetry);
+                    tooltip.__socketRetry = null;
+                    doEmit(s2);
+                    return;
+                  }
+                  retries += 1;
+                  if (retries >= maxRetries) {
+                    clearInterval(tooltip.__socketRetry);
+                    tooltip.__socketRetry = null;
+                  }
+                } catch (e) { clearInterval(tooltip.__socketRetry); tooltip.__socketRetry = null; }
+              }, 250);
             }
           } catch (e) { /* ignore socket errors */ }
         }
@@ -2938,6 +2964,7 @@
     function hideTooltip() {
       if (currentTooltip) {
         try { if (currentTooltip.__detailsTimer) { clearTimeout(currentTooltip.__detailsTimer); currentTooltip.__detailsTimer = null; } } catch(e){}
+        try { if (currentTooltip.__socketRetry) { clearInterval(currentTooltip.__socketRetry); currentTooltip.__socketRetry = null; } } catch(e){}
         try { if (currentTooltip.__requestInventoryId) { currentTooltip.__requestInventoryId = null; } } catch(e){}
         currentTooltip.remove();
         currentTooltip = null;

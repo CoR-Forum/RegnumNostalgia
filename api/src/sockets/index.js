@@ -1722,6 +1722,14 @@ async function buildPlayerState(userId) {
 
   let totalDamageBonus = 0;
   let totalArmorBonus = 0;
+    // Aggregate stat bonuses provided by equipped items
+    const totalStatBonuses = {
+      intelligence: 0,
+      dexterity: 0,
+      concentration: 0,
+      strength: 0,
+      constitution: 0
+    };
 
   if (equipmentIds.length > 0) {
     const [itemRows] = await gameDb.query(
@@ -1747,6 +1755,14 @@ async function buildPlayerState(userId) {
 
       if (!row.stats) return;
       const stats = typeof row.stats === 'string' ? JSON.parse(row.stats) : row.stats;
+
+      // Aggregate attribute bonuses (support either flat keys or nested under `attributes`)
+      const getAttr = (k) => Number(stats[k] ?? (stats.attributes && stats.attributes[k]) ?? 0) || 0;
+      totalStatBonuses.intelligence += getAttr('intelligence');
+      totalStatBonuses.dexterity += getAttr('dexterity');
+      totalStatBonuses.concentration += getAttr('concentration');
+      totalStatBonuses.strength += getAttr('strength');
+      totalStatBonuses.constitution += getAttr('constitution');
 
       // Scalar damage/armor
       const scalarDamage = Number(stats.damage) || 0;
@@ -1833,11 +1849,11 @@ async function buildPlayerState(userId) {
     level: player.level,
     xpToNext: xpToNext,
     stats: {
-      intelligence: player.intelligence,
-      dexterity: player.dexterity,
-      concentration: player.concentration,
-      strength: player.strength,
-      constitution: player.constitution,
+      intelligence: Number(player.intelligence || 0) + (totalStatBonuses ? totalStatBonuses.intelligence : 0),
+      dexterity: Number(player.dexterity || 0) + (totalStatBonuses ? totalStatBonuses.dexterity : 0),
+      concentration: Number(player.concentration || 0) + (totalStatBonuses ? totalStatBonuses.concentration : 0),
+      strength: Number(player.strength || 0) + (totalStatBonuses ? totalStatBonuses.strength : 0),
+      constitution: Number(player.constitution || 0) + (totalStatBonuses ? totalStatBonuses.constitution : 0),
     },
     damage: Math.round(baseDamage + totalDamageBonus),
     armor: Math.round(baseArmor + totalArmorBonus),
