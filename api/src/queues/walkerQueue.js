@@ -210,14 +210,90 @@ walkerQueue.process('process-walkers', async (job) => {
       const positions = typeof walker.positions === 'string' ?
         JSON.parse(walker.positions) : walker.positions;
 
-      const nextIndex = walker.current_index + 1;
+      // Determine how many steps to advance this tick based on equipment walk_speed
+      let totalWalkSpeed = 0;
+      try {
+        const [equipRows] = await gameDb.query(
+          `SELECT COALESCE(e.head,0) as eq_head,
+                  COALESCE(e.body,0) as eq_body,
+                  COALESCE(e.hands,0) as eq_hands,
+                  COALESCE(e.shoulders,0) as eq_shoulders,
+                  COALESCE(e.legs,0) as eq_legs,
+                  COALESCE(e.weapon_right,0) as eq_weapon_right,
+                  COALESCE(e.weapon_left,0) as eq_weapon_left,
+                  COALESCE(e.ring_right,0) as eq_ring_right,
+                  COALESCE(e.ring_left,0) as eq_ring_left,
+                  COALESCE(e.amulet,0) as eq_amulet
+           FROM equipment e WHERE e.user_id = ?`,
+          [walker.user_id]
+        );
 
+        if (equipRows.length > 0) {
+          const eq = equipRows[0];
+          const equipmentIds = [
+            eq.eq_head, eq.eq_body, eq.eq_hands, eq.eq_shoulders,
+            eq.eq_legs, eq.eq_weapon_right, eq.eq_weapon_left,
+            eq.eq_ring_right, eq.eq_ring_left, eq.eq_amulet
+          ].filter(id => id && id > 0);
+
+          if (equipmentIds.length > 0) {
+            const [itemRows] = await gameDb.query(
+              `SELECT i.stats FROM inventory inv
+               JOIN items i ON inv.item_id = i.item_id
+               WHERE inv.inventory_id IN (?)`,
+              [equipmentIds]
+            );
+
+            itemRows.forEach(row => {
+              if (row.stats) {
+                const stats = typeof row.stats === 'string' ? JSON.parse(row.stats) : row.stats;
+                totalWalkSpeed += stats.walk_speed || 0;
+              }
+            });
+          }
+        }
+      } catch (e) {
+        logger.error('Failed to calculate walk_speed from equipment', { error: e && e.message ? e.message : String(e), userId: walker.user_id });
+      }
+
+      // Advance by 1 step plus any walk_speed points (skips)
+      const advanceBy = 1 + Math.max(0, Math.floor(totalWalkSpeed));
+      const nextIndex = walker.current_index + advanceBy;
+
+      // If advancing would move past the final index, treat as arrived
       if (nextIndex >= positions.length) {
-        // Walker has reached destination
-        
+        // Walker has reached destination — snap to final position
+        const arriveIndex = positions.length - 1;
+        const finalPos = positions[arriveIndex];
+
+        // Update walker index and mark done, and update player position
+        await gameDb.query(
+          `UPDATE walkers SET current_index = ?, status = 'done', finished_at = ?, updated_at = ?
+           WHERE walker_id = ?`,
+          [arriveIndex, now, now, walker.walker_id]
+        );
+
+        await gameDb.query(
+          'UPDATE players SET x = ?, y = ?, last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
+          [finalPos[0], finalPos[1], walker.user_id]
+        );
+
+        // Emit final step and completion events
+        if (io) {
+          io.emit('walker:step', {
+            userId: walker.user_id,
+            walkerId: walker.walker_id,
+            currentIndex: arriveIndex,
+            position: { x: finalPos[0], y: finalPos[1] },
+            totalSteps: positions.length,
+            completed: true
+          });
+
+          io.emit('players:position', [{ userId: walker.user_id, x: finalPos[0], y: finalPos[1] }]);
+        }
+
         // Check if we need to collect an item
         if (walker.collecting_spawn_id && walker.collecting_x !== null && walker.collecting_y !== null) {
-          const finalPos = positions[positions.length - 1];
           const dist = distance(finalPos[0], finalPos[1], walker.collecting_x, walker.collecting_y);
 
           if (dist <= COLLECTABLE_CONFIG.PICKUP_RADIUS) {
@@ -370,13 +446,6 @@ walkerQueue.process('process-walkers', async (job) => {
             logger.warn(`User ${walker.user_id} reached destination but not within pickup range (${dist.toFixed(1)}px from target)`);
           }
         }
-
-        // Mark walker as done
-        await gameDb.query(
-          `UPDATE walkers SET status = 'done', finished_at = ?, updated_at = ?
-           WHERE walker_id = ?`,
-          [now, now, walker.walker_id]
-        );
 
         // Emit walker completed event
         if (io) {
