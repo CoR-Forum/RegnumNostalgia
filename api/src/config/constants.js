@@ -48,11 +48,11 @@ module.exports = {
   ],
   
   // Online Status
-  ONLINE_THRESHOLD_SECONDS: 5,
+  ONLINE_THRESHOLD_SECONDS: 10, // Consider players online if active within the last 10 seconds
   
   // Queue Intervals (milliseconds)
   QUEUE_INTERVALS: {
-    WALKER: 25,     // 2 seconds
+    WALKER: 1000,     // 2 seconds
     HEALTH: 1000,     // 1 second
     TIME: 10000,      // 10 seconds
     TERRITORY: 15000,  // 15 seconds
