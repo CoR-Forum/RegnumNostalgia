@@ -27,24 +27,51 @@
       </div>
     </div>
 
-    <div class="char-section">
-      <div class="char-section-title">Attributes</div>
-      <div class="char-section-body">
-        <div class="char-attr-row"><span class="char-attr-name char-attr-good">Intelligence</span><span id="stat-int" class="char-attr-value char-attr-good">20</span></div>
-        <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Dexterity</span><span id="stat-dex" class="char-attr-value char-attr-bad">20</span></div>
-        <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Concentration</span><span id="stat-con" class="char-attr-value char-attr-bad">20</span></div>
-        <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Strength</span><span id="stat-str" class="char-attr-value char-attr-bad">20</span></div>
-        <div class="char-attr-row"><span class="char-attr-name char-attr-bad">Constitution</span><span id="stat-const" class="char-attr-value char-attr-bad">20</span></div>
-      </div>
-    </div>
+    <!-- Attributes moved below Attack/Armor for compact view -->
 
     <div class="char-section">
-      <div class="char-section-body">
-        <div class="char-stat-row"><span>Attack:</span><span id="stat-attack">0</span></div>
-        <div class="char-stat-row"><span>Armor:</span><span id="stat-armor">0</span></div>
-        <div class="char-stat-row"><span>Hit Chance:</span><span id="stat-hit">0</span></div>
-        <div class="char-stat-row"><span>Evasion:</span><span id="stat-evasion">0</span></div>
-        <div class="char-stat-row"><span>Block Chance:</span><span id="stat-block">0</span></div>
+      <div class="char-section-title">Stats</div>
+      <div class="char-section-body char-stats-grid">
+          <div class="char-stats-block">
+            <div style="font-weight:700;margin-bottom:4px;">Stats</div>
+            <div class="char-stat-row"><span>Attack:</span><span id="stat-attack">0</span></div>
+            <div class="char-stat-row"><span>Armor:</span><span id="stat-armor">0</span></div>
+            <div class="char-stat-row"><span>Hit Chance:</span><span id="stat-hit">0</span></div>
+            <div class="char-stat-row"><span>Evasion:</span><span id="stat-evasion">0</span></div>
+            <div class="char-stat-row"><span>Block Chance:</span><span id="stat-block">0</span></div>
+          </div>
+
+          <div class="char-stats-block">
+            <div style="font-weight:700;margin-bottom:4px;">Damage Types</div>
+            <div class="char-stat-row"><span>Lightning:</span><span id="stat-damage-lightning">0</span></div>
+            <div class="char-stat-row"><span>Fire:</span><span id="stat-damage-fire">0</span></div>
+            <div class="char-stat-row"><span>Ice:</span><span id="stat-damage-ice">0</span></div>
+            <div class="char-stat-row"><span>Piercing:</span><span id="stat-damage-piercing">0</span></div>
+            <div class="char-stat-row"><span>Blunt:</span><span id="stat-damage-blunt">0</span></div>
+            <div class="char-stat-row"><span>Slashing:</span><span id="stat-damage-slashing">0</span></div>
+          </div>
+
+          <div class="char-stats-block">
+            <div style="height:6px"></div>
+            <div style="font-weight:700;margin-bottom:4px;">Attributes</div>
+            <div class="char-stat-row"><span>Intelligence:</span><span id="stat-int">20</span></div>
+            <div class="char-stat-row"><span>Dexterity:</span><span id="stat-dex">20</span></div>
+            <div class="char-stat-row"><span>Concentration:</span><span id="stat-con">20</span></div>
+            <div class="char-stat-row"><span>Strength:</span><span id="stat-str">20</span></div>
+            <div class="char-stat-row"><span>Constitution:</span><span id="stat-const">20</span></div>
+          </div>
+
+          <div class="char-stats-block">
+            <div style="height:6px"></div>
+            <div style="font-weight:700;margin-bottom:4px;">Armor Types</div>
+            <div class="char-stat-row"><span>Lightning:</span><span id="stat-armor-lightning">0</span></div>
+            <div class="char-stat-row"><span>Fire:</span><span id="stat-armor-fire">0</span></div>
+            <div class="char-stat-row"><span>Ice:</span><span id="stat-armor-ice">0</span></div>
+            <div class="char-stat-row"><span>Piercing:</span><span id="stat-armor-piercing">0</span></div>
+            <div class="char-stat-row"><span>Blunt:</span><span id="stat-armor-blunt">0</span></div>
+            <div class="char-stat-row"><span>Slashing:</span><span id="stat-armor-slashing">0</span></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -98,6 +125,11 @@
   .char-attr-value{ color: #ffffff; }
   .char-attr-good{ color: #22c55e; }
   .char-attr-bad{ color: #ef4444; }
+  .char-attributes-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .attr-col{ display:flex; flex-direction:column; gap:4px; }
+  .char-stats-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+  .char-stats-col{ width:100%; box-sizing:border-box; }
+  .char-stat-row{ display:flex; justify-content:space-between; gap:8px; margin:2px 0; font-size:11px; }
 </style>
 
 <script>
@@ -147,6 +179,36 @@
         if (blockEl) blockEl.textContent = `${Number(gameState.blockChance || 0)}`;
         const weaknessEl = document.getElementById('stat-weakness');
         if (weaknessEl) weaknessEl.textContent = `${Number(gameState.weakness || 0)}%`;
+
+        // Damage type breakdown (support different shapes from server)
+        const dl = Number(gameState.damage_lightning ?? (gameState.damage && gameState.damage.lightning) ?? 0);
+        const df = Number(gameState.damage_fire ?? (gameState.damage && gameState.damage.fire) ?? 0);
+        const di = Number(gameState.damage_ice ?? (gameState.damage && gameState.damage.ice) ?? 0);
+        const dp = Number(gameState.damage_piercing ?? (gameState.damage && gameState.damage.piercing) ?? 0);
+        const db = Number(gameState.damage_blunt ?? (gameState.damage && gameState.damage.blunt) ?? 0);
+        const ds = Number(gameState.damage_slashing ?? (gameState.damage && gameState.damage.slashing) ?? 0);
+
+        const al = Number(gameState.armor_lightning ?? (gameState.armor && gameState.armor.lightning) ?? 0);
+        const af = Number(gameState.armor_fire ?? (gameState.armor && gameState.armor.fire) ?? 0);
+        const ai = Number(gameState.armor_ice ?? (gameState.armor && gameState.armor.ice) ?? 0);
+        const ap = Number(gameState.armor_piercing ?? (gameState.armor && gameState.armor.piercing) ?? 0);
+        const ab = Number(gameState.armor_blunt ?? (gameState.armor && gameState.armor.blunt) ?? 0);
+        const as_ = Number(gameState.armor_slashing ?? (gameState.armor && gameState.armor.slashing) ?? 0);
+
+        const setIf = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = `${Number(val || 0)}`; };
+        setIf('stat-damage-lightning', dl);
+        setIf('stat-damage-fire', df);
+        setIf('stat-damage-ice', di);
+        setIf('stat-damage-piercing', dp);
+        setIf('stat-damage-blunt', db);
+        setIf('stat-damage-slashing', ds);
+
+        setIf('stat-armor-lightning', al);
+        setIf('stat-armor-fire', af);
+        setIf('stat-armor-ice', ai);
+        setIf('stat-armor-piercing', ap);
+        setIf('stat-armor-blunt', ab);
+        setIf('stat-armor-slashing', as_);
       } catch (e) {}
     }catch(e){}
   }
