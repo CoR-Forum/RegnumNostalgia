@@ -56,7 +56,7 @@ territoryQueue.process('sync-territories', async (job) => {
 
       // Get current territory from database
       const [rows] = await gameDb.query(
-        'SELECT territory_id, owner_realm FROM territories WHERE territory_id = ?',
+        'SELECT territory_id, owner_realm, name FROM territories WHERE territory_id = ?',
         [territoryId]
       );
 
@@ -96,7 +96,7 @@ territoryQueue.process('sync-territories', async (job) => {
 
         captures.push({
           territoryId: territory.territory_id,
-          name: fortName,
+          name: territory.name,
           previousOwner,
           newOwner,
           capturedAt
