@@ -191,17 +191,31 @@ router.post('/select', async (req, res) => {
 
     // Grant starter items
     for (const starterItem of STARTER_ITEMS) {
-      // Get item_id from template_key
+      // Get item_id and stackable from template_key
       const [itemRows] = await gameDb.query(
-        'SELECT item_id FROM items WHERE template_key = ?',
+        'SELECT item_id, stackable FROM items WHERE template_key = ?',
         [starterItem.template_key]
       );
 
       if (itemRows.length > 0) {
-        await gameDb.query(
-          'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, UNIX_TIMESTAMP())',
-          [decoded.userId, itemRows[0].item_id, starterItem.quantity]
-        );
+        const itemId = itemRows[0].item_id;
+        const isStackable = itemRows[0].stackable;
+
+        if (!isStackable && starterItem.quantity > 1) {
+          // For non-stackable items with quantity > 1, add multiple entries
+          for (let i = 0; i < starterItem.quantity; i++) {
+            await gameDb.query(
+              'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, 1, UNIX_TIMESTAMP())',
+              [decoded.userId, itemId]
+            );
+          }
+        } else {
+          // Stackable or quantity 1
+          await gameDb.query(
+            'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, UNIX_TIMESTAMP())',
+            [decoded.userId, itemId, starterItem.quantity]
+          );
+        }
       }
     }
 
