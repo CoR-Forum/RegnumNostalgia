@@ -1,8 +1,314 @@
-const { forumDb } = require('../config/database');
+const { forumDb, gameDb } = require('../config/database');
 const logger = require('../config/logger');
 
 // Track last processed shoutbox entry ID for polling
 let lastShoutboxId = 0;
+
+/**
+ * Check if a user has GM/Admin permissions
+ * @param {number} userId - The user ID to check
+ * @returns {Promise<boolean>} - True if user is GM/Admin
+ */
+async function isGM(userId) {
+  try {
+    // Check if user is in GM/Admin group (groupID 32)
+    const [rows] = await forumDb.query(
+      'SELECT groupID FROM wcf1_user_to_group WHERE userID = ? AND groupID = 32',
+      [userId]
+    );
+    return rows.length > 0;
+  } catch (error) {
+    logger.error('Failed to check GM status', { error: error.message, userId });
+    return false;
+  }
+}
+
+/**
+ * Handle the /item command to give items to users
+ * @param {object} socket - Socket.io socket instance
+ * @param {object} user - User executing the command
+ * @param {string} templateKey - The item template key
+ * @param {number} targetUserId - The user to receive the item
+ * @param {number} quantity - The quantity of items to give (default: 1)
+ */
+async function handleItemAddCommand(socket, user, templateKey, targetUserId, quantity = 1) {
+  try {
+    // Validate inputs
+    if (!templateKey || !targetUserId) {
+      return { success: false, error: 'Usage: /item <template_key> <user_id> [quantity]' };
+    }
+
+    const parsedUserId = parseInt(targetUserId, 10);
+    const parsedQuantity = parseInt(quantity, 10) || 1;
+
+    if (isNaN(parsedUserId) || parsedUserId <= 0) {
+      return { success: false, error: 'Invalid user ID' };
+    }
+
+    if (parsedQuantity <= 0 || parsedQuantity > 10000) {
+      return { success: false, error: 'Quantity must be between 1 and 10000' };
+    }
+
+    // Check if target user exists
+    const [userRows] = await gameDb.query(
+      'SELECT username FROM players WHERE user_id = ?',
+      [parsedUserId]
+    );
+
+    if (userRows.length === 0) {
+      return { success: false, error: `User ID ${parsedUserId} not found` };
+    }
+
+    const targetUsername = userRows[0].username;
+
+    // Look up item by template_key
+    const [itemRows] = await gameDb.query(
+      'SELECT item_id, name, stackable FROM items WHERE template_key = ?',
+      [templateKey]
+    );
+
+    if (itemRows.length === 0) {
+      return { success: false, error: `Item '${templateKey}' not found` };
+    }
+
+    const itemId = itemRows[0].item_id;
+    const itemName = itemRows[0].name;
+    const isStackable = itemRows[0].stackable;
+
+    // Add item to inventory
+    if (!isStackable && parsedQuantity > 1) {
+      // For non-stackable items with quantity > 1, add multiple entries
+      for (let i = 0; i < parsedQuantity; i++) {
+        await gameDb.query(
+          'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, 1, UNIX_TIMESTAMP())',
+          [parsedUserId, itemId]
+        );
+      }
+    } else if (!isStackable) {
+      // Non-stackable, single item
+      await gameDb.query(
+        'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, 1, UNIX_TIMESTAMP())',
+        [parsedUserId, itemId]
+      );
+    } else {
+      // Stackable item - check if user already has it
+      const [existingStack] = await gameDb.query(
+        'SELECT inventory_id, quantity FROM inventory WHERE user_id = ? AND item_id = ?',
+        [parsedUserId, itemId]
+      );
+
+      if (existingStack.length > 0) {
+        // Update existing stack
+        const newQuantity = existingStack[0].quantity + parsedQuantity;
+        await gameDb.query(
+          'UPDATE inventory SET quantity = ? WHERE inventory_id = ?',
+          [newQuantity, existingStack[0].inventory_id]
+        );
+      } else {
+        // Create new stack
+        await gameDb.query(
+          'INSERT INTO inventory (user_id, item_id, quantity, acquired_at) VALUES (?, ?, ?, UNIX_TIMESTAMP())',
+          [parsedUserId, itemId, parsedQuantity]
+        );
+      }
+    }
+
+    logger.info('GM gave item via command', {
+      gmUserId: user.userId,
+      gmUsername: user.username,
+      targetUserId: parsedUserId,
+      targetUsername,
+      itemId,
+      itemName,
+      templateKey,
+      quantity: parsedQuantity
+    });
+
+    // Notify target user if they're connected to reload their inventory
+    const targetSocket = Array.from(socket.nsp.sockets.values())
+      .find(s => s.user && s.user.userId === parsedUserId);
+
+    if (targetSocket) {
+      // Trigger inventory reload for target user
+      targetSocket.emit('inventory:refresh');
+      logger.info('Sent inventory reload to target user', { targetUserId: parsedUserId });
+    }
+
+    return {
+      success: true,
+      message: `Gave ${parsedQuantity}x ${itemName} to ${targetUsername} (ID: ${parsedUserId})`
+    };
+
+  } catch (error) {
+    logger.error('Failed to execute /item command', {
+      error: error.message,
+      userId: user.userId,
+      templateKey,
+      targetUserId
+    });
+    return { success: false, error: 'Failed to give item' };
+  }
+}
+
+/**
+ * Handle the /itemrem command to remove items from users
+ * @param {object} socket - Socket.io socket instance
+ * @param {object} user - User executing the command
+ * @param {string} templateKey - The item template key
+ * @param {number} targetUserId - The user to lose the item
+ * @param {number} quantity - The quantity of items to remove (default: 1)
+ */
+async function handleItemRemoveCommand(socket, user, templateKey, targetUserId, quantity = 1) {
+  try {
+    // Validate inputs
+    if (!templateKey || !targetUserId) {
+      return { success: false, error: 'Usage: /itemrem <template_key> <user_id> [quantity]' };
+    }
+
+    const parsedUserId = parseInt(targetUserId, 10);
+    const parsedQuantity = parseInt(quantity, 10) || 1;
+
+    if (isNaN(parsedUserId) || parsedUserId <= 0) {
+      return { success: false, error: 'Invalid user ID' };
+    }
+
+    if (parsedQuantity <= 0 || parsedQuantity > 10000) {
+      return { success: false, error: 'Quantity must be between 1 and 10000' };
+    }
+
+    // Check if target user exists
+    const [userRows] = await gameDb.query(
+      'SELECT username FROM players WHERE user_id = ?',
+      [parsedUserId]
+    );
+
+    if (userRows.length === 0) {
+      return { success: false, error: `User ID ${parsedUserId} not found` };
+    }
+
+    const targetUsername = userRows[0].username;
+
+    // Look up item by template_key
+    const [itemRows] = await gameDb.query(
+      'SELECT item_id, name, stackable FROM items WHERE template_key = ?',
+      [templateKey]
+    );
+
+    if (itemRows.length === 0) {
+      return { success: false, error: `Item '${templateKey}' not found` };
+    }
+
+    const itemId = itemRows[0].item_id;
+    const itemName = itemRows[0].name;
+    const isStackable = itemRows[0].stackable;
+
+    // Check what the user has in inventory
+    const [inventoryRows] = await gameDb.query(
+      'SELECT inventory_id, quantity FROM inventory WHERE user_id = ? AND item_id = ? ORDER BY acquired_at ASC',
+      [parsedUserId, itemId]
+    );
+
+    if (inventoryRows.length === 0) {
+      return { success: false, error: `${targetUsername} doesn't have any ${itemName}` };
+    }
+
+    let removedCount = 0;
+
+    if (!isStackable) {
+      // Remove individual entries for non-stackable items
+      const toRemove = Math.min(parsedQuantity, inventoryRows.length);
+      for (let i = 0; i < toRemove; i++) {
+        await gameDb.query(
+          'DELETE FROM inventory WHERE inventory_id = ?',
+          [inventoryRows[i].inventory_id]
+        );
+        removedCount++;
+      }
+    } else {
+      // Handle stackable items
+      const stack = inventoryRows[0];
+      const currentQuantity = stack.quantity;
+
+      if (parsedQuantity >= currentQuantity) {
+        // Remove entire stack
+        await gameDb.query(
+          'DELETE FROM inventory WHERE inventory_id = ?',
+          [stack.inventory_id]
+        );
+        removedCount = currentQuantity;
+      } else {
+        // Reduce stack quantity
+        await gameDb.query(
+          'UPDATE inventory SET quantity = quantity - ? WHERE inventory_id = ?',
+          [parsedQuantity, stack.inventory_id]
+        );
+        removedCount = parsedQuantity;
+      }
+    }
+
+    logger.info('GM removed item via command', {
+      gmUserId: user.userId,
+      gmUsername: user.username,
+      targetUserId: parsedUserId,
+      targetUsername,
+      itemId,
+      itemName,
+      templateKey,
+      quantity: removedCount
+    });
+
+    // Notify target user if they're connected to reload their inventory
+    const targetSocket = Array.from(socket.nsp.sockets.values())
+      .find(s => s.user && s.user.userId === parsedUserId);
+
+    if (targetSocket) {
+      targetSocket.emit('inventory:refresh');
+      logger.info('Sent inventory reload to target user', { targetUserId: parsedUserId });
+    }
+
+    return {
+      success: true,
+      message: `Removed ${removedCount}x ${itemName} from ${targetUsername} (ID: ${parsedUserId})`
+    };
+
+  } catch (error) {
+    logger.error('Failed to execute /itemrem command', {
+      error: error.message,
+      userId: user.userId,
+      templateKey,
+      targetUserId
+    });
+    return { success: false, error: 'Failed to remove item' };
+  }
+}
+
+/**
+ * Parse and execute a command from a shoutbox message
+ * @param {object} socket - Socket.io socket instance
+ * @param {object} user - User executing the command
+ * @param {string} message - The command message
+ * @returns {Promise<object>} - Result of command execution
+ */
+async function executeCommand(socket, user, message) {
+  const parts = message.trim().split(/\s+/);
+  const command = parts[0].toLowerCase();
+  const args = parts.slice(1);
+
+  switch (command) {
+    case '/item':
+    case '/itemadd':
+      const [templateKey, targetUserId, quantity] = args;
+      return await handleItemAddCommand(socket, user, templateKey, targetUserId, quantity);
+    
+    case '/itemrem':
+    case '/itemremove':
+      const [remTemplateKey, remTargetUserId, remQuantity] = args;
+      return await handleItemRemoveCommand(socket, user, remTemplateKey, remTargetUserId, remQuantity);
+    
+    default:
+      return { success: false, error: `Unknown command: ${command}` };
+  }
+}
 
 /**
  * Initialize shoutbox websocket handlers for a connected socket
@@ -67,6 +373,49 @@ function initializeShoutboxHandlers(socket, user) {
 
     if (message.length > 1000) {
       if (callback) callback({ success: false, error: 'Message too long (max 1000 characters)' });
+      return;
+    }
+
+    // Check if message is a command
+    if (message.trim().startsWith('/')) {
+      // Check if user has GM permissions
+      const hasGMPermission = await isGM(user.userId);
+      
+      if (!hasGMPermission) {
+        if (callback) {
+          callback({ success: false, error: 'You do not have permission to use commands' });
+        }
+        return;
+      }
+
+      // Execute the command
+      const result = await executeCommand(socket, user, message.trim());
+      
+      if (callback) {
+        callback(result);
+      }
+
+      // If command was successful, broadcast a system message to shoutbox
+      if (result.success && result.message) {
+        const timestamp = Math.floor(Date.now() / 1000);
+        const systemMessage = {
+          entryId: 0, // System message doesn't have an entryId
+          userId: 0,
+          username: 'System',
+          time: timestamp,
+          message: `[GM ${user.username}] ${result.message}`
+        };
+
+        // Broadcast to all clients including sender
+        socket.nsp.emit('shoutbox:message', systemMessage);
+
+        logger.info('GM command executed and broadcast', {
+          gmUserId: user.userId,
+          gmUsername: user.username,
+          command: message.trim()
+        });
+      }
+
       return;
     }
 

@@ -221,7 +221,7 @@ Connected via Socket.io to `ws://localhost/socket.io/`
 ### Client → Server (Emit)
 - `position:update` - Manual position change `{ x, y }`
 - `move:request` - Initiate pathfinding `{ destinationX, destinationY }`
-- `shoutbox:send` - Post chat message `{ message }`
+- `shoutbox:send` - Post chat message `{ message }` (supports GM commands: `/item`, `/itemrem`)
 
 ### Server → Client (Listen)
 - `player:state` - Initial sync on connection
