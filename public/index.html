@@ -2148,6 +2148,10 @@
               constitution: data.constitution ?? gameState.stats?.constitution ?? 20
             };
           }
+          // Per-type damage/armor and equipment weight
+          if (data.damageTypes !== undefined) gameState.damageTypes = data.damageTypes || {};
+          if (data.armorTypes !== undefined) gameState.armorTypes = data.armorTypes || {};
+          if (data.totalEquipmentWeight !== undefined) gameState.totalEquipmentWeight = data.totalEquipmentWeight || 0;
       // Update player marker position if coordinates changed
       if ((data.position || data.x !== undefined || data.y !== undefined) && gameState.playerMarker) {
         const latLng = [totalH - gameState.position.y, gameState.position.x];

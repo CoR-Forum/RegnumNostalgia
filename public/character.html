@@ -180,20 +180,24 @@
         const weaknessEl = document.getElementById('stat-weakness');
         if (weaknessEl) weaknessEl.textContent = `${Number(gameState.weakness || 0)}%`;
 
-        // Damage type breakdown (support different shapes from server)
-        const dl = Number(gameState.damage_lightning ?? (gameState.damage && gameState.damage.lightning) ?? 0);
-        const df = Number(gameState.damage_fire ?? (gameState.damage && gameState.damage.fire) ?? 0);
-        const di = Number(gameState.damage_ice ?? (gameState.damage && gameState.damage.ice) ?? 0);
-        const dp = Number(gameState.damage_piercing ?? (gameState.damage && gameState.damage.piercing) ?? 0);
-        const db = Number(gameState.damage_blunt ?? (gameState.damage && gameState.damage.blunt) ?? 0);
-        const ds = Number(gameState.damage_slashing ?? (gameState.damage && gameState.damage.slashing) ?? 0);
+        // Damage type breakdown: use structured `damageTypes` / `armorTypes`.
+        // Fallback: accept older nested `damage` / `armor` objects (but no flattened keys).
+        const dt = gameState.damageTypes || gameState.damage || {};
+        const at = gameState.armorTypes || gameState.armor || {};
 
-        const al = Number(gameState.armor_lightning ?? (gameState.armor && gameState.armor.lightning) ?? 0);
-        const af = Number(gameState.armor_fire ?? (gameState.armor && gameState.armor.fire) ?? 0);
-        const ai = Number(gameState.armor_ice ?? (gameState.armor && gameState.armor.ice) ?? 0);
-        const ap = Number(gameState.armor_piercing ?? (gameState.armor && gameState.armor.piercing) ?? 0);
-        const ab = Number(gameState.armor_blunt ?? (gameState.armor && gameState.armor.blunt) ?? 0);
-        const as_ = Number(gameState.armor_slashing ?? (gameState.armor && gameState.armor.slashing) ?? 0);
+        const dl = Number(dt.lightning || 0);
+        const df = Number(dt.fire || 0);
+        const di = Number(dt.ice || 0);
+        const dp = Number(dt.piercing || 0);
+        const db = Number(dt.blunt || 0);
+        const ds = Number(dt.slashing || 0);
+
+        const al = Number(at.lightning || 0);
+        const af = Number(at.fire || 0);
+        const ai = Number(at.ice || 0);
+        const ap = Number(at.piercing || 0);
+        const ab = Number(at.blunt || 0);
+        const as_ = Number(at.slashing || 0);
 
         const setIf = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = `${Number(val || 0)}`; };
         setIf('stat-damage-lightning', dl);

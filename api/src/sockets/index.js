@@ -1680,19 +1680,60 @@ async function buildPlayerState(userId) {
 
   if (equipmentIds.length > 0) {
     const [itemRows] = await gameDb.query(
-      `SELECT i.stats FROM inventory inv
+      `SELECT i.stats, i.weight as item_weight FROM inventory inv
        JOIN items i ON inv.item_id = i.item_id
        WHERE inv.inventory_id IN (?)`,
       [equipmentIds]
     );
 
+    // Prepare per-type aggregators
+    const types = ['lightning', 'fire', 'ice', 'piercing', 'blunt', 'slashing'];
+    const damageTypes = {};
+    const armorTypes = {};
+    types.forEach(t => { damageTypes[t] = 0; armorTypes[t] = 0; });
+
+    let totalEquipmentWeight = 0;
+
     itemRows.forEach(row => {
-      if (row.stats) {
-        const stats = typeof row.stats === 'string' ? JSON.parse(row.stats) : row.stats;
-        totalDamageBonus += stats.damage || 0;
-        totalArmorBonus += stats.armor || 0;
+      if (row.item_weight) {
+        const w = Number(row.item_weight) || 0;
+        totalEquipmentWeight += w;
       }
+
+      if (!row.stats) return;
+      const stats = typeof row.stats === 'string' ? JSON.parse(row.stats) : row.stats;
+
+      // Scalar damage/armor
+      const scalarDamage = Number(stats.damage) || 0;
+      const scalarArmor = Number(stats.armor) || 0;
+      totalDamageBonus += scalarDamage;
+      totalArmorBonus += scalarArmor;
+
+      // Per-type damage/armor support (either flattened keys or nested objects)
+      types.forEach(t => {
+        const dmgKey = `damage_${t}`;
+        const armKey = `armor_${t}`;
+
+        const typeDamage = Number(
+          stats[dmgKey] ?? (stats.damage && stats.damage[t]) ?? 0
+        ) || 0;
+        const typeArmor = Number(
+          stats[armKey] ?? (stats.armor && stats.armor[t]) ?? 0
+        ) || 0;
+
+        damageTypes[t] += typeDamage;
+        armorTypes[t] += typeArmor;
+
+        // Include type sums in overall scalar bonus so totals reflect these too
+        totalDamageBonus += typeDamage;
+        totalArmorBonus += typeArmor;
+      });
     });
+
+    // Attach these aggregated details to the player object so they can be returned
+    player._damageTypes = damageTypes;
+    player._armorTypes = armorTypes;
+    player._totalEquipmentWeight = Math.round(totalEquipmentWeight);
   }
 
   const baseDamage = player.strength * 0.5 + player.intelligence * 0.3;
@@ -1727,6 +1768,13 @@ async function buildPlayerState(userId) {
     startedAt: timeRows[0].started_at
   } : null;
 
+  // Prepare per-type outputs (ensure keys exist even if no equipment)
+  const _types = ['lightning', 'fire', 'ice', 'piercing', 'blunt', 'slashing'];
+  const outDamageTypes = (player._damageTypes) ? Object.assign({}, player._damageTypes) : _types.reduce((acc, t) => (acc[t] = 0, acc), {});
+  const outArmorTypes = (player._armorTypes) ? Object.assign({}, player._armorTypes) : _types.reduce((acc, t) => (acc[t] = 0, acc), {});
+
+  // (no flattened keys; clients should use `damageTypes` / `armorTypes`)
+
   return {
     userId: player.user_id,
     username: player.username,
@@ -1743,10 +1791,16 @@ async function buildPlayerState(userId) {
       dexterity: player.dexterity,
       concentration: player.concentration,
       strength: player.strength,
-      constitution: player.constitution
+      constitution: player.constitution,
     },
     damage: Math.round(baseDamage + totalDamageBonus),
     armor: Math.round(baseArmor + totalArmorBonus),
+    // per-type breakdowns
+    damageTypes: outDamageTypes,
+    armorTypes: outArmorTypes,
+    // no flattened compatibility keys — use `damageTypes` / `armorTypes`
+    // total weight of equipped items (if any)
+    totalEquipmentWeight: player._totalEquipmentWeight || 0,
     walker: walkerStatus,
     serverTime
   };
