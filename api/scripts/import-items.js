@@ -28,7 +28,8 @@ async function importItems() {
       'tenax.json',
       'vesper.json',
       'magicgems.json',
-      'premium.json'
+      'premium.json',
+      'gm.json'
     ];
 
     let totalImported = 0;

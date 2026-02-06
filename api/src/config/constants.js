@@ -47,7 +47,8 @@ module.exports = {
     { template_key: 'great_magic_gem_lucky_box', quantity: 1000 },
     { template_key: 'vesper_amulet', quantity: 1 },
     { template_key: 'tenax_amulet', quantity: 1 },
-    { template_key: 'alasthor_amulet', quantity: 1 }
+    { template_key: 'alasthor_amulet', quantity: 1 },
+    { template_key: 'gm_leggings_walk_speed', quantity: 1 },
   ],
   
   // Online Status
