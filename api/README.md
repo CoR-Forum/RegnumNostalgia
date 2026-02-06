@@ -56,6 +56,8 @@ api-node/
 │   ├── services/        # Dijkstra pathfinding
 │   ├── queues/          # Bull queue workers
 │   ├── sockets/         # Socket.io event handlers
+│   │   ├── index.js     # Main socket handlers (movement, inventory, etc.)
+│   │   └── shoutbox.js  # Chat/shoutbox handlers
 │   └── server.js        # Main application entry
 ├── gameData/            # Paths and regions JSON
 ├── logs/                # Winston log files
@@ -230,8 +232,10 @@ docker-compose -f docker-compose.node.yml exec db mariadb -u regnum_user -p regn
 3. Add authentication middleware if needed
 
 ### Adding new WebSocket event
-1. Add handler in `src/sockets/index.js`
-2. Emit from queue workers or routes as needed
+1. Add handler in `src/sockets/index.js` (or create a new module like `shoutbox.js` for feature-specific events)
+2. For modular handlers, create a separate file and export initialization function
+3. Import and call the initialization function in `src/sockets/index.js`
+4. Emit from queue workers or routes as needed
 
 ### Adding new background job
 1. Create queue file in `src/queues/`
