@@ -4,7 +4,7 @@
     "name": "Wooden Shield",
     "type": "armor",
     "description": "A simple wooden shield",
-    "stats": { "armor": 10 },
+    "stats": { "armor": 10, "armor_blunt": 5, "armor_slash": 5, "armor_pierce": 5 },
     "rarity": "common",
     "stackable": 0,
     "level": 1,
@@ -12,23 +12,11 @@
     "icon_name": "item-wooden-shield.png"
   },
   {
-    "template_key": "tower_shield",
-    "name": "Tower Shield",
-    "type": "armor",
-    "description": "Large shield offering excellent protection",
-    "stats": { "armor": 22 },
-    "rarity": "uncommon",
-    "stackable": 0,
-    "level": 4,
-    "equipment_slot": "weapon_left",
-    "icon_name": "item-metal-shield.png"
-  },
-  {
     "template_key": "leather_cap",
     "name": "Leather Cap",
     "type": "armor",
     "description": "A light leather cap",
-    "stats": { "armor": 5 },
+    "stats": { "armor": 5, "armor_blunt": 1 },
     "rarity": "common",
     "stackable": 0,
     "level": 1,
@@ -36,52 +24,16 @@
     "icon_name": "item-leather-cap.png"
   },
   {
-    "template_key": "iron_helmet",
-    "name": "Iron Helmet",
-    "type": "armor",
-    "description": "A sturdy iron helmet",
-    "stats": { "armor": 12 },
-    "rarity": "uncommon",
-    "stackable": 0,
-    "level": 3,
-    "equipment_slot": "head",
-    "icon_name": "item-iron-helmet.png"
-  },
-  {
     "template_key": "leather_tunic",
     "name": "Leather Tunic",
     "type": "armor",
     "description": "Light leather armor for torso",
-    "stats": { "armor": 8 },
+    "stats": { "armor": 10, "armor_pierce": 5, "armor_blunt": 5, "armor_slash": 5 },
     "rarity": "common",
     "stackable": 0,
     "level": 1,
     "equipment_slot": "body",
     "icon_name": "item-leather-tunic.png"
-  },
-  {
-    "template_key": "iron_armor",
-    "name": "Iron Armor",
-    "type": "armor",
-    "description": "Basic iron chest armor",
-    "stats": { "armor": 20, "health": 50 },
-    "rarity": "common",
-    "stackable": 0,
-    "level": 4,
-    "equipment_slot": "body",
-    "icon_name": "item-iron-armor.png"
-  },
-  {
-    "template_key": "plate_armor",
-    "name": "Plate Armor",
-    "type": "armor",
-    "description": "Heavy plate armor",
-    "stats": { "armor": 40, "health": 150 },
-    "rarity": "epic",
-    "stackable": 0,
-    "level": 8,
-    "equipment_slot": "body",
-    "icon_name": "item-plate-armor.png"
   },
   {
     "template_key": "leather_gloves",
@@ -96,18 +48,6 @@
     "icon_name": "item-leather-gloves.png"
   },
   {
-    "template_key": "iron_gauntlets",
-    "name": "Iron Gauntlets",
-    "type": "armor",
-    "description": "Sturdy iron gauntlets",
-    "stats": { "armor": 8 },
-    "rarity": "uncommon",
-    "stackable": 0,
-    "level": 3,
-    "equipment_slot": "hands",
-    "icon_name": "item-iron-gauntlets.png"
-  },
-  {
     "template_key": "leather_pauldrons",
     "name": "Leather Pauldrons",
     "type": "armor",
@@ -120,18 +60,6 @@
     "icon_name": "item-leather-pauldrons.png"
   },
   {
-    "template_key": "steel_pauldrons",
-    "name": "Steel Pauldrons",
-    "type": "armor",
-    "description": "Reinforced shoulder armor",
-    "stats": { "armor": 10 },
-    "rarity": "rare",
-    "stackable": 0,
-    "level": 4,
-    "equipment_slot": "shoulders",
-    "icon_name": "item-steel-pauldrons.png"
-  },
-  {
     "template_key": "leather_leggings",
     "name": "Leather Leggings",
     "type": "armor",
@@ -142,17 +70,5 @@
     "level": 1,
     "equipment_slot": "legs",
     "icon_name": "item-leather-leggings.png"
-  },
-  {
-    "template_key": "iron_leggings",
-    "name": "Iron Leggings",
-    "type": "armor",
-    "description": "Reinforced leg armor",
-    "stats": { "armor": 14 },
-    "rarity": "uncommon",
-    "stackable": 0,
-    "level": 3,
-    "equipment_slot": "legs",
-    "icon_name": "item-iron-leggings.png"
   }
 ]

@@ -1732,7 +1732,7 @@ async function buildPlayerState(userId) {
     );
 
     // Prepare per-type aggregators
-    const types = ['lightning', 'fire', 'ice', 'piercing', 'blunt', 'slashing'];
+    const types = ['lightning', 'fire', 'ice', 'pierce', 'blunt', 'slash'];
     const damageTypes = {};
     const armorTypes = {};
     types.forEach(t => { damageTypes[t] = 0; armorTypes[t] = 0; });
@@ -1814,7 +1814,7 @@ async function buildPlayerState(userId) {
   } : null;
 
   // Prepare per-type outputs (ensure keys exist even if no equipment)
-  const _types = ['lightning', 'fire', 'ice', 'piercing', 'blunt', 'slashing'];
+  const _types = ['lightning', 'fire', 'ice', 'pierce', 'blunt', 'slash'];
   const outDamageTypes = (player._damageTypes) ? Object.assign({}, player._damageTypes) : _types.reduce((acc, t) => (acc[t] = 0, acc), {});
   const outArmorTypes = (player._armorTypes) ? Object.assign({}, player._armorTypes) : _types.reduce((acc, t) => (acc[t] = 0, acc), {});
 

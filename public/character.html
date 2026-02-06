@@ -1,5 +1,5 @@
 <!-- Character Window (equipment + stats) -->
-<div id="character-window" class="ui-window" style="position: absolute; left: 12px; bottom: 195px; width: 240px; z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+<div id="character-window" class="ui-window" style="position: absolute; left: 12px; bottom: 195px; width: 240px; height: 360px; overflow: auto; z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
   <div id="character-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
     <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; text-align: center;">Character</h2>
     <button id="character-close-btn" class="ui-window-close-btn"></button>
@@ -46,9 +46,9 @@
             <div class="char-stat-row"><span>Lightning:</span><span id="stat-damage-lightning">0</span></div>
             <div class="char-stat-row"><span>Fire:</span><span id="stat-damage-fire">0</span></div>
             <div class="char-stat-row"><span>Ice:</span><span id="stat-damage-ice">0</span></div>
-            <div class="char-stat-row"><span>Piercing:</span><span id="stat-damage-piercing">0</span></div>
+            <div class="char-stat-row"><span>pierce:</span><span id="stat-damage-pierce">0</span></div>
             <div class="char-stat-row"><span>Blunt:</span><span id="stat-damage-blunt">0</span></div>
-            <div class="char-stat-row"><span>Slashing:</span><span id="stat-damage-slashing">0</span></div>
+            <div class="char-stat-row"><span>slash:</span><span id="stat-damage-slash">0</span></div>
           </div>
 
           <div class="char-stats-block">
@@ -67,9 +67,9 @@
             <div class="char-stat-row"><span>Lightning:</span><span id="stat-armor-lightning">0</span></div>
             <div class="char-stat-row"><span>Fire:</span><span id="stat-armor-fire">0</span></div>
             <div class="char-stat-row"><span>Ice:</span><span id="stat-armor-ice">0</span></div>
-            <div class="char-stat-row"><span>Piercing:</span><span id="stat-armor-piercing">0</span></div>
+            <div class="char-stat-row"><span>pierce:</span><span id="stat-armor-pierce">0</span></div>
             <div class="char-stat-row"><span>Blunt:</span><span id="stat-armor-blunt">0</span></div>
-            <div class="char-stat-row"><span>Slashing:</span><span id="stat-armor-slashing">0</span></div>
+            <div class="char-stat-row"><span>slash:</span><span id="stat-armor-slash">0</span></div>
           </div>
         </div>
       </div>
@@ -188,31 +188,31 @@
         const dl = Number(dt.lightning || 0);
         const df = Number(dt.fire || 0);
         const di = Number(dt.ice || 0);
-        const dp = Number(dt.piercing || 0);
+        const dp = Number(dt.pierce || 0);
         const db = Number(dt.blunt || 0);
-        const ds = Number(dt.slashing || 0);
+        const ds = Number(dt.slash || 0);
 
         const al = Number(at.lightning || 0);
         const af = Number(at.fire || 0);
         const ai = Number(at.ice || 0);
-        const ap = Number(at.piercing || 0);
+        const ap = Number(at.pierce || 0);
         const ab = Number(at.blunt || 0);
-        const as_ = Number(at.slashing || 0);
+        const as_ = Number(at.slash || 0);
 
         const setIf = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = `${Number(val || 0)}`; };
         setIf('stat-damage-lightning', dl);
         setIf('stat-damage-fire', df);
         setIf('stat-damage-ice', di);
-        setIf('stat-damage-piercing', dp);
+        setIf('stat-damage-pierce', dp);
         setIf('stat-damage-blunt', db);
-        setIf('stat-damage-slashing', ds);
+        setIf('stat-damage-slash', ds);
 
         setIf('stat-armor-lightning', al);
         setIf('stat-armor-fire', af);
         setIf('stat-armor-ice', ai);
-        setIf('stat-armor-piercing', ap);
+        setIf('stat-armor-pierce', ap);
         setIf('stat-armor-blunt', ab);
-        setIf('stat-armor-slashing', as_);
+        setIf('stat-armor-slash', as_);
       } catch (e) {}
     }catch(e){}
   }
@@ -265,14 +265,13 @@
             const tooltipItem = {
               itemName: it.name || it.itemName || '',
               itemType: it.type || it.itemType || '',
-              equipmentSlot: it.equipmentSlot || null,
+                equipmentSlot: it.equipmentSlot || null,
               description: it.description || '',
               stats: it.stats || {},
-              iconName: it.iconName || null,
-              inventoryId: info.inventoryId || null,
               rarity: it.rarity || 'common',
               quantity: it.quantity || 1,
-              level: typeof it.level !== 'undefined' ? it.level : 1
+              level: typeof it.level !== 'undefined' ? it.level : 1,
+              iconName: it.iconName || null
             };
             showTooltip(e, tooltipItem);
           });
