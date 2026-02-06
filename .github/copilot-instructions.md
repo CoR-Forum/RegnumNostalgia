@@ -1,1 +1,3 @@
 - Database Migrations are never needed as I wipe the database on each run. Please do not add migration files or alter the database schema in any way. If you need to change the database schema, just update the SQL file that initializes the database (api/db/init.sql) and make sure to include any new columns in the relevant queries.
+
+- It is super important that we always keep the README.md with all relevant information up to date. If you make any changes to the project, please make sure to update the README.md file accordingly. This includes any changes to the setup instructions, API endpoints, or any other relevant information that users need to know.
