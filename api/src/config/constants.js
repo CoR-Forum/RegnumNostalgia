@@ -176,8 +176,8 @@ module.exports = {
 
     {
       id: 'neutral-rock-1',
-      x: 3000,
-      y: 3000,
+      x: 2933,
+      y: 3071,
       realm: 'neutral',
       visual: 'collectable-rock.png',
       type: 'loot-container',
