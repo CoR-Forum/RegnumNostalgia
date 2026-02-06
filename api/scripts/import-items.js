@@ -9,8 +9,7 @@ async function importItems() {
     // Check if items already exist
     const [rows] = await gameDb.query('SELECT COUNT(*) as count FROM items');
     if (rows[0].count > 0) {
-      logger.info(`Items already imported (${rows[0].count} items)`);
-      return;
+      logger.info(`Items table already has ${rows[0].count} items — continuing import to add/update items`);
     }
 
     logger.info('Starting items import...');
@@ -33,6 +32,7 @@ async function importItems() {
     ];
 
     let totalImported = 0;
+    let totalUpdated = 0;
 
     for (const file of itemFiles) {
       const filePath = path.join(itemsDir, file);
@@ -47,20 +47,44 @@ async function importItems() {
 
       for (const item of items) {
         try {
-          await gameDb.query(
-            `INSERT INTO items (template_key, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name, weight)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-               ON DUPLICATE KEY UPDATE
-                 name = VALUES(name),
-                 type = VALUES(type),
-                 description = VALUES(description),
-                 stats = VALUES(stats),
-                 rarity = VALUES(rarity),
-                 stackable = VALUES(stackable),
-                 level = VALUES(level),
-                 equipment_slot = VALUES(equipment_slot),
-                 icon_name = VALUES(icon_name),
-                 weight = VALUES(weight)`,
+          // Avoid using INSERT ... ON DUPLICATE KEY UPDATE because MySQL
+          // may consume AUTO_INCREMENT values for attempted inserts that
+          // end up doing updates, producing gaps in item_id. Instead,
+          // check existence first and run UPDATE or INSERT accordingly.
+          const [existingRows] = await gameDb.query(
+            'SELECT item_id FROM items WHERE template_key = ?',
+            [item.template_key]
+          );
+
+          if (existingRows && existingRows.length > 0) {
+            await gameDb.query(
+              `UPDATE items SET
+                 name = ?,
+                 description = ?,
+                 stats = ?,
+                 rarity = ?,
+                 stackable = ?,
+                 equipment_slot = ?,
+                 icon_name = ?,
+                 weight = ?
+               WHERE template_key = ?`,
+              [
+                item.name,
+                item.description || null,
+                item.stats ? JSON.stringify(item.stats) : null,
+                item.rarity || 'common',
+                item.stackable ? 1 : 0,
+                item.equipment_slot || null,
+                item.icon_name || null,
+                typeof item.weight !== 'undefined' ? item.weight : null,
+                item.template_key
+              ]
+            );
+            totalUpdated++;
+          } else {
+            await gameDb.query(
+              `INSERT INTO items (template_key, name, type, description, stats, rarity, stackable, level, equipment_slot, icon_name, weight)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               [
                 item.template_key,
                 item.name,
@@ -74,15 +98,16 @@ async function importItems() {
                 item.icon_name || null,
                 typeof item.weight !== 'undefined' ? item.weight : null
               ]
-          );
-          totalImported++;
+            );
+            totalImported++;
+          }
         } catch (err) {
           logger.error(`Failed to import item: ${item.template_key}`, { error: err.message });
         }
       }
     }
 
-    logger.info(`Items import completed. Total: ${totalImported}`);
+    logger.info(`Items import completed. Inserted: ${totalImported}, Updated: ${totalUpdated}`);
   } catch (err) {
     logger.error('Items import failed', { error: err.message });
     throw err;

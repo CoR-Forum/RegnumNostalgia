@@ -10,5 +10,65 @@
     "level": 1,
     "equipment_slot": "legs",
     "icon_name": "gm.png"
+  },
+  {
+    "template_key": "gm_amulet",
+    "name": "GM Amulet",
+    "type": "armor",
+    "description": "Special amulet for game masters, offering extreme damage and armor.",
+    "stats": { "damage": 100000, "armor": 100000 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "amulet",
+    "icon_name": "gm.png"
+  },
+  {
+    "template_key": "gm_ring",
+    "name": "GM Ringgg",
+    "type": "armor",
+    "description": "Special ring for game masters, offering extreme damage and armor.",
+    "stats": { "damage": 100000, "armor": 100000 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "ring",
+    "icon_name": "gm.png"
+  },
+  {
+    "template_key": "gm_boots6",
+    "name": "GM Boots",
+    "type": "armor",
+    "description": "Special boots for game masters, offering extreme armor and jump height.",
+    "stats": { "armor": 1000, "jump_height": 100 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "ring",
+    "icon_name": "gm.png"
+  },
+  {
+    "template_key": "gm_crown",
+    "name": "GM Crown",
+    "type": "armor",
+    "description": "Special crown for game masters, offering extreme armor and health.",
+    "stats": { "armor": 1000, "health": 1000 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "head",
+    "icon_name": "gm.png"
+  },
+  {
+    "template_key": "gm_chestplate",
+    "name": "GM Chestplate",
+    "type": "armor",
+    "description": "Special chestplate for game masters, offering extreme armor and health.",
+    "stats": { "armor": 1000, "health": 1000 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": "chest",
+    "icon_name": "gm.png"
   }
 ]
