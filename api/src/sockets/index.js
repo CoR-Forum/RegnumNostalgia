@@ -1669,6 +1669,22 @@ async function buildPlayerState(userId) {
   if (playerRows.length === 0) return null;
   const player = playerRows[0];
 
+  // Determine XP needed for next level
+  let xpToNext = null;
+  try {
+    const nextLevel = Number(player.level) + 1;
+    const [nextRows] = await gameDb.query('SELECT xp FROM levels WHERE level = ?', [nextLevel]);
+    if (nextRows && nextRows.length > 0) {
+      const nextXp = Number(nextRows[0].xp) || 0;
+      xpToNext = Math.max(0, nextXp - Number(player.xp));
+    } else {
+      xpToNext = null; // no next level defined
+    }
+  } catch (e) {
+    logger.error('Failed to fetch next level XP', { error: e && e.message ? e.message : String(e), userId });
+    xpToNext = null;
+  }
+
   const equipmentIds = [
     player.eq_head, player.eq_body, player.eq_hands, player.eq_shoulders,
     player.eq_legs, player.eq_weapon_right, player.eq_weapon_left,
@@ -1786,6 +1802,7 @@ async function buildPlayerState(userId) {
     maxMana: player.max_mana,
     xp: player.xp,
     level: player.level,
+    xpToNext: xpToNext,
     stats: {
       intelligence: player.intelligence,
       dexterity: player.dexterity,

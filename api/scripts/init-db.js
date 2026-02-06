@@ -237,6 +237,28 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // levels
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS levels (
+        level INT PRIMARY KEY,
+        xp BIGINT NOT NULL,
+        INDEX idx_levels_xp (xp)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // Seed levels from gameData/levels.json if empty
+    const [levelsCount] = await gameDb.query('SELECT COUNT(*) as count FROM levels');
+    if (levelsCount[0].count === 0) {
+      const levelsPath = path.resolve(__dirname, '../gameData/levels.json');
+      const levelsData = JSON.parse(fs.readFileSync(levelsPath, 'utf8'));
+      if (Array.isArray(levelsData) && levelsData.length > 0) {
+        const insertQuery = 'INSERT INTO levels (level, xp) VALUES ?';
+        const values = levelsData.map(l => [l.level, l.xp]);
+        await gameDb.query(insertQuery, [values]);
+        logger.info(`Seeded ${values.length} levels from ${levelsPath}`);
+      }
+    }
+
     // Seed territories if empty
     const [territoryCount] = await gameDb.query('SELECT COUNT(*) as count FROM territories');
     if (territoryCount[0].count === 0) {
