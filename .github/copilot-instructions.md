@@ -1,0 +1,1 @@
+- Database Migrations are never needed as I wipe the database on each run. Please do not add migration files or alter the database schema in any way. If you need to change the database schema, just update the SQL file that initializes the database (api/db/init.sql) and make sure to include any new columns in the relevant queries.
