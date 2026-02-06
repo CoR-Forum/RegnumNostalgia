@@ -265,13 +265,14 @@
             const tooltipItem = {
               itemName: it.name || it.itemName || '',
               itemType: it.type || it.itemType || '',
-                equipmentSlot: it.equipmentSlot || null,
+              equipmentSlot: it.equipmentSlot || null,
               description: it.description || '',
               stats: it.stats || {},
+              iconName: it.iconName || null,
+              inventoryId: info.inventoryId || null,
               rarity: it.rarity || 'common',
               quantity: it.quantity || 1,
-              level: typeof it.level !== 'undefined' ? it.level : 1,
-              iconName: it.iconName || null
+              level: typeof it.level !== 'undefined' ? it.level : 1
             };
             showTooltip(e, tooltipItem);
           });
