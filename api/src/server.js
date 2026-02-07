@@ -90,24 +90,8 @@ app.get('/health', async (req, res) => {
 // Mount API routes
 app.use('/login', authRoutes);
 app.use('/realm', authRoutes);
-// The following functionality is implemented via WebSocket handlers;
-// duplicate Express route mounts removed to avoid conflicts.
-// app.use('/player', playerRoutes);
-// app.use('/player', moveRoutes);
-// app.use('/players', playerRoutes);
-// app.use('/inventory', inventoryRoutes); // Moved to WebSocket
-// app.use('/equipment', equipmentRoutes); // Moved to WebSocket
-// app.use('/territories', territoriesRoutes);
-// app.use('/superbosses', superbossesRoutes); // Moved to WebSocket
-// app.use('/items', itemsRoutes);
-// app.use('/paths', pathsRoutes); // Moved to WebSocket
-// app.use('/regions', regionsRoutes); // Moved to WebSocket
-// app.use('/shoutbox', shoutboxRoutes); // Moved to WebSocket
 app.use('/screenshots', screenshotsRoutes);
 app.use('/user/settings', settingsRoutes);
-// Editor APIs are also available via WebSocket; keep REST mount commented
-// to avoid accidental use.
-// app.use('/editor', editorRoutes);
 
 // Bull Board setup (queue monitoring dashboard)
 const serverAdapter = new ExpressAdapter();
