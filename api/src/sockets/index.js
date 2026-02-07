@@ -1,6 +1,6 @@
 const { authenticateSocket } = require('../middleware/auth');
 const { gameDb, forumDb } = require('../config/database');
-const { findPath, createWalker } = require('../services/pathfinding');
+const { findPath, createWalker, validateWalkableRegion, pathCrossesWall } = require('../services/pathfinding');
 const { ONLINE_THRESHOLD_SECONDS } = require('../config/constants');
 const logger = require('../config/logger');
 const { initializeShoutboxHandlers, startShoutboxPolling } = require('./shoutbox');
@@ -1473,12 +1473,28 @@ function initializeSocketHandlers(io) {
         );
         if (rows.length === 0) return;
 
-        let newX = rows[0].x + moveX;
-        let newY = rows[0].y + moveZ;
+        const oldX = rows[0].x;
+        const oldY = rows[0].y;
+        let newX = oldX + moveX;
+        let newY = oldY + moveZ;
 
         // Clamp to world bounds
         newX = Math.max(WORLD_MIN, Math.min(WORLD_MAX, Math.round(newX)));
         newY = Math.max(WORLD_MIN, Math.min(WORLD_MAX, Math.round(newY)));
+
+        // ── Region / water / wall validation ──
+        const walkCheck = await validateWalkableRegion(newX, newY, user.realm);
+        if (!walkCheck.valid) {
+          // Reject: send old position back so client snaps back
+          socket.emit('move3d:state', { seq, x: oldX, y: oldY });
+          return;
+        }
+
+        const wallCheck = await pathCrossesWall(oldX, oldY, newX, newY);
+        if (wallCheck.crosses) {
+          socket.emit('move3d:state', { seq, x: oldX, y: oldY });
+          return;
+        }
 
         // Persist
         await gameDb.query(

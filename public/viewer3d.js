@@ -56,6 +56,42 @@
   let inputTickTimer = null;        // setInterval handle
   let socket = null;                // reference to the game socket
 
+  /* ── Smooth interpolation state ── */
+  let visualPos = { x: 0, y: 0 };  // where the camera actually is (smoothed)
+  const LERP_FACTOR = 12;           // how fast visual catches up (units/sec multiplier)
+
+  /* ── Client-side walkability check (mirrors server logic) ── */
+  function pointInPolygon(px, py, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i][0], yi = polygon[i][1];
+      const xj = polygon[j][0], yj = polygon[j][1];
+      const intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function isPositionWalkable(x, y) {
+    if (x < 0 || x > WORLD_SIZE || y < 0 || y > WORLD_SIZE) return false;
+    const gs = window.gameState || {};
+    const regions = gs.regionsData || [];
+    if (regions.length === 0) return true; // no data yet, allow
+    const realm = gs.realm || '';
+    for (const r of regions) {
+      const poly = r.coordinates || r.positions || [];
+      if (poly.length === 0) continue;
+      if (pointInPolygon(x, y, poly)) {
+        if (r.type === 'warzone') return true;
+        const walkable = r.walkable !== undefined ? !!r.walkable : true;
+        const ownerMatches = (r.owner == null) || (String(r.owner) === String(realm));
+        return walkable && ownerMatches;
+      }
+    }
+    // No region matched → water
+    return false;
+  }
+
   /* ================================================================
    *  INITIALIZATION
    * ================================================================ */
@@ -430,6 +466,8 @@
     let ny = pos.y + worldDz * speed;
     nx = Math.max(0, Math.min(WORLD_SIZE, Math.round(nx)));
     ny = Math.max(0, Math.min(WORLD_SIZE, Math.round(ny)));
+    // Block movement into water / other realms
+    if (!isPositionWalkable(nx, ny)) return { x: pos.x, y: pos.y };
     return { x: nx, y: ny };
   }
 
@@ -445,13 +483,7 @@
 
     // 1 — Client-side prediction: apply locally
     const predicted = applyInput(serverPos, input);
-    // We track the position we predict per-input so reconciliation works
-    // but the camera always reflects the latest predicted position
     serverPos = predicted; // optimistic: assume server will agree
-
-    camera.position.x = predicted.x;
-    camera.position.z = predicted.y;
-    camera.position.y = CAMERA_HEIGHT;
 
     // 2 — Store for reconciliation
     pendingInputs.push(input);
@@ -460,6 +492,43 @@
     if (socket && socket.connected) {
       socket.emit('move3d:input', input);
     }
+  }
+
+  /**
+   * Per-frame smooth movement — called from the render loop.
+   * Continuously moves the camera toward the predicted target (serverPos)
+   * and also applies real-time local movement so there's zero input lag.
+   */
+  function updateSmoothMovement(delta) {
+    // Apply real-time local movement so the camera responds instantly
+    const { dx, dz, sprint } = sampleInput();
+    if (dx !== 0 || dz !== 0) {
+      const speed = SV_MOVE_SPEED * (sprint ? SV_SPRINT_MUL : 1);
+      // Scale to per-second (SV_MOVE_SPEED is per 100ms tick, so ×10 for per-second)
+      const perSec = speed * (1000 / INPUT_TICK_MS);
+      const cosY = Math.cos(cameraYaw);
+      const sinY = Math.sin(cameraYaw);
+      const worldDx = dx * cosY + dz * sinY;
+      const worldDz = -dx * sinY + dz * cosY;
+      visualPos.x += worldDx * perSec * delta;
+      visualPos.y += worldDz * perSec * delta;
+      visualPos.x = Math.max(0, Math.min(WORLD_SIZE, visualPos.x));
+      visualPos.y = Math.max(0, Math.min(WORLD_SIZE, visualPos.y));
+      // Block smooth movement into forbidden areas
+      if (!isPositionWalkable(Math.round(visualPos.x), Math.round(visualPos.y))) {
+        visualPos.x -= worldDx * perSec * delta;
+        visualPos.y -= worldDz * perSec * delta;
+      }
+    }
+
+    // Lerp visual toward the authoritative predicted position to correct drift
+    const t = Math.min(1, LERP_FACTOR * delta);
+    visualPos.x += (serverPos.x - visualPos.x) * t;
+    visualPos.y += (serverPos.y - visualPos.y) * t;
+
+    camera.position.x = visualPos.x;
+    camera.position.z = visualPos.y;
+    camera.position.y = CAMERA_HEIGHT;
 
     updatePositionHUD();
   }
@@ -482,13 +551,7 @@
     }
     // The reconciled position becomes our new optimistic serverPos
     serverPos = reconciledPos;
-
-    // Update camera
-    camera.position.x = reconciledPos.x;
-    camera.position.z = reconciledPos.y;
-    camera.position.y = CAMERA_HEIGHT;
-
-    updatePositionHUD();
+    // visualPos will lerp toward this in the render loop
   }
 
   function updatePositionHUD() {
@@ -504,6 +567,8 @@
   function animate() {
     if (!isActive) return;
     animationId = requestAnimationFrame(animate);
+    const delta = Math.min(clock.getDelta(), 0.1);
+    updateSmoothMovement(delta);
     updateBillboards();
     renderer.render(scene, camera);
   }
@@ -574,11 +639,7 @@
     const input = { dx, dz, sprint, yaw: cameraYaw };
     const newPos = applyInput(serverPos, input);
     serverPos = newPos;
-
-    camera.position.x = newPos.x;
-    camera.position.z = newPos.y;
-    camera.position.y = CAMERA_HEIGHT;
-    updatePositionHUD();
+    // visualPos will lerp toward serverPos in the render loop
   }
 
   /* ================================================================
@@ -599,6 +660,7 @@
 
     // Set initial position from where the user was on the 2D map
     serverPos = { x: Math.round(rasterX), y: Math.round(rasterY) };
+    visualPos = { x: serverPos.x, y: serverPos.y };
     pendingInputs = [];
     inputSeq = 0;
 

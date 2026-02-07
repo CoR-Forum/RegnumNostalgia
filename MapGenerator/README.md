@@ -37,6 +37,7 @@ If you have the original 18×18 grid of tiles:
 
 1. **Assemble the original high-resolution map:**
    ```bash
+   # (run this from the MapGenerator/ directory)
    python3 assemble-original-map.py
    ```
 
@@ -46,6 +47,18 @@ If you have the original 18×18 grid of tiles:
    ```bash
    ln -s original-map-18432x18432.png source-map.png
    ```
+
+If the assembler reports missing tiles (for example `76009.jpg` or `76027.jpg`), create black 1024×1024 placeholders in `original-map/` before re-running the script:
+
+```bash
+# create a black 1024x1024 JPEG placeholder (requires ImageMagick)
+magick -size 1024x1024 canvas:black original-map/76009.jpg
+magick -size 1024x1024 canvas:black original-map/76027.jpg
+# then re-run the assembler
+python3 assemble-original-map.py
+```
+
+The tiles in `original-map/` should match the original filenames (e.g. `75879.jpg`..`76202.jpg`). The assembler stitches the 18×18 grid into `original-map-18432x18432.png` which the tile generator expects.
 
 ### Image Preparation from Other Sources
 
@@ -71,12 +84,14 @@ If you need to resize an existing map:
    ```
 
 2. **Generate tiles:**
-   ```bash
-   docker run --rm \
-     -v "$(pwd)/source-map.png:/app/source-map.png:ro" \
-     -v "$(pwd)/tiles:/app/tiles" \
-     regnum-tile-generator
-   ```
+```bash
+docker run --rm \
+   -e GDAL_ALLOW_LARGE_LIBJPEG_MEM_ALLOC=1 \
+   -e GDAL_CACHEMAX=512 \
+   -v "$(pwd)/source-map.png:/app/source-map.png:ro" \
+   -v "$(pwd)/tiles:/app/tiles" \
+   regnum-tile-generator
+```
 
 3. **That's it!** The script will:
    - Process the 18432×18432 source map
@@ -105,9 +120,11 @@ docker build -t regnum-tile-generator .
 ### Run tile generation:
 ```bash
 docker run --rm \
-  -v "$(pwd)/source-map.png:/app/source-map.png:ro" \
-  -v "$(pwd)/tiles:/app/tiles" \
-  regnum-tile-generator
+   -e GDAL_ALLOW_LARGE_LIBJPEG_MEM_ALLOC=1 \
+   -e GDAL_CACHEMAX=512 \
+   -v "$(pwd)/source-map.png:/app/source-map.png:ro" \
+   -v "$(pwd)/tiles:/app/tiles" \
+   regnum-tile-generator
 ```
 
 ### Interactive shell for debugging:
