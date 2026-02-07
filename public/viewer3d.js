@@ -14,7 +14,7 @@
 
   /* ─── constants ─── */
   const WORLD_SIZE = 6144;
-  const CAMERA_HEIGHT = 80;
+  const CAMERA_HEIGHT = 10;
   const MOVE_SPEED = 300;          // world-units / second
   const SPRINT_MULTIPLIER = 3;
   const LOOK_SPEED = 0.003;
