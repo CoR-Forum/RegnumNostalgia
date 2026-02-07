@@ -1061,217 +1061,284 @@
     // Configuration: 3 rows, 3 columns, tiles named `tiles/{row}-{col}.png`
     const rows = 3, cols = 3;
     let currentTileVersion = localStorage.getItem('tileVersion') || 'v1';
-    const tileUrl = (r, c) => `https://cor-forum.de/regnum/RegnumNostalgia/map/tiles-${currentTileVersion}/${r}-${c}.png`;
+    const stitchedTileUrl = (r, c) => `https://cor-forum.de/regnum/RegnumNostalgia/map/tiles-${currentTileVersion}/${r}-${c}.png`;
 
-    // Load first tile to determine tile pixel size at runtime
-    const probe = new Image();
-    probe.src = tileUrl(1,1);
-    
-    probe.onload = () => {
-      const tileW = probe.width;
-      const tileH = probe.height;
+    // Support v2 as a remote XYZ tile set (many small tiles) hosted at
+    // https://cor-forum.de/regnum/RegnumNostalgia/tiles/{z}/{x}/{y}.png
+    if (currentTileVersion === 'v2') {
+      // Defer initialization until the page has finished running so later
+      // declarations (map globals) are available.
+      window.addEventListener('load', () => {
+          const imageW = 18432;
+          const imageH = 18432;
+          const worldW = 6144;
+          const worldH = 6144;
+          const scaleFactor = imageW / worldW; // 3.0
 
-      // Original stitched image pixel size (e.g. 3 * 1024 = 3072 or 3 * 2048 = 6144)
-      const origTotalW = cols * tileW;
-      const origTotalH = rows * tileH;
+          // Use image-pixel coordinates for the map (respect the TileMap).
+          // totalW/totalH represent the Leaflet map pixel extent (image pixels).
+          totalW = imageW;
+          totalH = imageH;
 
-      // Desired raster coordinates size. The world should behave as 6144x6144
-      // v1: tiles are 1024x1024 (3072x3072 total) → baseScale = 6144/3072 = 2
-      // v2: tiles are 2048x2048 (6144x6144 total) → baseScale = 6144/6144 = 1
-      const baseScale = 6144 / origTotalW;
-
-      // Allow small per-axis adjustments for tile variants. v2 tiles require
-      // a slight manual shrink to better match the v1 appearance:
-      // - width (X) : -1%  => 0.99
-      // - height(Y) : -2%  => 0.98
-      let scaleX = baseScale;
-      let scaleY = baseScale;
-      if (currentTileVersion === 'v2') {
-        scaleX = baseScale * 1.00; // +1% width
-        scaleY = baseScale * 1.01; // +2% height
-      }
-
-      // Scaled world size used by Leaflet (map coordinate units)
-      totalW = origTotalW * scaleX;
-      totalH = origTotalH * scaleY;
-
-      // Use CRS.Simple so coordinates map directly to pixels
-      // Disable the default zoomControl (placed top-left) so we can
-      // re-add it on the right side.
-      map = L.map('map', {
-        crs: L.CRS.Simple,
-        minZoom: -3,
-        maxZoom: 3,
-        maxBoundsViscosity: 0.5,
-        zoomControl: false,
-        scrollWheelZoom: true,
-        doubleClickZoom: false,
-        boxZoom: false,
-        touchZoom: true,
-        keyboard: false
-      });
-
-      const fullBounds = [[0,0],[totalH,totalW]]; // [[y1,x1],[y2,x2]]
-      map.fitBounds(fullBounds);
-
-      // Snap back to bounds, but allow a larger padding buffer so users can
-      // pan further outside before the map bounces back. Increase the
-      // allowed off-screen drag by 50% over the original setting.
-      const pad = 1000 * Math.max(scaleX, scaleY); // pixels of padding outside the image (scaled)
-      const paddedBounds = [[-pad, -pad], [totalH + pad, totalW + pad]];
-      map.setMaxBounds(paddedBounds);
-
-      // Helper: add markers using raster coordinates (6144x6144 space)
-      // Example: addRasterMarker(x, y) where x/y are in the 6144x6144 space.
-      // Y-axis: user coords have origin at top-left, Leaflet has origin at bottom-left
-      function addRasterMarker(x, y, opts){
-        // Leaflet expects [lat, lng] -> [y, x], and invert Y
-        return L.marker([totalH - y, x], opts).addTo(map);
-      }
-
-      // Convert position objects/arrays (x,y) to Leaflet latlngs
-      function positionsToLatLngs(positions){
-        return (positions||[]).map(p => {
-          if (Array.isArray(p)) {
-            // [x,y]
-            return [totalH - p[1], p[0]];
-          }
-          // object {x,y}
-          return [totalH - (p.y ?? p[1] ?? 0), (p.x ?? p[0] ?? 0)];
-          });
-        }
-
-        // region display moved to public/regions.js (initRegionDisplay)
-      try {
-        if (typeof initRegionDisplay === 'function') {
-          initRegionDisplay(map, gameState, apiCall, positionsToLatLngs);
-        }
-      } catch (e) { console.debug('initRegionDisplay failed', e); }
-
-      // Add each tile as an ImageOverlay positioned by scaled pixel bounds
-      // Note: flip vertical ordering so rows 1 and 3 are swapped
-      let tileOverlays = [];
-      let tileLayer = null;
-      
-      function loadTiles() {
-        // Remove existing tiles
-        tileOverlays.forEach(overlay => map.removeLayer(overlay));
-        tileOverlays = [];
-        
-        if (tileLayer) {
-          map.removeLayer(tileLayer);
-          tileLayer = null;
-        }
-        
-        // Both v1 and v2 use simple 3x3 grid
-        for(let r=1; r<=rows; r++){
-          for(let c=1; c<=cols; c++){
-            const rowPos = rows - r; // invert row index
-            const y1 = rowPos * tileH * scaleY;
-            const x1 = (c-1) * tileW * scaleX;
-            const y2 = (rowPos + 1) * tileH * scaleY;
-            const x2 = c * tileW * scaleX;
-            const overlay = L.imageOverlay(tileUrl(r,c), [[y1,x1],[y2,x2]]).addTo(map);
-            tileOverlays.push(overlay);
-          }
-        }
-      }
-      loadTiles();
-
-      L.control.scale({metric: false, imperial: false}).addTo(map);
-      // Add zoom control on the right side
-      // Zoom control removed to disable zoom UI (interactions disabled above)
-
-      // Load markers/shapes/icons from JSON and render them
-      fetch('assets/markers.json').then(r => r.json()).then(data => {
-        const icons = {};
-        // Create Leaflet icons (scale sizes by `scale` so they fit raster coords)
-        for(const [key, def] of Object.entries(data.icons||{})){
-          const size = def.size || [24,24];
-          const anchor = def.anchor || [Math.floor(size[0]/2), size[1]];
-          icons[key] = L.icon({
-            iconUrl: def.url,
-            iconSize: [size[0], size[1]],
-            iconAnchor: [anchor[0], anchor[1]]
-          });
-        }
-        // Store icons globally for territory markers
-        territoryIcons = icons;
-
-        const layerIndex = {};
-        const overlays = {};
-
-        function toLatLng(p){ return [totalH - p[1], p[0]]; }
-
-        for(const f of (data.features||[])){
-          let layer = null;
-          if(f.type === 'marker'){
-            const icon = f.icon && icons[f.icon] ? icons[f.icon] : undefined;
-            layer = addRasterMarker(f.x, f.y, icon ? {icon} : undefined);
-          } else if(f.type === 'circle'){
-            const c = toLatLng(f.center);
-            layer = L.circle(c, { radius: (f.radius||50), color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
-          } else if(f.type === 'polygon'){
-            const pts = (f.points||[]).map(toLatLng);
-            layer = L.polygon(pts, { color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
-          } else if(f.type === 'polyline'){
-            const pts = (f.points||[]).map(toLatLng);
-            layer = L.polyline(pts, { color: f.color || '#3388ff', weight: f.weight || 3 }).addTo(map);
-          } else if(f.type === 'group'){
-            const members = (f.members||[]).map(id => layerIndex[id]).filter(Boolean);
-            layer = L.layerGroup(members).addTo(map);
-            // register group as an overlay so it can be toggled in the layer control
-            overlays[f.name || f.id || ('group-' + Object.keys(overlays).length)] = layer;
-          }
-
-          if(layer){
-            if(f.popup) layer.bindPopup(f.popup);
-            if(f.id) layerIndex[f.id] = layer;
-          }
-        }
-          // If any overlays (groups) were registered, add a layer control
-          if(Object.keys(overlays).length > 0){
-            L.control.layers(null, overlays, { collapsed: false, position: 'bottomleft' }).addTo(map);
-          }
-        // Coordinate readout: show raster coords (original pixel space) while hovering
-        const coordsEl = document.getElementById('coords');
-        if(coordsEl){
-          map.on('mousemove', (e) => {
-            const mapX = e.latlng.lng; // scaled x in 0..totalW
-            const mapY = e.latlng.lat; // scaled y in 0..totalH (origin at bottom)
-            // X: 1-based left-to-right using scaled coords
-            const displayX = Math.max(1, Math.min(totalW, Math.floor(mapX) + 1));
-            // Y: invert because mapY origin is bottom; top should be 1
-            const displayY = Math.max(1, Math.min(totalH, Math.floor(totalH - mapY) + 1));
-            coordsEl.style.display = 'block';
-            coordsEl.textContent = `${displayX}x${displayY}`;
-
-            // delegate region hover handling to regions module (if present)
-            try { if (window.handleRegionMouseMove) window.handleRegionMouseMove(e); } catch (err) { /* ignore */ }
-          });
-          map.on('mouseout', () => { coordsEl.style.display = 'none'; const indicator = document.getElementById('walk-indicator'); if (indicator) indicator.classList.remove('show'); });
-        }
-        
-        // region overview logic moved to public/regions.js
-      }).catch(err => console.error('Failed to load markers.json', err));
-      
-      // Process any collectables that were received before map was ready
-      if (window.gameState && window.gameState.pendingCollectables && window.gameState.pendingCollectables.length > 0) {
-        console.log('Processing', window.gameState.pendingCollectables.length, 'pending collectables');
-        const pending = [...window.gameState.pendingCollectables];
-        window.gameState.pendingCollectables = [];
-        pending.forEach(item => {
-          if (typeof createCollectableMarker === 'function') {
-            createCollectableMarker(item);
-          }
+        map = L.map('map', {
+          crs: L.CRS.Simple,
+          minZoom: 0,
+          maxZoom: 9,
+          maxBoundsViscosity: 0.5,
+          zoomControl: false,
+          scrollWheelZoom: true,
+          doubleClickZoom: false,
+          boxZoom: false,
+          touchZoom: true,
+          keyboard: false
         });
-      }
-    };
 
-    probe.onerror = () => {
-      console.error('Failed to load probe tile:', probe.src);
-      try { document.getElementById('map').innerText = 'Failed to load tiles. Check tiles/ filenames.'; } catch(e) {}
-    };
+        const fullBounds = [[0,0],[totalH,totalW]];
+        map.fitBounds(fullBounds);
+        const pad = 1000 * scaleFactor;
+        const paddedBounds = [[-pad, -pad], [totalH + pad, totalW + pad]];
+        map.setMaxBounds(paddedBounds);
+
+        function addRasterMarker(x, y, opts){
+          // x,y are in game/world coords (0..6144). Convert to image pixels.
+          const ix = (x || 0) * scaleFactor;
+          const iy = (y || 0) * scaleFactor;
+          return L.marker([totalH - iy, ix], opts).addTo(map);
+        }
+
+        function positionsToLatLngs(positions){
+          return (positions||[]).map(p => {
+            if (Array.isArray(p)) return [totalH - (p[1] * scaleFactor), (p[0] * scaleFactor)];
+            const py = (p.y ?? p[1] ?? 0) * scaleFactor;
+            const px = (p.x ?? p[0] ?? 0) * scaleFactor;
+            return [totalH - py, px];
+          });
+        }
+
+        try { if (typeof initRegionDisplay === 'function') initRegionDisplay(map, gameState, apiCall, positionsToLatLngs); } catch (e) { console.debug('initRegionDisplay failed', e); }
+
+        // Detect remote tile addressing (XYZ vs TMS) by probing a sample tile.
+        async function detectTileSchemeAndAdd() {
+          const probeZ = 7;
+          const probeX = 0;
+          const maxY = Math.pow(2, probeZ) - 1;
+          const base = 'https://cor-forum.de/regnum/RegnumNostalgia/tiles';
+
+          function testImg(url) {
+            return new Promise((resolve) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => resolve(true);
+              img.onerror = () => resolve(false);
+              img.src = url + '?_=' + Date.now();
+            });
+          }
+
+          const url0 = `${base}/${probeZ}/${probeX}/0.png`;
+          const urlFlipped = `${base}/${probeZ}/${probeX}/${maxY}.png`;
+
+          const ok0 = await testImg(url0);
+          if (ok0) {
+            console.debug('Tile probe: found y=0 — using XYZ (tms=false)');
+            tileLayer = L.tileLayer(`${base}/{z}/{x}/{y}.png`, { noWrap: true, tms: false, tileSize: 256, maxZoom: 9 }).addTo(map);
+            return;
+          }
+
+          const okFlipped = await testImg(urlFlipped);
+          if (okFlipped) {
+            console.debug('Tile probe: found flipped-y — using TMS (tms=true)');
+            tileLayer = L.tileLayer(`${base}/{z}/{x}/{y}.png`, { noWrap: true, tms: true, tileSize: 256, maxZoom: 9 }).addTo(map);
+            return;
+          }
+
+          console.warn('Tile probe failed for both y=0 and flipped-y. Adding XYZ layer as fallback. Check tile host/CORS.');
+          tileLayer = L.tileLayer(`${base}/{z}/{x}/{y}.png`, { noWrap: true, tms: false, tileSize: 256, maxZoom: 9 }).addTo(map);
+        }
+
+        detectTileSchemeAndAdd();
+
+        L.control.scale({metric: false, imperial: false}).addTo(map);
+
+        // Load markers/shapes/icons from JSON and render them (same as v1)
+        fetch('assets/markers.json').then(r => r.json()).then(data => {
+          const icons = {};
+          for(const [key, def] of Object.entries(data.icons||{})){
+            const size = def.size || [24,24];
+            const anchor = def.anchor || [Math.floor(size[0]/2), size[1]];
+            icons[key] = L.icon({ iconUrl: def.url, iconSize: [size[0], size[1]], iconAnchor: [anchor[0], anchor[1]] });
+          }
+          territoryIcons = icons;
+
+          const layerIndex = {};
+          const overlays = {};
+          function toLatLng(p){ return [totalH - p[1], p[0]]; }
+
+          for(const f of (data.features||[])){
+            let layer = null;
+            if(f.type === 'marker'){
+              const icon = f.icon && icons[f.icon] ? icons[f.icon] : undefined;
+              layer = addRasterMarker(f.x, f.y, icon ? {icon} : undefined);
+            } else if(f.type === 'circle'){
+              const c = toLatLng(f.center);
+              layer = L.circle(c, { radius: (f.radius||50), color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
+            } else if(f.type === 'polygon'){
+              const pts = (f.points||[]).map(toLatLng);
+              layer = L.polygon(pts, { color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
+            } else if(f.type === 'polyline'){
+              const pts = (f.points||[]).map(toLatLng);
+              layer = L.polyline(pts, { color: f.color || '#3388ff', weight: f.weight || 3 }).addTo(map);
+            } else if(f.type === 'group'){
+              const members = (f.members||[]).map(id => layerIndex[id]).filter(Boolean);
+              layer = L.layerGroup(members).addTo(map);
+              overlays[f.name || f.id || ('group-' + Object.keys(overlays).length)] = layer;
+            }
+            if(layer){ if(f.popup) layer.bindPopup(f.popup); if(f.id) layerIndex[f.id] = layer; }
+          }
+          if(Object.keys(overlays).length > 0) L.control.layers(null, overlays, { collapsed: false, position: 'bottomleft' }).addTo(map);
+
+          const coordsEl = document.getElementById('coords');
+          if(coordsEl){
+            map.on('mousemove', (e) => {
+              const mapX = e.latlng.lng; const mapY = e.latlng.lat;
+              // Convert image-pixel mouse position back to game/world coords (0..6144)
+              const displayX = Math.max(1, Math.min(worldW, Math.floor(mapX / scaleFactor) + 1));
+              const displayY = Math.max(1, Math.min(worldH, Math.floor((totalH - mapY) / scaleFactor) + 1));
+              coordsEl.style.display = 'block'; coordsEl.textContent = `${displayX}x${displayY}`;
+              try { if (window.handleRegionMouseMove) window.handleRegionMouseMove(e); } catch (err) {}
+            });
+            map.on('mouseout', () => { coordsEl.style.display = 'none'; const indicator = document.getElementById('walk-indicator'); if (indicator) indicator.classList.remove('show'); });
+          }
+        }).catch(err => console.error('Failed to load markers.json', err));
+
+        // Process pending collectables
+        if (window.gameState && window.gameState.pendingCollectables && window.gameState.pendingCollectables.length > 0) {
+          const pending = [...window.gameState.pendingCollectables];
+          window.gameState.pendingCollectables = [];
+          pending.forEach(item => { if (typeof createCollectableMarker === 'function') createCollectableMarker(item); });
+        }
+      });
+    } else {
+      // v1 / stitched-tile flow: probe first stitched tile to detect dimensions
+      const tileUrl = (r, c) => stitchedTileUrl(r,c);
+      const probe = new Image();
+      probe.src = tileUrl(1,1);
+      
+      probe.onload = () => {
+        const tileW = probe.width;
+        const tileH = probe.height;
+        const origTotalW = cols * tileW;
+        const origTotalH = rows * tileH;
+        const baseScale = 6144 / origTotalW;
+        let scaleX = baseScale;
+        let scaleY = baseScale;
+        if (currentTileVersion === 'v2') { scaleX = baseScale * 1.00; scaleY = baseScale * 1.01; }
+        totalW = origTotalW * scaleX;
+        totalH = origTotalH * scaleY;
+
+        map = L.map('map', {
+          crs: L.CRS.Simple,
+          minZoom: -3,
+          maxZoom: 3,
+          maxBoundsViscosity: 0.5,
+          zoomControl: false,
+          scrollWheelZoom: true,
+          doubleClickZoom: false,
+          boxZoom: false,
+          touchZoom: true,
+          keyboard: false
+        });
+
+        const fullBounds = [[0,0],[totalH,totalW]];
+        map.fitBounds(fullBounds);
+        const pad = 1000 * Math.max(scaleX, scaleY);
+        const paddedBounds = [[-pad, -pad], [totalH + pad, totalW + pad]];
+        map.setMaxBounds(paddedBounds);
+
+        function addRasterMarker(x, y, opts){ return L.marker([totalH - y, x], opts).addTo(map); }
+        function positionsToLatLngs(positions){ return (positions||[]).map(p => Array.isArray(p) ? [totalH - p[1], p[0]] : [totalH - (p.y ?? p[1] ?? 0), (p.x ?? p[0] ?? 0)]); }
+
+        try { if (typeof initRegionDisplay === 'function') initRegionDisplay(map, gameState, apiCall, positionsToLatLngs); } catch (e) { console.debug('initRegionDisplay failed', e); }
+
+        let tileOverlays = [];
+        let tileLayer = null;
+        function loadTiles() {
+          tileOverlays.forEach(overlay => map.removeLayer(overlay)); tileOverlays = [];
+          if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
+          for(let r=1; r<=rows; r++){
+            for(let c=1; c<=cols; c++){
+              const rowPos = rows - r;
+              const y1 = rowPos * tileH * scaleY;
+              const x1 = (c-1) * tileW * scaleX;
+              const y2 = (rowPos + 1) * tileH * scaleY;
+              const x2 = c * tileW * scaleX;
+              const overlay = L.imageOverlay(tileUrl(r,c), [[y1,x1],[y2,x2]]).addTo(map);
+              tileOverlays.push(overlay);
+            }
+          }
+        }
+        loadTiles();
+
+        L.control.scale({metric: false, imperial: false}).addTo(map);
+
+        fetch('assets/markers.json').then(r => r.json()).then(data => {
+          const icons = {};
+          for(const [key, def] of Object.entries(data.icons||{})){
+            const size = def.size || [24,24];
+            const anchor = def.anchor || [Math.floor(size[0]/2), size[1]];
+            icons[key] = L.icon({ iconUrl: def.url, iconSize: [size[0], size[1]], iconAnchor: [anchor[0], anchor[1]] });
+          }
+          territoryIcons = icons;
+          const layerIndex = {};
+          const overlays = {};
+          function toLatLng(p){ return [totalH - p[1], p[0]]; }
+          for(const f of (data.features||[])){
+            let layer = null;
+            if(f.type === 'marker'){
+              const icon = f.icon && icons[f.icon] ? icons[f.icon] : undefined;
+              layer = addRasterMarker(f.x, f.y, icon ? {icon} : undefined);
+            } else if(f.type === 'circle'){
+              const c = toLatLng(f.center);
+              layer = L.circle(c, { radius: (f.radius||50), color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
+            } else if(f.type === 'polygon'){
+              const pts = (f.points||[]).map(toLatLng);
+              layer = L.polygon(pts, { color: f.color, fillColor: f.fillColor, fillOpacity: f.fillOpacity || 0.2 }).addTo(map);
+            } else if(f.type === 'polyline'){
+              const pts = (f.points||[]).map(toLatLng);
+              layer = L.polyline(pts, { color: f.color || '#3388ff', weight: f.weight || 3 }).addTo(map);
+            } else if(f.type === 'group'){
+              const members = (f.members||[]).map(id => layerIndex[id]).filter(Boolean);
+              layer = L.layerGroup(members).addTo(map);
+              overlays[f.name || f.id || ('group-' + Object.keys(overlays).length)] = layer;
+            }
+            if(layer){ if(f.popup) layer.bindPopup(f.popup); if(f.id) layerIndex[f.id] = layer; }
+          }
+          if(Object.keys(overlays).length > 0) L.control.layers(null, overlays, { collapsed: false, position: 'bottomleft' }).addTo(map);
+
+          const coordsEl = document.getElementById('coords');
+          if(coordsEl){
+            map.on('mousemove', (e) => {
+              const mapX = e.latlng.lng; const mapY = e.latlng.lat;
+              const displayX = Math.max(1, Math.min(totalW, Math.floor(mapX) + 1));
+              const displayY = Math.max(1, Math.min(totalH, Math.floor(totalH - mapY) + 1));
+              coordsEl.style.display = 'block'; coordsEl.textContent = `${displayX}x${displayY}`;
+              try { if (window.handleRegionMouseMove) window.handleRegionMouseMove(e); } catch (err) {}
+            });
+            map.on('mouseout', () => { coordsEl.style.display = 'none'; const indicator = document.getElementById('walk-indicator'); if (indicator) indicator.classList.remove('show'); });
+          }
+        }).catch(err => console.error('Failed to load markers.json', err));
+
+        if (window.gameState && window.gameState.pendingCollectables && window.gameState.pendingCollectables.length > 0) {
+          const pending = [...window.gameState.pendingCollectables];
+          window.gameState.pendingCollectables = [];
+          pending.forEach(item => { if (typeof createCollectableMarker === 'function') createCollectableMarker(item); });
+        }
+      };
+
+      probe.onerror = () => {
+        console.error('Failed to load probe tile:', probe.src);
+        try { document.getElementById('map').innerText = 'Failed to load tiles. Check tiles/ filenames.'; } catch(e) {}
+      };
+    }
 
     // ============================================================
     // GAME CLIENT CODE
