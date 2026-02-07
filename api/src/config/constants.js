@@ -73,7 +73,7 @@ module.exports = {
     WALKER: 1000,     // 2 seconds
     HEALTH: 1000,     // 1 second
     TIME: 10000,      // 10 seconds
-    TERRITORY: 15000,  // 15 seconds
+    TERRITORY: 5000,  // 15 seconds
     SPAWN: 5000       // 5 seconds
   },
   
