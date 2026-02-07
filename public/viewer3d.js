@@ -8,6 +8,7 @@
  *  - Paths drawn as colored tubes above the terrain
  *  - Screenshots displayed as billboard panels in the world
  *  - First-person (Google Street View–like) navigation
+ *  - Server-authoritative movement with client-side prediction
  */
 (function () {
   'use strict';
@@ -15,10 +16,7 @@
   /* ─── constants ─── */
   const WORLD_SIZE = 6144;
   const CAMERA_HEIGHT = 10;
-  const MOVE_SPEED = 40;           // world-units / second
-  const SPRINT_MULTIPLIER = 3;
   const LOOK_SPEED = 0.003;
-  const SCROLL_MOVE = 8;           // forward distance per scroll tick
   const PATH_HEIGHT = 4;           // paths hover slightly above ground
   const SCREENSHOT_HEIGHT = 150;   // billboard center height
   const SCREENSHOT_WIDTH = 200;    // max billboard width
@@ -28,7 +26,12 @@
   const DEFAULT_FOV = 75;
   const MIN_FOV = 20;
   const MAX_FOV = 110;
-  const ZOOM_STEP = 3;              // FOV degrees per scroll tick
+  const ZOOM_STEP = 3;             // FOV degrees per scroll tick
+
+  /* ── Prediction constants (must match server) ── */
+  const SV_MOVE_SPEED = 20;        // world-units per server tick (matches STEP_SIZE / server MOVE3D_SPEED)
+  const SV_SPRINT_MUL = 3;
+  const INPUT_TICK_MS = 100;       // send input to server every 100ms
 
   /* ─── module state ─── */
   let container, renderer, scene, camera;
@@ -45,6 +48,13 @@
   let isMouseDown = false;
   let prevMouseX = 0, prevMouseY = 0;
   let cameraYaw = 0, cameraPitch = 0;
+
+  /* ── Networking / prediction state ── */
+  let inputSeq = 0;                 // monotonically increasing input ID
+  let pendingInputs = [];           // inputs sent but not yet acknowledged
+  let serverPos = { x: 0, y: 0 };  // last authoritative position
+  let inputTickTimer = null;        // setInterval handle
+  let socket = null;                // reference to the game socket
 
   /* ================================================================
    *  INITIALIZATION
@@ -124,7 +134,6 @@
         });
 
         const mesh = new THREE.Mesh(geo, mat);
-        // Row 1 = top of map = rasterY [0 … tileSize] → 3D Z [0 … tileSize]
         const cx = (c - 1) * tileSize + tileSize / 2;
         const cz = (r - 1) * tileSize + tileSize / 2;
         mesh.position.set(cx, 0, cz);
@@ -139,7 +148,6 @@
           mat.color.setHex(0xffffff);
           mat.needsUpdate = true;
         }, undefined, () => {
-          // Failed – keep the fallback green color
           console.warn('[3D] Could not load tile texture:', url);
         });
       }
@@ -160,7 +168,6 @@
       const vectors = pts.map((p) => new THREE.Vector3(p[0], PATH_HEIGHT, p[1]));
       const color = path.loop ? 0xff00ff : 0x3399ff;
 
-      // Smooth tube
       try {
         const curve = new THREE.CatmullRomCurve3(vectors, !!path.loop);
         const tubeGeo = new THREE.TubeGeometry(curve, Math.max(pts.length * 3, 64), 3.5, 8, !!path.loop);
@@ -175,7 +182,6 @@
         scene.add(tube);
         dynamicObjects.push(tube);
       } catch (e) {
-        // Fallback: simple line
         const lineGeo = new THREE.BufferGeometry().setFromPoints(vectors);
         const lineMat = new THREE.LineBasicMaterial({ color, linewidth: 2 });
         const line = new THREE.Line(lineGeo, lineMat);
@@ -201,7 +207,7 @@
       const wx = s.x;
       const wz = s.y;
 
-      // ── Pole from ground to billboard ──
+      // Pole
       const poleH = SCREENSHOT_HEIGHT;
       const poleGeo = new THREE.CylinderGeometry(1.2, 1.2, poleH, 6);
       const poleMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
@@ -210,7 +216,7 @@
       scene.add(pole);
       dynamicObjects.push(pole);
 
-      // ── Billboard frame (placeholder) ──
+      // Billboard frame
       const frameGeo = new THREE.PlaneGeometry(SCREENSHOT_WIDTH, SCREENSHOT_WIDTH * 0.6);
       const frameMat = new THREE.MeshBasicMaterial({
         color: 0x222222,
@@ -223,7 +229,7 @@
       scene.add(frame);
       dynamicObjects.push(frame);
 
-      // ── Load screenshot texture ──
+      // Screenshot texture
       const imgUrl = `https://cor-forum.de/regnum/RegnumNostalgia/screenshots/${s.filename}`;
       loader.load(imgUrl, (tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
@@ -241,7 +247,7 @@
         console.warn('[3D] Could not load screenshot:', imgUrl);
       });
 
-      // ── Label sprite ──
+      // Label sprite
       const label = s.nameEn || s.nameDe || s.nameEs || s.location || 'Screenshot';
       const canvas = document.createElement('canvas');
       canvas.width = 512;
@@ -264,7 +270,7 @@
       scene.add(sprite);
       dynamicObjects.push(sprite);
 
-      // ── Small ground marker dot ──
+      // Ground dot
       const dotGeo = new THREE.SphereGeometry(5, 8, 8);
       const dotMat = new THREE.MeshBasicMaterial({ color: 0xff6644 });
       const dot = new THREE.Mesh(dotGeo, dotMat);
@@ -293,13 +299,12 @@
   }
 
   /* ================================================================
-   *  BILLBOARD FACING  – make screenshot planes face the camera
+   *  BILLBOARD FACING
    * ================================================================ */
 
   function updateBillboards() {
     dynamicObjects.forEach((obj) => {
       if (obj.isMesh && obj.geometry && obj.geometry.type === 'PlaneGeometry' && obj.material && obj.material.map) {
-        // Only rotate horizontally so they don't tilt
         const dx = camera.position.x - obj.position.x;
         const dz = camera.position.z - obj.position.z;
         obj.rotation.y = Math.atan2(dx, dz);
@@ -351,7 +356,6 @@
   function onWheel(e) {
     if (!isActive) return;
     e.preventDefault();
-    // Scroll zooms in/out by adjusting field of view
     const dir = Math.sign(e.deltaY);
     camera.fov = Math.max(MIN_FOV, Math.min(MAX_FOV, camera.fov + dir * ZOOM_STEP));
     camera.updateProjectionMatrix();
@@ -386,44 +390,111 @@
     camera.quaternion.setFromEuler(euler);
   }
 
-  function updateMovement(delta) {
-    const speed = MOVE_SPEED * delta;
-    const sprint = (keys['ShiftLeft'] || keys['ShiftRight']) ? SPRINT_MULTIPLIER : 1;
+  /* ================================================================
+   *  SERVER-AUTHORITATIVE MOVEMENT WITH CLIENT-SIDE PREDICTION
+   *
+   *  Flow:
+   *  1. Every INPUT_TICK_MS, sample keys → build input {seq, dx, dz, sprint, yaw}
+   *  2. Apply the same movement locally (prediction)
+   *  3. Send input to server via WebSocket
+   *  4. Store input in pendingInputs
+   *  5. On server ack (move3d:state), snap to server position,
+   *     then re-apply any inputs the server hasn't seen yet
+   * ================================================================ */
 
-    const fwd = new THREE.Vector3();
-    camera.getWorldDirection(fwd);
-    fwd.y = 0;
-    fwd.normalize();
+  /** Build a raw direction vector from current key state (view-local, un-rotated) */
+  function sampleInput() {
+    let dx = 0, dz = 0;
+    if (keys['KeyW'] || keys['ArrowUp'])    dz -= 1;
+    if (keys['KeyS'] || keys['ArrowDown'])  dz += 1;
+    if (keys['KeyA'] || keys['ArrowLeft'])  dx -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    if (len > 0) { dx /= len; dz /= len; }
+    const sprint = !!(keys['ShiftLeft'] || keys['ShiftRight']);
+    return { dx, dz, sprint };
+  }
 
-    const right = new THREE.Vector3();
-    right.crossVectors(fwd, new THREE.Vector3(0, 1, 0)).normalize();
+  /**
+   * Apply one input deterministically and return the new position.
+   * This is the SHARED simulation step — must match the server exactly.
+   * pos: {x, y}   input: {dx, dz, sprint, yaw}
+   */
+  function applyInput(pos, input) {
+    const speed = SV_MOVE_SPEED * (input.sprint ? SV_SPRINT_MUL : 1);
+    const cosY = Math.cos(input.yaw);
+    const sinY = Math.sin(input.yaw);
+    const worldDx = input.dx * cosY + input.dz * sinY;
+    const worldDz = -input.dx * sinY + input.dz * cosY;
+    let nx = pos.x + worldDx * speed;
+    let ny = pos.y + worldDz * speed;
+    nx = Math.max(0, Math.min(WORLD_SIZE, Math.round(nx)));
+    ny = Math.max(0, Math.min(WORLD_SIZE, Math.round(ny)));
+    return { x: nx, y: ny };
+  }
 
-    const move = new THREE.Vector3();
-    if (keys['KeyW'] || keys['ArrowUp']) move.add(fwd);
-    if (keys['KeyS'] || keys['ArrowDown']) move.sub(fwd);
-    if (keys['KeyA'] || keys['ArrowLeft']) move.sub(right);
-    if (keys['KeyD'] || keys['ArrowRight']) move.add(right);
+  /** Called at a fixed interval to sample + send + predict */
+  function inputTick() {
+    if (!isActive) return;
 
-    if (move.lengthSq() > 0) {
-      move.normalize();
-      camera.position.addScaledVector(move, speed * sprint);
-    }
+    const { dx, dz, sprint } = sampleInput();
+    if (dx === 0 && dz === 0) return; // standing still — nothing to send
 
-    // Clamp to world bounds
-    camera.position.x = Math.max(0, Math.min(WORLD_SIZE, camera.position.x));
-    camera.position.z = Math.max(0, Math.min(WORLD_SIZE, camera.position.z));
+    const seq = ++inputSeq;
+    const input = { seq, dx, dz, sprint, yaw: cameraYaw };
+
+    // 1 — Client-side prediction: apply locally
+    const predicted = applyInput(serverPos, input);
+    // We track the position we predict per-input so reconciliation works
+    // but the camera always reflects the latest predicted position
+    serverPos = predicted; // optimistic: assume server will agree
+
+    camera.position.x = predicted.x;
+    camera.position.z = predicted.y;
     camera.position.y = CAMERA_HEIGHT;
 
-    // Update HUD position display
+    // 2 — Store for reconciliation
+    pendingInputs.push(input);
+
+    // 3 — Send to server
+    if (socket && socket.connected) {
+      socket.emit('move3d:input', input);
+    }
+
+    updatePositionHUD();
+  }
+
+  /** Handle server authoritative state */
+  function onServerState(data) {
+    if (!isActive) return;
+    const { seq, x, y } = data;
+
+    // Set authoritative position
+    serverPos = { x, y };
+
+    // Drop all inputs the server has already processed
+    pendingInputs = pendingInputs.filter(inp => inp.seq > seq);
+
+    // Re-apply any unacknowledged inputs on top of server state
+    let reconciledPos = { x: serverPos.x, y: serverPos.y };
+    for (const inp of pendingInputs) {
+      reconciledPos = applyInput(reconciledPos, inp);
+    }
+    // The reconciled position becomes our new optimistic serverPos
+    serverPos = reconciledPos;
+
+    // Update camera
+    camera.position.x = reconciledPos.x;
+    camera.position.z = reconciledPos.y;
+    camera.position.y = CAMERA_HEIGHT;
+
     updatePositionHUD();
   }
 
   function updatePositionHUD() {
     const el = document.getElementById('viewer3d-position');
     if (!el) return;
-    const rx = Math.round(camera.position.x);
-    const ry = Math.round(camera.position.z);
-    el.textContent = `X: ${rx}  Y: ${ry}`;
+    el.textContent = `X: ${Math.round(camera.position.x)}  Y: ${Math.round(camera.position.z)}`;
   }
 
   /* ================================================================
@@ -433,8 +504,6 @@
   function animate() {
     if (!isActive) return;
     animationId = requestAnimationFrame(animate);
-    const delta = Math.min(clock.getDelta(), 0.1);
-    updateMovement(delta);
     updateBillboards();
     renderer.render(scene, camera);
   }
@@ -447,14 +516,75 @@
   }
 
   /* ================================================================
+   *  SOCKET HELPERS
+   * ================================================================ */
+
+  function getSocket() {
+    // The game exposes the socket.io connection on window.socket
+    if (window.socket && window.socket.connected) return window.socket;
+    // Fallback via getSocket helper if available
+    if (window.getSocket) {
+      const s = window.getSocket();
+      if (s && s.connected) return s;
+    }
+    return null;
+  }
+
+  function startNetworking() {
+    socket = getSocket();
+    if (!socket) {
+      console.warn('[3D] No WebSocket available — movement will be local-only');
+      // Fall back to local movement if no socket
+      inputTickTimer = setInterval(localInputTick, INPUT_TICK_MS);
+      return;
+    }
+
+    // Tell server we're in 3D mode
+    socket.emit('move3d:enter');
+
+    // Listen for authoritative state
+    socket.on('move3d:state', onServerState);
+
+    // Start input tick
+    inputTickTimer = setInterval(inputTick, INPUT_TICK_MS);
+  }
+
+  function stopNetworking() {
+    if (inputTickTimer) {
+      clearInterval(inputTickTimer);
+      inputTickTimer = null;
+    }
+
+    if (socket) {
+      socket.emit('move3d:exit');
+      socket.off('move3d:state', onServerState);
+      socket = null;
+    }
+
+    pendingInputs = [];
+    inputSeq = 0;
+  }
+
+  /** Fallback: local-only movement when no socket is available */
+  function localInputTick() {
+    if (!isActive) return;
+    const { dx, dz, sprint } = sampleInput();
+    if (dx === 0 && dz === 0) return;
+
+    const input = { dx, dz, sprint, yaw: cameraYaw };
+    const newPos = applyInput(serverPos, input);
+    serverPos = newPos;
+
+    camera.position.x = newPos.x;
+    camera.position.z = newPos.y;
+    camera.position.y = CAMERA_HEIGHT;
+    updatePositionHUD();
+  }
+
+  /* ================================================================
    *  ENTER / EXIT
    * ================================================================ */
 
-  /**
-   * Enter the 3D view centred on the given raster coordinates.
-   * @param {number} rasterX
-   * @param {number} rasterY
-   */
   function enter3DView(rasterX, rasterY) {
     if (isActive) return;
 
@@ -467,8 +597,13 @@
     // Clear previous dynamic objects
     clearDynamicObjects();
 
+    // Set initial position from where the user was on the 2D map
+    serverPos = { x: Math.round(rasterX), y: Math.round(rasterY) };
+    pendingInputs = [];
+    inputSeq = 0;
+
     // Position camera
-    camera.position.set(rasterX, CAMERA_HEIGHT, rasterY);
+    camera.position.set(serverPos.x, CAMERA_HEIGHT, serverPos.y);
     camera.fov = DEFAULT_FOV;
     camera.updateProjectionMatrix();
     cameraYaw = 0;
@@ -492,10 +627,13 @@
     // Hide 2D UI
     toggle2DUI(false);
 
-    // Load world data
+    // Load world data (screenshots only, no paths in 3D)
     loadWorldData();
 
-    // Start render
+    // Start networking + input loop
+    startNetworking();
+
+    // Start render loop
     clock.start();
     animate();
   }
@@ -509,6 +647,9 @@
       animationId = null;
     }
     clock.stop();
+
+    // Stop networking
+    stopNetworking();
 
     // Remove pointer events
     container.removeEventListener('mousedown', onMouseDown);
@@ -557,11 +698,9 @@
       document.getElementById('screenshots-window'),
       document.getElementById('settings-window')
     ];
-    // Also grab HUD button groups
     document.querySelectorAll('.ui-hud-group').forEach((el) => uiEls.push(el));
 
     if (!show) {
-      // Entering 3D: boost z-index above 30000
       uiEls.forEach((el) => {
         if (!el) return;
         el.dataset.viewer3dOrigZ = el.style.zIndex || '';
@@ -569,7 +708,6 @@
         el.style.zIndex = String(Math.max(current, 0) + 31000);
       });
     } else {
-      // Exiting 3D: restore original z-index
       uiEls.forEach((el) => {
         if (!el) return;
         if ('viewer3dOrigZ' in el.dataset) {
@@ -597,24 +735,6 @@
    * ================================================================ */
 
   async function loadWorldData() {
-    // Paths (already available via WebSocket)
-    try {
-      const paths = (window.gameState && window.gameState.pathsData) || [];
-      if (paths.length > 0) {
-        drawPaths(paths);
-      } else {
-        // Try fetching if not loaded yet
-        const res = await fetch('/api/paths', { credentials: 'same-origin' });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.paths) drawPaths(data.paths);
-        }
-      }
-    } catch (e) {
-      console.warn('[3D] Failed to load paths:', e);
-    }
-
-    // Screenshots
     try {
       const headers = {};
       if (window.gameState && window.gameState.sessionToken) {
