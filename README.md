@@ -23,7 +23,6 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 - **In-game Time**: Server-synchronized day/night cycle (150s = 1 ingame hour)
 - **Path Builder**: Create and share custom routes across the map
 - **Screenshot Manager**: Upload, organize, and manage screenshots with multilingual metadata (EN/DE/ES)
-- **3D Street View**: Zoom fully into the map to enter a first-person 3D mode powered by Three.js — walk around the world, see paths rendered as tubes, and view screenshots as billboards
 
 ### Technical Features
 - **WebSocket Real-Time**: Socket.io for instant updates with auto-reconnection
@@ -122,7 +121,6 @@ regnum-nostalgia/
 │   ├── build-path.js             # Path builder UI
 │   ├── regions.js                # Region overlays
 │   ├── screenshotManager.js      # Screenshot manager
-│   ├── viewer3d.js               # 3D street-view renderer (Three.js)
 │   └── assets/
 │       ├── tiles/                # Map tiles (3x3 grid)
 │       ├── screenshots/          # User uploads
@@ -165,31 +163,6 @@ regnum-nostalgia/
 - `session:{sessionToken}` - Session data cache
 - `player:{userId}:state` - Real-time player state
 - `bull:{queueName}:*` - Queue job data
-
-## 🌐 3D Street View
-
-Zoom fully into the 2D map (max zoom level) to seamlessly enter a first-person 3D view of the game world.
-
-### What you see
-- **Ground**: The same map tiles rendered as a textured terrain plane (6144×6144 world units)
-- **Paths**: All paths are drawn as colored tubes hovering above the ground (blue for linear, magenta for loops)
-- **Screenshots**: Every uploaded screenshot is displayed as a billboard panel on a pole at its map coordinates, with a label showing the screenshot name
-
-### Controls
-| Input | Action |
-|-------|--------|
-| Mouse drag | Look around (Street View style) |
-| WASD / Arrow keys | Move forward/back/strafe |
-| Shift (hold) | Sprint (3× speed) |
-| Scroll wheel | Move forward / backward |
-| Esc | Return to 2D map |
-
-### Technical details
-- Powered by [Three.js](https://threejs.org/) (r155, loaded from CDN)
-- Screenshot billboards automatically face the camera
-- Camera is clamped to world bounds (0–6144 on both axes)
-- Fog fades distant objects for performance and atmosphere
-- All screenshot and path data is fetched from the existing API
 
 ## 🔌 API Endpoints
 

@@ -135,8 +135,8 @@
     }
     #modal-overlay.hidden{ display: none; }
 
-    /* Hide all UI elements until the user is authenticated. Keep the modal overlay, background map, mini info window, and 3D viewer visible. */
-    body:not(.authenticated) > :not(#modal-overlay):not(#map):not(#mini-info-window):not(#viewer3d-container):not(script):not(style) {
+    /* Hide all UI elements until the user is authenticated. Keep the modal overlay, background map, and mini info window visible. */
+    body:not(.authenticated) > :not(#modal-overlay):not(#map):not(#mini-info-window):not(script):not(style) {
       display: none !important;
     }
 
@@ -1046,10 +1046,8 @@
   </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-  <script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
   <script src="regions.js"></script>
   <script src="screenshotManager.js"></script>
-  <script src="viewer3d.js"></script>
   <script>
     /**
      * @typedef {{x:number,y:number}} Coords
@@ -1101,7 +1099,7 @@
       map = L.map('map', {
         crs: L.CRS.Simple,
         minZoom: -3,
-        maxZoom: 3,
+        maxZoom: 2,
         maxBoundsViscosity: 0.5,
         zoomControl: false,
         scrollWheelZoom: true,
@@ -3663,17 +3661,6 @@
       // Hide menu when map viewport changes
       map.on('movestart zoomstart', () => hideMapContextMenu());
 
-      // ── 3D Viewer trigger: enter 3D mode when zoomed fully in ──
-      map.on('zoomend', () => {
-        if (map.getZoom() >= map.getMaxZoom() && window.viewer3D && !window.viewer3D.isActive()) {
-          const center = map.getCenter();
-          // Convert Leaflet center (lat=y, lng=x) to raster coords
-          const rasterX = center.lng;
-          const rasterY = totalH - center.lat;
-          window.viewer3D.enter(rasterX, rasterY);
-        }
-      });
-
       // Right-click (contextmenu) opens the map context menu
       map.on('contextmenu', async (e) => {
         // Prevent the browser default context menu
@@ -4386,91 +4373,6 @@
     }
   </style>
   
-  <!-- 3D Street View Viewer overlay -->
-  <div id="viewer3d-container" class="hidden">
-    <div id="viewer3d-canvas-wrap"></div>
-    <div id="viewer3d-hud">
-      <button id="viewer3d-exit" title="Back to 2D map (Esc)">✕ Exit 3D View</button>
-      <div id="viewer3d-controls-help">
-        <span>🖱 Drag to look</span>
-        <span>WASD to move</span>
-        <span>Shift = sprint</span>
-        <span>Scroll = forward/back</span>
-        <span>Esc = exit</span>
-      </div>
-      <div id="viewer3d-position">X: 0  Y: 0</div>
-      <div id="viewer3d-crosshair">+</div>
-    </div>
-  </div>
-  <script>
-    // Wire up the 3D exit button
-    document.getElementById('viewer3d-exit').addEventListener('click', () => {
-      if (window.viewer3D) window.viewer3D.exit();
-    });
-  </script>
-  <style>
-    #viewer3d-container {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100vw; height: 100vh;
-      z-index: 30000;
-      background: #000;
-    }
-    #viewer3d-container.hidden { display: none !important; }
-    #viewer3d-canvas-wrap { width: 100%; height: 100%; }
-    #viewer3d-canvas-wrap canvas { display: block; width: 100%; height: 100%; }
-    #viewer3d-hud {
-      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      pointer-events: none;
-      z-index: 30001;
-    }
-    #viewer3d-exit {
-      position: absolute; top: 14px; right: 14px;
-      pointer-events: auto;
-      background: rgba(0,0,0,0.7); color: #fff;
-      border: 1px solid rgba(255,255,255,0.25);
-      border-radius: 6px;
-      padding: 8px 18px;
-      font-size: 14px;
-      cursor: pointer;
-      font-family: 'MS Sans Serif', Arial, sans-serif;
-      transition: background 0.2s;
-    }
-    #viewer3d-exit:hover { background: rgba(60,60,60,0.9); }
-    #viewer3d-controls-help {
-      position: absolute; bottom: 18px; left: 50%;
-      transform: translateX(-50%);
-      display: flex; gap: 16px;
-      background: rgba(0,0,0,0.6);
-      color: #ccc;
-      padding: 8px 20px;
-      border-radius: 8px;
-      font-size: 12px;
-      font-family: 'MS Sans Serif', Arial, sans-serif;
-      white-space: nowrap;
-    }
-    #viewer3d-controls-help span { opacity: 0.85; }
-    #viewer3d-position {
-      position: absolute; top: 14px; left: 14px;
-      background: rgba(0,0,0,0.6);
-      color: #aef;
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-family: 'Courier New', monospace;
-    }
-    #viewer3d-crosshair {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      color: rgba(255,255,255,0.4);
-      font-size: 28px;
-      font-weight: 300;
-      pointer-events: none;
-      text-shadow: 0 0 4px rgba(0,0,0,0.6);
-    }
-  </style>
-
   <!-- Shoutbox (loaded from separate file with its JS) -->
   <div id="shoutbox-include"></div>
   <script>
