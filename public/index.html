@@ -3666,10 +3666,11 @@
       // ── 3D Viewer trigger: enter 3D mode when zoomed fully in ──
       map.on('zoomend', () => {
         if (map.getZoom() >= map.getMaxZoom() && window.viewer3D && !window.viewer3D.isActive()) {
-          // Use the player's actual position, not the map center
-          const px = gameState.position ? gameState.position.x : 0;
-          const py = gameState.position ? gameState.position.y : 0;
-          window.viewer3D.enter(px, py);
+          const center = map.getCenter();
+          // Convert Leaflet center (lat=y, lng=x) to raster coords
+          const rasterX = center.lng;
+          const rasterY = totalH - center.lat;
+          window.viewer3D.enter(rasterX, rasterY);
         }
       });
 
