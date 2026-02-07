@@ -25,6 +25,10 @@
   const FOG_DENSITY = 0.00025;
   const SKY_COLOR = 0x7ec8e3;
   const GROUND_COLOR = 0x4a7c3f;
+  const DEFAULT_FOV = 75;
+  const MIN_FOV = 20;
+  const MAX_FOV = 110;
+  const ZOOM_STEP = 3;              // FOV degrees per scroll tick
 
   /* ─── module state ─── */
   let container, renderer, scene, camera;
@@ -347,12 +351,10 @@
   function onWheel(e) {
     if (!isActive) return;
     e.preventDefault();
-    const fwd = new THREE.Vector3();
-    camera.getWorldDirection(fwd);
-    fwd.y = 0;
-    fwd.normalize();
-    camera.position.addScaledVector(fwd, -Math.sign(e.deltaY) * SCROLL_MOVE);
-    camera.position.y = CAMERA_HEIGHT;
+    // Scroll zooms in/out by adjusting field of view
+    const dir = Math.sign(e.deltaY);
+    camera.fov = Math.max(MIN_FOV, Math.min(MAX_FOV, camera.fov + dir * ZOOM_STEP));
+    camera.updateProjectionMatrix();
   }
 
   function onTouchStart(e) {
@@ -467,6 +469,8 @@
 
     // Position camera
     camera.position.set(rasterX, CAMERA_HEIGHT, rasterY);
+    camera.fov = DEFAULT_FOV;
+    camera.updateProjectionMatrix();
     cameraYaw = 0;
     cameraPitch = -0.05;
     applyCameraRotation();
