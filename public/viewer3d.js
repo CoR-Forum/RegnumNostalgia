@@ -15,10 +15,10 @@
   /* ─── constants ─── */
   const WORLD_SIZE = 6144;
   const CAMERA_HEIGHT = 10;
-  const MOVE_SPEED = 40;           // world-units / second
+  const MOVE_SPEED = 300;          // world-units / second
   const SPRINT_MULTIPLIER = 3;
   const LOOK_SPEED = 0.003;
-  const SCROLL_MOVE = 8;           // forward distance per scroll tick
+  const SCROLL_MOVE = 40;          // forward distance per scroll tick
   const PATH_HEIGHT = 4;           // paths hover slightly above ground
   const SCREENSHOT_HEIGHT = 150;   // billboard center height
   const SCREENSHOT_WIDTH = 200;    // max billboard width
