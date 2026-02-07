@@ -181,14 +181,11 @@ Zoom fully into the 2D map (max zoom level) to seamlessly enter a first-person 3
 | Mouse drag | Look around (Street View style) |
 | WASD / Arrow keys | Move forward/back/strafe |
 | Shift (hold) | Sprint (3× speed) |
-| Scroll wheel | Zoom in / out (FOV) |
+| Scroll wheel | Move forward / backward |
 | Esc | Return to 2D map |
 
 ### Technical details
 - Powered by [Three.js](https://threejs.org/) (r155, loaded from CDN)
-- **Server-authoritative movement** with client-side prediction and reconciliation via WebSocket (`move3d:input` / `move3d:state` events)
-- Movement speed matches the pathfinding system (20 world-units per tick, sprint 3×)
-- Input is sampled and sent every 100 ms; unacknowledged inputs are replayed on server correction
 - Screenshot billboards automatically face the camera
 - Camera is clamped to world bounds (0–6144 on both axes)
 - Fog fades distant objects for performance and atmosphere
