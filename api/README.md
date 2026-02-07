@@ -42,16 +42,20 @@ Node.js implementation of the Regnum Nostalgia MMORPG backend, replacing PHP pol
 
 GM/Admin users can execute commands in the shoutbox:
 
-- `/item <template_key> <user_id> [quantity]` - Give an item to a user
+- `/item <template_key> <user_id|username> [quantity]` - Give an item to a user
   - Alias: `/itemadd`
   - Example: `/item gold_coin 123 1000` - Gives 1000 gold coins to user ID 123
+  - Example: `/item iron_sword PlayerName` - Gives 1 iron sword to PlayerName
+  - Accepts either user ID (number) or username (string)
   - Default quantity is 1 if not specified
   - Stackable items are added to existing stacks
   - Requires GM permissions (groupID 32 in forum database)
   
-- `/itemrem <template_key> <user_id> [quantity]` - Remove an item from a user
+- `/itemrem <template_key> <user_id|username> [quantity]` - Remove an item from a user
   - Alias: `/itemremove`
   - Example: `/itemrem gold_coin 123 500` - Removes 500 gold coins from user ID 123
+  - Example: `/itemrem iron_sword PlayerName 2` - Removes 2 iron swords from PlayerName
+  - Accepts either user ID (number) or username (string)
   - Default quantity is 1 if not specified
   - For stackable items, reduces or removes the stack
   - For non-stackable items, removes individual entries

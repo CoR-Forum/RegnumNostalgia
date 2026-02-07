@@ -681,7 +681,38 @@ function initializeSocketHandlers(io) {
           );
         }
 
-        const slot = item.equipment_slot;
+        const requestedSlot = item.equipment_slot;
+
+        // Resolve DB column for the requested slot. Items historically used
+        // "ring" while the DB has `ring_left` and `ring_right`. Map that
+        // intelligently: prefer left if empty, then right, else replace right.
+        let slot = null; // DB column name (e.g., 'ring_left')
+
+        if (requestedSlot === 'ring') {
+          const [equipRows] = await gameDb.query(
+            'SELECT ring_left, ring_right FROM equipment WHERE user_id = ?',
+            [user.userId]
+          );
+
+          const eq = equipRows && equipRows.length > 0 ? equipRows[0] : { ring_left: null, ring_right: null };
+
+          if (!eq.ring_left || eq.ring_left === 0) {
+            slot = 'ring_left';
+          } else if (!eq.ring_right || eq.ring_right === 0) {
+            slot = 'ring_right';
+          } else {
+            // Both occupied: choose right to replace by default
+            slot = 'ring_right';
+          }
+        } else {
+          // Map camelCase slot names from items to DB snake_case using slotToDb
+          if (slotToDb.hasOwnProperty(requestedSlot)) {
+            slot = slotToDb[requestedSlot];
+          } else {
+            // If the item used DB-style name already, use it; otherwise fall back
+            slot = requestedSlot;
+          }
+        }
 
         // Check if slot is already occupied
         const [currentEquip] = await gameDb.query(
@@ -691,7 +722,7 @@ function initializeSocketHandlers(io) {
 
         const previousInventoryId = currentEquip[0][slot];
 
-        // Equip the item
+        // Equip the item into resolved DB slot
         await gameDb.query(
           `UPDATE equipment SET ${slot} = ?, updated_at = UNIX_TIMESTAMP() WHERE user_id = ?`,
           [inventoryId, user.userId]

@@ -24,42 +24,74 @@ async function isGM(userId) {
 }
 
 /**
+ * Resolve user ID from either user_id (number) or username (string)
+ * @param {string|number} userIdentifier - User ID or username
+ * @returns {Promise<{userId: number, username: string}|null>} - User info or null if not found
+ */
+async function resolveUser(userIdentifier) {
+  try {
+    // Check if it's a number (user_id)
+    const parsedId = parseInt(userIdentifier, 10);
+    
+    if (!isNaN(parsedId) && parsedId > 0 && parsedId.toString() === userIdentifier.toString()) {
+      // It's a valid user_id
+      const [rows] = await gameDb.query(
+        'SELECT user_id, username FROM players WHERE user_id = ?',
+        [parsedId]
+      );
+      
+      if (rows.length > 0) {
+        return { userId: rows[0].user_id, username: rows[0].username };
+      }
+    } else {
+      // It's a username
+      const [rows] = await gameDb.query(
+        'SELECT user_id, username FROM players WHERE username = ?',
+        [userIdentifier]
+      );
+      
+      if (rows.length > 0) {
+        return { userId: rows[0].user_id, username: rows[0].username };
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    logger.error('Failed to resolve user', { error: error.message, userIdentifier });
+    return null;
+  }
+}
+
+/**
  * Handle the /item command to give items to users
  * @param {object} socket - Socket.io socket instance
  * @param {object} user - User executing the command
  * @param {string} templateKey - The item template key
- * @param {number} targetUserId - The user to receive the item
+ * @param {string|number} targetUserIdentifier - The user ID or username to receive the item
  * @param {number} quantity - The quantity of items to give (default: 1)
  */
-async function handleItemAddCommand(socket, user, templateKey, targetUserId, quantity = 1) {
+async function handleItemAddCommand(socket, user, templateKey, targetUserIdentifier, quantity = 1) {
   try {
     // Validate inputs
-    if (!templateKey || !targetUserId) {
-      return { success: false, error: 'Usage: /item <template_key> <user_id> [quantity]' };
+    if (!templateKey || !targetUserIdentifier) {
+      return { success: false, error: 'Usage: /item <template_key> <user_id|username> [quantity]' };
     }
 
-    const parsedUserId = parseInt(targetUserId, 10);
     const parsedQuantity = parseInt(quantity, 10) || 1;
-
-    if (isNaN(parsedUserId) || parsedUserId <= 0) {
-      return { success: false, error: 'Invalid user ID' };
-    }
 
     if (parsedQuantity <= 0 || parsedQuantity > 10000) {
       return { success: false, error: 'Quantity must be between 1 and 10000' };
     }
 
-    // Check if target user exists
-    const [userRows] = await gameDb.query(
-      'SELECT username FROM players WHERE user_id = ?',
-      [parsedUserId]
-    );
-
-    if (userRows.length === 0) {
-      return { success: false, error: `User ID ${parsedUserId} not found` };
+    // Resolve user ID from identifier (can be user_id or username)
+    const targetUser = await resolveUser(targetUserIdentifier);
+    
+    if (!targetUser) {
+      return { success: false, error: `User '${targetUserIdentifier}' not found` };
     }
 
-    const targetUsername = userRows[0].username;
+    const parsedUserId = targetUser.userId;
+    const targetUsername = targetUser.username;
 
     // Look up item by template_key
     const [itemRows] = await gameDb.query(
@@ -155,38 +187,31 @@ async function handleItemAddCommand(socket, user, templateKey, targetUserId, qua
  * @param {object} socket - Socket.io socket instance
  * @param {object} user - User executing the command
  * @param {string} templateKey - The item template key
- * @param {number} targetUserId - The user to lose the item
+ * @param {string|number} targetUserIdentifier - The user ID or username to lose the item
  * @param {number} quantity - The quantity of items to remove (default: 1)
  */
-async function handleItemRemoveCommand(socket, user, templateKey, targetUserId, quantity = 1) {
+async function handleItemRemoveCommand(socket, user, templateKey, targetUserIdentifier, quantity = 1) {
   try {
     // Validate inputs
-    if (!templateKey || !targetUserId) {
-      return { success: false, error: 'Usage: /itemrem <template_key> <user_id> [quantity]' };
+    if (!templateKey || !targetUserIdentifier) {
+      return { success: false, error: 'Usage: /itemrem <template_key> <user_id|username> [quantity]' };
     }
 
-    const parsedUserId = parseInt(targetUserId, 10);
     const parsedQuantity = parseInt(quantity, 10) || 1;
-
-    if (isNaN(parsedUserId) || parsedUserId <= 0) {
-      return { success: false, error: 'Invalid user ID' };
-    }
 
     if (parsedQuantity <= 0 || parsedQuantity > 10000) {
       return { success: false, error: 'Quantity must be between 1 and 10000' };
     }
 
-    // Check if target user exists
-    const [userRows] = await gameDb.query(
-      'SELECT username FROM players WHERE user_id = ?',
-      [parsedUserId]
-    );
-
-    if (userRows.length === 0) {
-      return { success: false, error: `User ID ${parsedUserId} not found` };
+    // Resolve user ID from identifier (can be user_id or username)
+    const targetUser = await resolveUser(targetUserIdentifier);
+    
+    if (!targetUser) {
+      return { success: false, error: `User '${targetUserIdentifier}' not found` };
     }
 
-    const targetUsername = userRows[0].username;
+    const parsedUserId = targetUser.userId;
+    const targetUsername = targetUser.username;
 
     // Look up item by template_key
     const [itemRows] = await gameDb.query(
