@@ -535,28 +535,47 @@
   }
 
   function toggle2DUI(show) {
+    // Only hide the 2D map and attribution; keep all game HUD/windows visible
     const display = show ? '' : 'none';
-    const els = [
+    const hideEls = [
       document.getElementById('map'),
+      document.getElementById('attribution')
+    ];
+    hideEls.forEach((el) => { if (el) el.style.display = display; });
+
+    // Boost z-index of all UI elements so they render above the 3D container (z-index 30000)
+    const uiEls = [
       document.getElementById('coords'),
       document.getElementById('header-actions'),
       document.getElementById('ui-compass'),
       document.getElementById('ui-character-status'),
       document.getElementById('ui-image-overlay'),
-      document.getElementById('attribution')
+      document.getElementById('ui-server-time'),
+      document.getElementById('shoutbox-window'),
+      document.getElementById('inventory-window'),
+      document.getElementById('character-window'),
+      document.getElementById('screenshots-window'),
+      document.getElementById('settings-window')
     ];
-    els.forEach((el) => { if (el) el.style.display = display; });
+    // Also grab HUD button groups
+    document.querySelectorAll('.ui-hud-group').forEach((el) => uiEls.push(el));
 
-    // Also hide any open game windows
     if (!show) {
-      document.querySelectorAll('.ui-hud-group, #shoutbox-window, #inventory-window, #character-window, #screenshots-window, #settings-window').forEach((el) => {
-        el.dataset.viewer3dPrevDisplay = el.style.display;
-        el.style.display = 'none';
+      // Entering 3D: boost z-index above 30000
+      uiEls.forEach((el) => {
+        if (!el) return;
+        el.dataset.viewer3dOrigZ = el.style.zIndex || '';
+        const current = parseInt(window.getComputedStyle(el).zIndex) || 0;
+        el.style.zIndex = String(Math.max(current, 0) + 31000);
       });
     } else {
-      document.querySelectorAll('[data-viewer3d-prev-display]').forEach((el) => {
-        el.style.display = el.dataset.viewer3dPrevDisplay || '';
-        delete el.dataset.viewer3dPrevDisplay;
+      // Exiting 3D: restore original z-index
+      uiEls.forEach((el) => {
+        if (!el) return;
+        if ('viewer3dOrigZ' in el.dataset) {
+          el.style.zIndex = el.dataset.viewer3dOrigZ;
+          delete el.dataset.viewer3dOrigZ;
+        }
       });
     }
   }
