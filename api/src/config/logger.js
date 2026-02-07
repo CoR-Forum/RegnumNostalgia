@@ -1,5 +1,6 @@
 const winston = require('winston');
 const path = require('path');
+const fs = require('fs');
 
 // Define log format
 const logFormat = winston.format.combine(
@@ -24,6 +25,16 @@ const consoleFormat = winston.format.combine(
 
 // Create logs directory if it doesn't exist
 const logsDir = path.join(__dirname, '../../logs');
+try {
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+} catch (e) {
+  // If we cannot create the logs directory, fallback to console-only logging
+  // and continue — Winston file transports will error if directory is missing.
+  // eslint-disable-next-line no-console
+  console.error('Failed to ensure logs directory exists:', e && e.message ? e.message : String(e));
+}
 
 // Create logger instance
 const logger = winston.createLogger({
