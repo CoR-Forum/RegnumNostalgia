@@ -39,6 +39,27 @@
     let lastMessageId = 0;
     let lastMessageTime = 0;
 
+    // UI windows persistence helpers (store visibility in localStorage.uiWindows)
+    function loadUIWindows(){
+      try{ return JSON.parse(localStorage.getItem('uiWindows') || '{}'); }catch(e){ return {}; }
+    }
+    function saveUIWindows(obj){
+      try{ localStorage.setItem('uiWindows', JSON.stringify(obj)); }catch(e){}
+    }
+    function setUIWindowVisible(id, visible){
+      const u = loadUIWindows();
+      const cur = u[id];
+      // If an object shape is already stored, preserve other fields and update open/display
+      if (cur && typeof cur === 'object') {
+        cur.open = !!visible;
+        cur.display = !!visible ? 'flex' : 'none';
+        u[id] = cur;
+      } else {
+        u[id] = !!visible;
+      }
+      saveUIWindows(u);
+    }
+
     try{
       const socket = window.getSocket && window.getSocket();
       if (socket && socket.connected) {
@@ -409,6 +430,7 @@
           try { sbWin.style.display = 'flex'; } catch (e) {}
           try { fetchMessages(); } catch (e) {}
           openBtn.remove();
+          try { setUIWindowVisible('shoutbox-window', true); } catch (err) {}
         });
         (document.body || document.documentElement).appendChild(openBtn);
       }
@@ -417,6 +439,7 @@
         shoutboxCloseBtn.addEventListener('click', (e) => {
           try { sbWin.style.display = 'none'; } catch (err) {}
           try { createOpenButton(); } catch (err) {}
+          try { setUIWindowVisible('shoutbox-window', false); } catch (err) {}
         });
       }
 
@@ -426,7 +449,22 @@
         try { fetchMessages(); } catch (e) {}
         try { fetchLogMessages(); } catch (e) {}
         const b = document.getElementById('shoutbox-open-btn'); if (b) b.remove();
+        try { setUIWindowVisible('shoutbox-window', true); } catch (err) {}
       };
+
+      // Restore shoutbox visibility from stored uiWindows
+      try {
+        const ui = loadUIWindows();
+        const val = ui && ui['shoutbox-window'];
+        const isClosed = (val === false) || (val && typeof val === 'object' && (val.open === false || val.display === 'none'));
+        if (isClosed) {
+          try { sbWin.style.display = 'none'; } catch (e) {}
+          try { createOpenButton(); } catch (e) {}
+        } else {
+          try { sbWin.style.display = 'flex'; } catch (e) {}
+          const b = document.getElementById('shoutbox-open-btn'); if (b) b.remove();
+        }
+      } catch (e) {}
     } catch (e) {}
   })();
 </script>
