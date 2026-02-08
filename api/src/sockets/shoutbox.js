@@ -168,7 +168,7 @@ async function handleItemAddCommand(socket, user, templateKey, targetUserIdentif
 
     return {
       success: true,
-      message: `Gave ${parsedQuantity}x ${itemName} to ${targetUsername} (ID: ${parsedUserId})`
+      message: `Gave ${parsedQuantity}x ${itemName} (${templateKey}) to ${targetUsername} (ID: ${parsedUserId})`
     };
 
   } catch (error) {
@@ -293,7 +293,7 @@ async function handleItemRemoveCommand(socket, user, templateKey, targetUserIden
 
     return {
       success: true,
-      message: `Removed ${removedCount}x ${itemName} from ${targetUsername} (ID: ${parsedUserId})`
+      message: `Removed ${removedCount}x ${itemName} (${templateKey}) from ${targetUsername} (ID: ${parsedUserId})`
     };
 
   } catch (error) {
@@ -423,22 +423,49 @@ function initializeShoutboxHandlers(socket, user) {
       // If command was successful, broadcast a system message to shoutbox
       if (result.success && result.message) {
         const timestamp = Math.floor(Date.now() / 1000);
-        const systemMessage = {
-          entryId: 0, // System message doesn't have an entryId
-          userId: 0,
-          username: 'System',
-          time: timestamp,
-          message: `[GM ${user.username}] ${result.message}`
-        };
+        const composed = `[GM ${user.username}] ${result.message}`;
 
-        // Broadcast to all clients including sender
-        socket.nsp.emit('shoutbox:message', systemMessage);
+        try {
+          // Persist system message into the shoutbox table with userID 0
+          const [res] = await forumDb.query(
+            `INSERT INTO wcf1_shoutbox_entry (shoutboxID, userID, username, time, message)
+             VALUES (1, 0, ?, ?, ?)`,
+            ['System', timestamp, composed]
+          );
 
-        logger.info('GM command executed and broadcast', {
-          gmUserId: user.userId,
-          gmUsername: user.username,
-          command: message.trim()
-        });
+          const systemMessage = {
+            entryId: res.insertId,
+            userId: 0,
+            username: 'System',
+            time: timestamp,
+            message: composed
+          };
+
+          // Update lastShoutboxId to avoid re-broadcasts from polling
+          if (res.insertId > lastShoutboxId) lastShoutboxId = res.insertId;
+
+          // Broadcast to all clients including sender
+          socket.nsp.emit('shoutbox:message', systemMessage);
+
+          logger.info('GM command executed and broadcast', {
+            gmUserId: user.userId,
+            gmUsername: user.username,
+            command: message.trim(),
+            shoutboxEntryId: res.insertId
+          });
+
+        } catch (err) {
+          // Fallback: broadcast without DB persistence
+          const fallback = {
+            entryId: 0,
+            userId: 0,
+            username: 'System',
+            time: timestamp,
+            message: composed
+          };
+          socket.nsp.emit('shoutbox:message', fallback);
+          logger.error('Failed to persist system shoutbox message', { error: err.message });
+        }
       }
 
       return;
