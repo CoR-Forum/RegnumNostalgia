@@ -3,36 +3,13 @@ const { redis, gameDb } = require('../config/database');
 const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, COLLECTABLE_CONFIG, LOOT_TABLES } = require('../config/constants');
 const logger = require('../config/logger');
 const { addPlayerLog } = require('../sockets');
+const { pointInPolygon, distance } = require('../utils/geometry');
 
 let io = null; // Socket.io instance, injected later
 // Track last-known region id per user for walker-based movement
 const userRegions = new Map();
 
-/**
- * Simple point-in-polygon test (ray-casting)
- * polygon: array of [x,y] points
- */
-function pointInPolygon(px, py, polygon) {
-  if (!Array.isArray(polygon) || polygon.length === 0) return false;
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i][0], yi = polygon[i][1];
-    const xj = polygon[j][0], yj = polygon[j][1];
-    const intersect = ((yi > py) !== (yj > py)) &&
-      (px < (xj - xi) * (py - yi) / (yj - yi + 0.0) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-/**
- * Calculate distance between two points
- */
-function distance(x1, y1, x2, y2) {
-  const dx = x1 - x2;
-  const dy = y1 - y2;
-  return Math.sqrt(dx * dx + dy * dy);
-}
+// pointInPolygon and distance imported from ../utils/geometry
 
 /**
  * Resolve loot table and return items to give

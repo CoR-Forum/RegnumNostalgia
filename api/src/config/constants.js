@@ -45,36 +45,20 @@ module.exports = {
     { template_key: 'alasthor_amulet', quantity: 1 },
   ],
 
-  // GM Starter Items (for testing purposes, only granted to user_id 146)
-  GM_STARTER_ITEMS: [
-    { template_key: 'gold_coin', quantity: 1000 },
-    { template_key: 'health_potion', quantity: 100 },
-    { template_key: 'mana_potion', quantity: 100 },
-    { template_key: 'gm_ring', quantity: 2 },
-    { template_key: 'gm_amulet', quantity: 1 },
-    { template_key: 'gm_sword', quantity: 2 },
-    { template_key: 'gm_crown', quantity: 1 },
-    { template_key: 'gm_shield', quantity: 1 },
-    { template_key: 'gm_pauldrons', quantity: 1 },
-    { template_key: 'gm_chestplate', quantity: 1 },
-    { template_key: 'gm_leggings', quantity: 1 },
-    { template_key: 'gm_gloves', quantity: 1 },
-    { template_key: 'great_magic_gem_lucky_box', quantity: 100 },
-    { template_key: 'vesper_amulet', quantity: 1 },
-    { template_key: 'tenax_amulet', quantity: 1 },
-    { template_key: 'alasthor_amulet', quantity: 1 },
-  ],
+  // GM Starter Items — currently identical to STARTER_ITEMS.
+  // Reference STARTER_ITEMS directly if no GM-specific items are needed.
+  GM_STARTER_ITEMS: null, // Set to an array to override, or use STARTER_ITEMS as fallback
   
   // Online Status
   ONLINE_THRESHOLD_SECONDS: 10, // Consider players online if active within the last 10 seconds
   
   // Queue Intervals (milliseconds)
   QUEUE_INTERVALS: {
-    WALKER: 1000,
-    HEALTH: 1000,
-    TIME: 10000,
-    TERRITORY: 10000,
-    SPAWN: 5000
+    WALKER: 1000,     // 1 second — movement tick
+    HEALTH: 1000,     // 1 second — health/mana regen tick
+    TIME: 10000,      // 10 seconds — in-game clock sync
+    TERRITORY: 10000, // 10 seconds — territory status check
+    SPAWN: 5000       // 5 seconds — collectable spawn check
   },
   
   // Health Regeneration Rates
@@ -103,8 +87,8 @@ module.exports = {
 
   // Collectable Items Configuration
   COLLECTABLE_CONFIG: {
-    PICKUP_RADIUS: 10, // pixels - distance tolerance for collection
-    RESPAWN_TIME: 5, // seconds - 5 minutes default respawn
+    PICKUP_RADIUS: 10, // pixels — distance tolerance for collection
+    RESPAWN_TIME: 5,    // seconds — default respawn time
   },
 
   // Collectable Visual Icons

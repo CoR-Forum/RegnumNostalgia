@@ -7,6 +7,7 @@ const regionsData = require('../../gameData/regions.json');
 const wallsData = require('../../gameData/walls.json');
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
+const { pointInPolygon, distance } = require('../utils/geometry');
 
 // Local loaders matching the old `loadPaths()` / `loadRegions()` API
 async function loadPaths() { return pathsData; }
@@ -19,14 +20,7 @@ const DIRECT_THRESHOLD = 500; // pixels - use direct walking for short trips
 const MAX_NODE_DISTANCE = 1000; // pixels - max distance to nearest node
 const STEP_SIZE = 20; // pixels per step for interpolation
 
-/**
- * Calculate Euclidean distance between two points
- */
-function distance(x1, y1, x2, y2) {
-  const dx = x1 - x2;
-  const dy = y1 - y2;
-  return Math.sqrt(dx * dx + dy * dy);
-}
+// distance() and pointInPolygon() imported from ../utils/geometry
 
 /**
  * Dijkstra's algorithm for pathfinding
@@ -85,28 +79,7 @@ function dijkstra(adj, start, goal) {
   return path;
 }
 
-/**
- * Point-in-polygon test using ray casting algorithm
- */
-function pointInPolygon(x, y, polygon) {
-  let inside = false;
-  const n = polygon.length;
-  if (n < 3) return false;
-
-  let j = n - 1;
-  for (let i = 0; i < n; j = i++) {
-    const xi = polygon[i][0];
-    const yi = polygon[i][1];
-    const xj = polygon[j][0];
-    const yj = polygon[j][1];
-
-    const intersect = ((yi > y) !== (yj > y)) && 
-                      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-
-  return inside;
-}
+// pointInPolygon imported from ../utils/geometry
 
 /**
  * Check if a line segment (x1,y1)-(x2,y2) intersects with a line segment (x3,y3)-(x4,y4)

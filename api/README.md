@@ -147,13 +147,13 @@ CORS_ALLOWED_ORIGINS=http://localhost:8321,http://localhost:3000
 
 ```bash
 # Use new Node.js configuration
-docker-compose -f docker-compose.node.yml up -d
+docker compose up -d
 
 # View logs
-docker-compose -f docker-compose.node.yml logs -f api
+docker compose logs -f api
 
 # Rebuild after code changes
-docker-compose -f docker-compose.node.yml up -d --build api
+docker compose up -d --build api
 ```
 
 ### 5. Development Mode
@@ -187,7 +187,7 @@ tail -f api-node/logs/combined.log
 tail -f api-node/logs/error.log
 
 # Docker logs
-docker-compose -f docker-compose.node.yml logs -f api
+docker compose logs -f api
 ```
 
 ## Key Differences from PHP Implementation
@@ -222,19 +222,19 @@ docker-compose -f docker-compose.node.yml logs -f api
 ### Redis connection errors
 ```bash
 # Check Redis is running
-docker-compose -f docker-compose.node.yml ps redis
+docker compose ps redis
 
 # Test Redis connection
-docker-compose -f docker-compose.node.yml exec redis redis-cli ping
+docker compose exec redis redis-cli ping
 ```
 
 ### Database connection errors
 ```bash
 # Check MariaDB is running
-docker-compose -f docker-compose.node.yml ps db
+docker compose ps db
 
 # Test connection
-docker-compose -f docker-compose.node.yml exec db mariadb -u regnum_user -p regnum_nostalgia
+docker compose exec db mariadb -u regnum_user -p regnum_nostalgia
 ```
 
 ### WebSocket not connecting
@@ -245,7 +245,7 @@ docker-compose -f docker-compose.node.yml exec db mariadb -u regnum_user -p regn
 ### Queue jobs not processing
 - Check Bull Board at `/admin/queues`
 - Verify Redis is healthy
-- Look for errors in logs: `docker-compose -f docker-compose.node.yml logs api | grep -i error`
+- Look for errors in logs: `docker compose logs api | grep -i error`
 
 ## Development
 

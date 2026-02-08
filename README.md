@@ -64,16 +64,16 @@ GAME_DB_PASS=regnum123
 
 3. **Start the containers**:
 ```bash
-docker-compose -f docker-compose.node.yml up -d
+docker compose up -d
 ```
 
 4. **Verify services**:
 ```bash
 # Check all containers running
-docker-compose -f docker-compose.node.yml ps
+docker compose ps
 
 # View API logs
-docker-compose -f docker-compose.node.yml logs -f api
+docker compose logs -f api
 
 # Check queue dashboard
 open http://localhost/admin/queues
@@ -93,27 +93,68 @@ Open http://localhost/game in your browser
 
 ```
 regnum-nostalgia/
-├── api-node/                     # Node.js backend
+├── api/                              # Node.js backend
 │   ├── src/
-│   │   ├── server.js             # Express + Socket.io server
+│   │   ├── server.js                 # Express + Socket.io server
 │   │   ├── config/
-│   │   │   ├── database.js       # MariaDB + Redis connections
+│   │   │   ├── database.js           # MariaDB + Redis + SQLite connections
+│   │   │   ├── constants.js          # Game configuration & loot tables
+│   │   │   └── logger.js             # Winston logger setup
+│   │   ├── middleware/
+│   │   │   └── auth.js               # JWT authentication
+│   │   ├── routes/
+│   │   │   ├── auth.js               # Login, realm selection
+│   │   │   ├── settings.js           # User settings
+│   │   │   └── screenshots.js        # Screenshot management
+│   │   ├── sockets/
+│   │   │   ├── index.js              # Socket orchestrator & shared state
+│   │   │   ├── inventoryHandler.js   # Inventory, equipment, items
+│   │   │   ├── movementHandler.js    # Position updates, pathfinding
+│   │   │   ├── collectableHandler.js # Spawned item collection
+│   │   │   ├── editorHandler.js      # Region/path/wall/water CRUD
+│   │   │   ├── logHandler.js         # Player log retrieval
+│   │   │   └── shoutbox.js           # Chat/shoutbox polling
+│   │   ├── queues/
+│   │   │   ├── walkerQueue.js        # Movement processor (1s)
+│   │   │   ├── healthQueue.js        # Health/mana regen (1s)
+│   │   │   ├── timeQueue.js          # Ingame time sync (10s)
+│   │   │   ├── territoryQueue.js     # Territory updates (10s)
+│   │   │   └── spawnQueue.js         # Collectable spawning (5s)
+│   │   ├── services/
+│   │   │   └── pathfinding.js        # Dijkstra pathfinding + wall detection
+│   │   └── utils/
+│   │       └── geometry.js           # Shared point-in-polygon, distance
+│   ├── gameData/                     # JSON game data (regions, paths, items)
+│   ├── scripts/                      # DB init, item import
+│   ├── package.json
+│   └── Dockerfile
 │   │   │   └── redis.js          # Redis client setup
 │   │   ├── middleware/
 │   │   │   └── auth.js           # JWT authentication
 │   │   ├── routes/
 │   │   │   ├── auth.js           # Login, realm selection
-│   │   │   ├── player.js         # Position, stats, movement
-│   │   │   ├── inventory.js      # Items, equipment
-│   │   │   ├── world.js          # Territories, superbosses, time
+│   │   │   ├── settings.js       # User settings
 │   │   │   └── screenshots.js    # Screenshot management
 │   │   ├── sockets/
-│   │   │   └── index.js          # WebSocket event handlers
-│   │   └── queues/
-│   │       ├── walkerQueue.js    # Movement processor (2s)
-│   │       ├── healthQueue.js    # Health regen (1s)
-│   │       ├── timeQueue.js      # Ingame time sync (10s)
-│   │       └── territoryQueue.js # Territory updates (15s)
+│   │   │   ├── index.js          # Socket orchestrator & shared state
+│   │   │   ├── inventoryHandler.js  # Inventory, equipment, items
+│   │   │   ├── movementHandler.js   # Position updates, pathfinding
+│   │   │   ├── collectableHandler.js # Spawned item collection
+│   │   │   ├── editorHandler.js      # Region/path/wall/water CRUD
+│   │   │   ├── logHandler.js         # Player log retrieval
+│   │   │   └── shoutbox.js           # Chat/shoutbox polling
+│   │   ├── queues/
+│   │   │   ├── walkerQueue.js    # Movement processor (1s)
+│   │   │   ├── healthQueue.js    # Health/mana regen (1s)
+│   │   │   ├── timeQueue.js      # Ingame time sync (10s)
+│   │   │   ├── territoryQueue.js # Territory updates (10s)
+│   │   │   └── spawnQueue.js     # Collectable spawning (5s)
+│   │   ├── services/
+│   │   │   └── pathfinding.js    # Dijkstra pathfinding + wall detection
+│   │   └── utils/
+│   │       └── geometry.js       # Shared point-in-polygon, distance
+│   ├── gameData/                 # JSON game data (regions, paths, items)
+│   ├── scripts/                  # DB init, item import
 │   ├── package.json
 │   └── Dockerfile
 ├── public/                       # Frontend
@@ -129,8 +170,8 @@ regnum-nostalgia/
 │       ├── markers.json          # Map markers
 │       └── screenshots.json      # Screenshot metadata
 ├── nginx/
-│   └── default.node.conf         # WebSocket-enabled proxy
-├── docker-compose.node.yml       # Container orchestration
+│   └── default.conf              # WebSocket-enabled proxy
+├── docker-compose.yml            # Container orchestration
 └── README.md                     # This file
 ```
 
@@ -277,17 +318,18 @@ Ignis: [5000, 618]    // Red/Humans
 ```
 
 ### Background Workers
-- **walkerQueue**: Every 2 seconds - Advances players along paths
+- **walkerQueue**: Every 1 second - Advances players along paths
 - **healthQueue**: Every 1 second - Regenerates HP/mana
 - **timeQueue**: Every 10 seconds - Updates ingame time (150s = 1 hour)
-- **territoryQueue**: Every 15 seconds - Fetches territory ownership from external API
+- **territoryQueue**: Every 10 seconds - Fetches territory ownership from external API
+- **spawnQueue**: Every 5 seconds - Checks and respawns collectable items
 
 ## 🎯 Gameplay Mechanics
 
 ### Leveling System
 - 60 levels with exponential XP requirements
 - XP gained from combat and activities
-- Level thresholds defined in `api-node/data/levels.json`
+- Level thresholds defined in `api/gameData/levels.json`
 - Automated calculation via background process
 
 ### Combat
@@ -319,7 +361,7 @@ Ignis: [5000, 618]    // Red/Humans
 ### Quick WebSocket Test
 ```bash
 # Start backend
-docker-compose -f docker-compose.node.yml up -d
+docker compose up -d
 
 # Open game
 open http://localhost/game
@@ -400,36 +442,36 @@ Returns:
 ### WebSocket Connection Failed
 ```bash
 # Check nginx WebSocket proxy
-docker-compose -f docker-compose.node.yml exec web cat /etc/nginx/conf.d/default.conf | grep -A 10 "socket.io"
+docker compose exec web cat /etc/nginx/conf.d/default.conf | grep -A 10 "socket.io"
 
 # Verify API listening
-docker-compose -f docker-compose.node.yml exec api netstat -tln | grep 3000
+docker compose exec api netstat -tln | grep 3000
 
 # Check logs
-docker-compose -f docker-compose.node.yml logs -f api | grep -i socket
+docker compose logs -f api | grep -i socket
 ```
 
 ### Events Not Received
 ```bash
 # Check queue workers
-docker-compose -f docker-compose.node.yml logs api | grep "Queue.*started"
+docker compose logs api | grep "Queue.*started"
 
 # Test Redis
-docker-compose -f docker-compose.node.yml exec redis redis-cli ping
+docker compose exec redis redis-cli ping
 # Should return: PONG
 
 # Check database connection
-docker-compose -f docker-compose.node.yml exec db mariadb -uregnum -pregnum123 -e "USE regnum_game; SHOW TABLES;"
+docker compose exec db mariadb -uregnum -pregnum123 -e "USE regnum_game; SHOW TABLES;"
 ```
 
 ### Database Issues
 ```bash
 # Reinitialize (clean start)
-docker-compose -f docker-compose.node.yml down -v
-docker-compose -f docker-compose.node.yml up -d
+docker compose down -v
+docker compose up -d
 
 # Check tables
-docker-compose -f docker-compose.node.yml exec db mariadb -uregnum -pregnum123 -e "USE regnum_game; SHOW TABLES;"
+docker compose exec db mariadb -uregnum -pregnum123 -e "USE regnum_game; SHOW TABLES;"
 ```
 
 ### High CPU/Memory
@@ -446,7 +488,7 @@ open http://localhost/admin/queues
 # - Active jobs (processing)
 
 # Check for stuck jobs
-docker-compose -f docker-compose.node.yml exec redis redis-cli
+docker compose exec redis redis-cli
 > KEYS bull:*:active
 > KEYS bull:*:failed
 ```
@@ -462,7 +504,7 @@ docker-compose -f docker-compose.node.yml exec redis redis-cli
 ### Running Without Docker
 ```bash
 # Install dependencies
-cd api-node
+cd api
 npm install
 
 # Set environment variables
@@ -476,18 +518,18 @@ npm start    # Production
 ```
 
 ### Adding New Items
-Edit `api-node/data/items.json` and restart API:
+Edit item JSON files in `api/gameData/items/` and restart the API:
 ```bash
-docker-compose -f docker-compose.node.yml restart api
+docker compose restart api
 ```
 
 ### Modifying Level Progression
-Edit `api-node/data/levels.json` - changes take effect immediately.
+Edit `api/gameData/levels.json` - changes take effect on restart.
 
 ### Creating New Queue Workers
-1. Create file in `api-node/src/queues/`
+1. Create file in `api/src/queues/`
 2. Define job processor function
-3. Register in `api-node/src/server.js`
+3. Register in `api/src/queues/index.js`
 4. Restart API container
 
 ## 🔄 Test Scenarios

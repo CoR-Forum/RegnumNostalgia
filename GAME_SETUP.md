@@ -16,11 +16,12 @@ A simple multiplayer browser-based map game built on top of the Regnum Online Ol
   - Ignis: 5000, 618
 
 ### Technical Stack
-- **Frontend**: HTML5, JavaScript, Leaflet.js
-- **Backend**: PHP 8.2 with FastCGI
-- **Database**: MariaDB (game data) + SQLite for screenshots metadata
-- **Infrastructure**: Docker (Nginx, PHP-FPM, MariaDB, phpMyAdmin)
-- **Map**: 6144x6144 coordinate system with 3x3 tiled layout
+- **Frontend**: HTML5, JavaScript, Leaflet.js, Socket.io Client
+- **Backend**: Node.js 20, Express.js, Socket.io Server
+- **Database**: MariaDB (game data) + SQLite (screenshots metadata)
+- **Cache/Queue**: Redis 7, Bull job queues
+- **Infrastructure**: Docker (Nginx, Node.js API, MariaDB, Redis, phpMyAdmin)
+- **Map**: 6144x6144 coordinate system with tiled layout
 
 ## How to Start
 
@@ -103,9 +104,9 @@ Get all active players (last 5 seconds)
 docker-compose logs -f
 ```
 
-### Check PHP errors
+### Check API errors
 ```bash
-docker-compose logs php
+docker-compose logs api
 ```
 
 ### Check Nginx errors
@@ -150,17 +151,29 @@ Possible additions to make the game more interesting:
 
 ```
 /api
-  ├── index.php            # Main API router and endpoints
-  ├── init-db.php          # Database initialization script
-  ├── docker-entrypoint.sh # Container startup script
-  └── (MariaDB via docker-compose)
+  ├── src/
+  │   ├── server.js             # Express + Socket.io server
+  │   ├── config/               # Database, constants, logger
+  │   ├── middleware/            # JWT authentication
+  │   ├── routes/                # REST API routes
+  │   ├── sockets/               # WebSocket event handlers
+  │   ├── queues/                # Bull background workers
+  │   ├── services/              # Pathfinding, utilities
+  │   └── utils/                 # Shared utilities (geometry)
+  ├── scripts/                   # DB init, item import
+  ├── gameData/                  # JSON game data files
+  ├── package.json
+  └── Dockerfile
 
 /public
   ├── index.html           # Game client (HTML + CSS + JavaScript)
-  └── assets/              # Map tiles, icons, markers
+  ├── regions.js            # Region display & walk permissions
+  ├── build-path.js         # Path builder / region editor
+  ├── screenshotManager.js  # Screenshot management
+  └── assets/               # Map tiles, icons, markers
 
 /nginx
-  └── default.conf         # Nginx configuration (API proxy)
+  └── default.conf         # Nginx configuration (API proxy + WebSocket)
 
 docker-compose.yml         # Container orchestration
 ```

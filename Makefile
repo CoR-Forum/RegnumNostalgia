@@ -1,9 +1,8 @@
 # start docker stack with command "make dev"
-# command: docker compose down && docker compose up --build -d && docker compose logs -f php
 dev:
 	docker compose down
 	docker compose up --build -d
-	docker compose logs -f php
+	docker compose logs -f api
 
 # stop docker stack with command "make down"
 down:

@@ -10,118 +10,14 @@ const {
   REGION_SPAWN_RULES,
   COLLECTABLE_VISUAL_NAMES
 } = require('../config/constants');
+const { pointInPolygon, minDistanceToEdge, getRandomPointInPolygon } = require('../utils/geometry');
 
 const regionsData = require('../../gameData/regions.json');
 
 let spawnQueue = null;
 let io = null;
 
-/**
- * Point-in-polygon test using ray casting algorithm
- */
-function pointInPolygon(x, y, polygon) {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const xi = polygon[i][0];
-    const yi = polygon[i][1];
-    const xj = polygon[j][0];
-    const yj = polygon[j][1];
-
-    const intersect = ((yi > y) !== (yj > y)) && 
-                      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-    if (intersect) inside = !inside;
-  }
-
-  return inside;
-}
-
-/**
- * Calculate minimum distance from point to polygon edges
- */
-function minDistanceToEdge(x, y, polygon) {
-  let minDist = Infinity;
-  
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const x1 = polygon[j][0];
-    const y1 = polygon[j][1];
-    const x2 = polygon[i][0];
-    const y2 = polygon[i][1];
-    
-    // Calculate distance from point to line segment
-    const A = x - x1;
-    const B = y - y1;
-    const C = x2 - x1;
-    const D = y2 - y1;
-    
-    const dot = A * C + B * D;
-    const lenSq = C * C + D * D;
-    let param = -1;
-    
-    if (lenSq !== 0) {
-      param = dot / lenSq;
-    }
-    
-    let xx, yy;
-    
-    if (param < 0) {
-      xx = x1;
-      yy = y1;
-    } else if (param > 1) {
-      xx = x2;
-      yy = y2;
-    } else {
-      xx = x1 + param * C;
-      yy = y1 + param * D;
-    }
-    
-    const dx = x - xx;
-    const dy = y - yy;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    
-    minDist = Math.min(minDist, dist);
-  }
-  
-  return minDist;
-}
-
-/**
- * Get random point within a polygon using rejection sampling
- * Ensures point is at least 10 pixels away from edges
- */
-function getRandomPointInPolygon(polygon) {
-  if (polygon.length === 0) return null;
-
-  const MIN_DISTANCE_FROM_EDGE = 10;
-
-  // Find bounding box
-  let minX = Infinity, maxX = -Infinity;
-  let minY = Infinity, maxY = -Infinity;
-  
-  for (const [x, y] of polygon) {
-    minX = Math.min(minX, x);
-    maxX = Math.max(maxX, x);
-    minY = Math.min(minY, y);
-    maxY = Math.max(maxY, y);
-  }
-
-  // Try up to 100 times to find a valid point
-  for (let attempt = 0; attempt < 100; attempt++) {
-    const x = Math.floor(Math.random() * (maxX - minX + 1)) + minX;
-    const y = Math.floor(Math.random() * (maxY - minY + 1)) + minY;
-    
-    if (pointInPolygon(x, y, polygon)) {
-      const distToEdge = minDistanceToEdge(x, y, polygon);
-      if (distToEdge >= MIN_DISTANCE_FROM_EDGE) {
-        return { x, y };
-      }
-    }
-  }
-
-  // Fallback to centroid if rejection sampling fails
-  const centroidX = Math.floor(polygon.reduce((sum, p) => sum + p[0], 0) / polygon.length);
-  const centroidY = Math.floor(polygon.reduce((sum, p) => sum + p[1], 0) / polygon.length);
-  return { x: centroidX, y: centroidY };
-}
+// pointInPolygon, minDistanceToEdge, getRandomPointInPolygon imported from ../utils/geometry
 
 /**
  * Get item_id from template_key
