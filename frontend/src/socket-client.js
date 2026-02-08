@@ -164,6 +164,18 @@ export function initializeWebSocket() {
 
   socket.on('connect_error', (error) => {
     console.error('WebSocket connection error:', error);
+    
+    // Check if this is an auth/player-not-found error
+    const msg = error && error.message ? error.message : '';
+    if (/invalid|expired|not found|login again|authentication/i.test(msg)) {
+      console.warn('Auth error on WebSocket, clearing session');
+      try { localStorage.removeItem('sessionToken'); } catch (e) {}
+      try { sessionStorage.removeItem('sessionToken'); } catch (e) {}
+      try { gameState.sessionToken = null; } catch (e) {}
+      window.location.reload();
+      return;
+    }
+
     reconnectAttempts++;
     if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       console.warn('Max reconnection attempts reached, reloading page');

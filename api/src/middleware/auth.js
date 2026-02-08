@@ -47,7 +47,12 @@ async function authenticateSocket(socket, next) {
       [decoded.userId]
     );
     
-    const realm = playerRows.length > 0 ? playerRows[0].realm : null;
+    if (playerRows.length === 0) {
+      logger.warn('Socket auth failed: player not found in database', { userId: decoded.userId });
+      return next(new Error('Player not found - please login again'));
+    }
+
+    const realm = playerRows[0].realm;
     
     // Load user settings from Redis cache (falls back to DB)
     let settings = {

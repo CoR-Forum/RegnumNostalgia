@@ -23,6 +23,26 @@ export async function initGame() {
     const totalH = getTotalH();
     const totalW = getTotalW();
 
+    // Connect WebSocket first so we can request state through it
+    initializeWebSocket();
+
+    // Wait for socket to connect (or timeout)
+    await new Promise((resolve) => {
+      if (window.socket && window.socket.connected) return resolve();
+      const onConnect = () => { cleanup(); resolve(); };
+      const timeout = setTimeout(() => { cleanup(); resolve(); }, 3000);
+      function cleanup() {
+        clearTimeout(timeout);
+        if (window.socket) window.socket.off('connect', onConnect);
+      }
+      if (window.socket) {
+        window.socket.once('connect', onConnect);
+      } else {
+        cleanup();
+        resolve();
+      }
+    });
+
     // Request initial player state via WebSocket
     let data = null;
     const requestPlayerState = () => new Promise((resolve) => {
@@ -151,7 +171,6 @@ export async function initGame() {
     if (gameState.showPaths && typeof window.loadAndRenderPaths === 'function') await window.loadAndRenderPaths();
 
     enableClickToMove();
-    initializeWebSocket();
     updatePlayerCoords(gameState.position.x, gameState.position.y);
   } catch (error) {
     console.debug('initGame failed, returning to login:', error && error.message ? error.message : error);
