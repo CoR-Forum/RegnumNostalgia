@@ -10,6 +10,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5173,
     strictPort: true,
+    allowedHosts: ['play.cor-forum.de'],
     // Watch for file changes inside Docker volumes
     watch: {
       usePolling: true,
