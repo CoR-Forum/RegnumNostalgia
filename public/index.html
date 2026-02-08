@@ -2820,19 +2820,36 @@
 
     let currentTooltip = null;
     let pendingTooltipTimer = null;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
 
-    function positionTooltip(tooltip, anchorEl) {
-      if (!tooltip || !anchorEl) return;
-      const rect = anchorEl.getBoundingClientRect();
+    function positionTooltip(tooltip, mouseX, mouseY) {
+      if (!tooltip) return;
+      // Temporarily position to get dimensions
+      tooltip.style.left = '0px';
+      tooltip.style.top = '0px';
       const tipRect = tooltip.getBoundingClientRect();
+      const tipWidth = tipRect.width;
+      const tipHeight = tipRect.height;
       const gap = 6;
-      let left = rect.left + (rect.width / 2) - (tipRect.width / 2);
-      left = Math.max(4, Math.min(left, window.innerWidth - tipRect.width - 4));
-      let top = rect.top - tipRect.height - gap;
-      // If there isn't room above, place below the element
-      if (top < 4) top = rect.bottom + gap;
+      let left = mouseX - tipWidth - gap;
+      if (left < 4) {
+        left = mouseX + gap;
+      }
+      let top = mouseY - (tipHeight / 2);
+      top = Math.max(4, Math.min(top, window.innerHeight - tipHeight - 4));
       tooltip.style.left = Math.round(left) + 'px';
       tooltip.style.top = Math.round(top) + 'px';
+      // Adjust if still out
+      const finalRect = tooltip.getBoundingClientRect();
+      if (finalRect.right > window.innerWidth - 4) {
+        left = window.innerWidth - finalRect.width - 4;
+        tooltip.style.left = Math.round(left) + 'px';
+      }
+      if (finalRect.left < 4) {
+        left = 4;
+        tooltip.style.left = Math.round(left) + 'px';
+      }
     }
 
     function showTooltip(event, item) {
@@ -2845,6 +2862,9 @@
       const tooltipIconName = item.iconName;
       const tooltipIconSrc = tooltipIconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${tooltipIconName}` : '';
       const rarityClass = (item.rarity || 'common');
+
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
 
       // Schedule tooltip creation after 200ms. If the pointer moves away
       // before this timer fires, the tooltip will not be shown.
@@ -2870,8 +2890,7 @@
         if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
         try { tooltip.style.zIndex = String(++window.__windowTopZ); } catch (e) { tooltip.style.zIndex = '40000'; }
         currentTooltip = tooltip;
-        tooltip.__anchorEl = anchorEl;
-        requestAnimationFrame(() => positionTooltip(tooltip, anchorEl));
+        requestAnimationFrame(() => positionTooltip(tooltip, event.clientX, event.clientY));
 
         // After showing tooltip, fetch fresh details with a request
         const invId = item.inventoryId || null;
@@ -2911,7 +2930,7 @@
                       <div class="tooltip-rarity ${newRarity}">${newRarity}</div>
                     `;
 
-                    requestAnimationFrame(() => positionTooltip(tooltip, tooltip.__anchorEl));
+                    requestAnimationFrame(() => positionTooltip(tooltip, lastMouseX, lastMouseY));
                   } catch (e) { console.error('Failed to apply item details to tooltip', e); }
                 });
               } catch (e) { /* ignore socket emit errors */ }
@@ -2949,16 +2968,9 @@
 
     function moveTooltip(event) {
       if (!currentTooltip) return;
-      // If anchored to an element, re-position relative to that element
-      if (currentTooltip.__anchorEl) {
-        positionTooltip(currentTooltip, currentTooltip.__anchorEl);
-        return;
-      }
-      // Fallback: follow mouse (legacy behavior)
-      const offsetX = -15;
-      const offsetY = 15;
-      currentTooltip.style.left = (event.clientX + offsetX) + 'px';
-      currentTooltip.style.top = (event.clientY + offsetY) + 'px';
+      lastMouseX = event.clientX;
+      lastMouseY = event.clientY;
+      positionTooltip(currentTooltip, event.clientX, event.clientY);
     }
 
     function hideTooltip() {
