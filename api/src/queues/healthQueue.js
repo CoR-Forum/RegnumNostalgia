@@ -2,6 +2,7 @@ const Bull = require('bull');
 const { gameDb } = require('../config/database');
 const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, REGEN_RATES } = require('../config/constants');
 const logger = require('../config/logger');
+const { invalidateTerritories, invalidateSuperbosses } = require('../config/cache');
 
 let io = null;
 
@@ -95,6 +96,9 @@ healthQueue.process('regenerate-health', async (job) => {
           [territory.territory_id]
         );
 
+        // Invalidate Redis territory cache
+        await invalidateTerritories();
+
         if (io) {
           // Include icon fields so clients can switch icons when contested state changes
           const [iconRows] = await gameDb.query(
@@ -119,6 +123,9 @@ healthQueue.process('regenerate-health', async (job) => {
           'UPDATE territories SET contested = 1, contested_since = NOW() WHERE territory_id = ?',
           [territory.territory_id]
         );
+
+        // Invalidate Redis territory cache
+        await invalidateTerritories();
 
         if (io) {
           // Include icon fields so clients can switch icons when contested state changes
@@ -169,6 +176,9 @@ healthQueue.process('regenerate-health', async (job) => {
         }));
         io.emit('superbosses:health', { superbosses });
       }
+
+      // Invalidate Redis superboss cache
+      await invalidateSuperbosses();
     }
 
     return { 

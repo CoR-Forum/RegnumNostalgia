@@ -3,6 +3,11 @@ const { gameDb } = require('../config/database');
 const { ONLINE_THRESHOLD_SECONDS } = require('../config/constants');
 const logger = require('../config/logger');
 const { pointInPolygon } = require('../utils/geometry');
+const {
+  bufferLastActive, markPlayerOnline, markPlayerOffline, updatePlayerPosition,
+  getOnlinePlayers, getCachedTerritories, getCachedSuperbosses, getCachedServerTime,
+  getLevelXp, invalidateUserSettings
+} = require('../config/cache');
 
 // Handler modules
 const { initializeShoutboxHandlers, startShoutboxPolling } = require('./shoutbox');
@@ -48,17 +53,24 @@ function initializeSocketHandlers(io) {
     // Initialize user's region entry
     userRegions.set(user.userId, null);
 
-    // Update player's last_active
+    // Buffer last_active in Redis (flushed to DB every 5s)
+    bufferLastActive(user.userId);
+
+    // Mark player online in Redis with current info
     try {
-      await gameDb.query(
-        'UPDATE players SET last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
+      const [playerInfo] = await gameDb.query(
+        'SELECT user_id, username, realm, x, y, level, health, max_health FROM players WHERE user_id = ?',
         [user.userId]
       );
-    } catch (error) {
-      logger.error('Failed to update last_active on connect', { 
-        error: error.message,
-        userId: user.userId
-      });
+      if (playerInfo.length > 0) {
+        const p = playerInfo[0];
+        markPlayerOnline(user.userId, {
+          userId: p.user_id, username: p.username, realm: p.realm,
+          x: p.x, y: p.y, level: p.level, health: p.health, maxHealth: p.max_health
+        });
+      }
+    } catch (e) {
+      logger.error('Failed to mark player online in Redis', { error: e && e.message ? e.message : String(e) });
     }
 
     // Emit player connected event to all clients
@@ -102,6 +114,7 @@ function initializeSocketHandlers(io) {
 
       connectedUsers.delete(user.userId);
       userRegions.delete(user.userId);
+      markPlayerOffline(user.userId);
 
       io.emit('player:disconnected', {
         userId: user.userId,
@@ -171,6 +184,9 @@ function registerSettingsHandler(socket, user, io) {
                updated_at = VALUES(updated_at)`,
             [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, updatedAt]
           );
+
+          // Invalidate Redis settings cache
+          invalidateUserSettings(userId);
         }
       } catch (e) {
         logger.error('Failed to persist user settings from socket', { error: e && e.message ? e.message : String(e), userId: socket.user && socket.user.userId });
@@ -214,35 +230,24 @@ async function sendInitialGameState(socket, user) {
     const state = await buildPlayerState(user.userId);
     if (state) socket.emit('player:state', state);
 
-    // Get all online players
-    const [onlinePlayers] = await gameDb.query(
-      `SELECT user_id, username, realm, x, y, level, health, max_health
-       FROM players 
-       WHERE last_active > DATE_SUB(NOW(), INTERVAL ? SECOND)
-       AND realm IS NOT NULL`,
-      [ONLINE_THRESHOLD_SECONDS]
-    );
+    // Get all online players from Redis
+    const onlinePlayersList = await getOnlinePlayers(gameDb, ONLINE_THRESHOLD_SECONDS);
 
     socket.emit('players:online', {
-      players: onlinePlayers.map(p => ({
-        userId: p.user_id,
+      players: onlinePlayersList.map(p => ({
+        userId: p.userId || p.user_id,
         username: p.username,
         realm: p.realm,
         x: p.x,
         y: p.y,
         level: p.level,
         health: p.health,
-        maxHealth: p.max_health
+        maxHealth: p.maxHealth || p.max_health
       }))
     });
 
-    // Get territories
-    const [territories] = await gameDb.query(
-      `SELECT territory_id, realm, name, type, health, max_health, x, y,
-              owner_realm, contested, icon_name, icon_name_contested
-       FROM territories
-       ORDER BY territory_id`
-    );
+    // Get territories from Redis cache
+    const territories = await getCachedTerritories(gameDb);
 
     socket.emit('territories:list', {
       territories: territories.map(t => ({
@@ -261,12 +266,8 @@ async function sendInitialGameState(socket, user) {
       }))
     });
 
-    // Get superbosses
-    const [superbosses] = await gameDb.query(
-      `SELECT boss_id, name, icon_name, health, max_health, x, y
-       FROM superbosses
-       ORDER BY boss_id`
-    );
+    // Get superbosses from Redis cache
+    const superbosses = await getCachedSuperbosses(gameDb);
 
     socket.emit('superbosses:list', {
       superbosses: superbosses.map(b => ({
@@ -301,17 +302,14 @@ async function sendInitialGameState(socket, user) {
       }))
     });
 
-    // Get server time
-    const [timeRows] = await gameDb.query(
-      'SELECT ingame_hour, ingame_minute, started_at FROM server_time WHERE id = 1'
-    );
+    // Get server time from Redis cache
+    const cachedTime = await getCachedServerTime(gameDb);
 
-    if (timeRows.length > 0) {
-      const tr = timeRows[0];
+    if (cachedTime) {
       socket.emit('time:current', {
-        ingameHour: tr.ingame_hour,
-        ingameMinute: tr.ingame_minute,
-        startedAt: tr.started_at
+        ingameHour: cachedTime.ingame_hour,
+        ingameMinute: cachedTime.ingame_minute,
+        startedAt: cachedTime.started_at
       });
     }
 
@@ -411,13 +409,12 @@ async function buildPlayerState(userId) {
   if (playerRows.length === 0) return null;
   const player = playerRows[0];
 
-  // Determine XP needed for next level
+  // Determine XP needed for next level (cached in Redis)
   let xpToNext = null;
   try {
     const nextLevel = Number(player.level) + 1;
-    const [nextRows] = await gameDb.query('SELECT xp FROM levels WHERE level = ?', [nextLevel]);
-    if (nextRows && nextRows.length > 0) {
-      const nextXp = Number(nextRows[0].xp) || 0;
+    const nextXp = await getLevelXp(gameDb, nextLevel);
+    if (nextXp !== null) {
       xpToNext = Math.max(0, nextXp - Number(player.xp));
     }
   } catch (e) {
@@ -512,12 +509,12 @@ async function buildPlayerState(userId) {
     };
   }
 
-  // Get server time
-  const [timeRows] = await gameDb.query('SELECT * FROM server_time WHERE id = 1');
-  const serverTime = timeRows.length > 0 ? {
-    ingameHour: timeRows[0].ingame_hour,
-    ingameMinute: timeRows[0].ingame_minute,
-    startedAt: timeRows[0].started_at
+  // Get server time from Redis cache
+  const cachedTimeData = await getCachedServerTime(gameDb);
+  const serverTime = cachedTimeData ? {
+    ingameHour: cachedTimeData.ingame_hour,
+    ingameMinute: cachedTimeData.ingame_minute,
+    startedAt: cachedTimeData.started_at
   } : null;
 
   return {
@@ -555,24 +552,18 @@ async function buildPlayerState(userId) {
 function startOnlinePlayersBroadcast(io) {
   setInterval(async () => {
     try {
-      const [players] = await gameDb.query(
-        `SELECT user_id, username, realm, x, y, level, health, max_health
-         FROM players 
-         WHERE last_active > DATE_SUB(NOW(), INTERVAL ? SECOND)
-         AND realm IS NOT NULL`,
-        [ONLINE_THRESHOLD_SECONDS]
-      );
+      const players = await getOnlinePlayers(gameDb, ONLINE_THRESHOLD_SECONDS);
 
       io.emit('players:online', {
         players: players.map(p => ({
-          userId: p.user_id,
+          userId: p.userId || p.user_id,
           username: p.username,
           realm: p.realm,
           x: p.x,
           y: p.y,
           level: p.level,
           health: p.health,
-          maxHealth: p.max_health
+          maxHealth: p.maxHealth || p.max_health
         }))
       });
 

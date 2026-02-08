@@ -1,8 +1,6 @@
 const { forumDb, gameDb } = require('../config/database');
 const logger = require('../config/logger');
-
-// Track last processed shoutbox entry ID for polling
-let lastShoutboxId = 0;
+const { getCachedGMStatus, getItemByTemplateKey, getCachedShoutboxMessages, setShoutboxMessages, addShoutboxMessage, getLastShoutboxId, setLastShoutboxId } = require('../config/cache');
 
 /**
  * Check if a user has GM/Admin permissions
@@ -11,12 +9,8 @@ let lastShoutboxId = 0;
  */
 async function isGM(userId) {
   try {
-    // Check if user is in GM/Admin group (groupID 32)
-    const [rows] = await forumDb.query(
-      'SELECT groupID FROM wcf1_user_to_group WHERE userID = ? AND groupID = 32',
-      [userId]
-    );
-    return rows.length > 0;
+    // Check GM status via Redis cache (falls back to forumDb)
+    return await getCachedGMStatus(forumDb, userId);
   } catch (error) {
     logger.error('Failed to check GM status', { error: error.message, userId });
     return false;
@@ -93,19 +87,16 @@ async function handleItemAddCommand(socket, user, templateKey, targetUserIdentif
     const parsedUserId = targetUser.userId;
     const targetUsername = targetUser.username;
 
-    // Look up item by template_key
-    const [itemRows] = await gameDb.query(
-      'SELECT item_id, name, stackable FROM items WHERE template_key = ?',
-      [templateKey]
-    );
+    // Look up item by template_key (cached in Redis)
+    const itemData = await getItemByTemplateKey(gameDb, templateKey);
 
-    if (itemRows.length === 0) {
+    if (!itemData) {
       return { success: false, error: `Item '${templateKey}' not found` };
     }
 
-    const itemId = itemRows[0].item_id;
-    const itemName = itemRows[0].name;
-    const isStackable = itemRows[0].stackable;
+    const itemId = itemData.item_id;
+    const itemName = itemData.name;
+    const isStackable = itemData.stackable;
 
     // Add item to inventory
     if (!isStackable && parsedQuantity > 1) {
@@ -213,19 +204,16 @@ async function handleItemRemoveCommand(socket, user, templateKey, targetUserIden
     const parsedUserId = targetUser.userId;
     const targetUsername = targetUser.username;
 
-    // Look up item by template_key
-    const [itemRows] = await gameDb.query(
-      'SELECT item_id, name, stackable FROM items WHERE template_key = ?',
-      [templateKey]
-    );
+    // Look up item by template_key (cached in Redis)
+    const itemData = await getItemByTemplateKey(gameDb, templateKey);
 
-    if (itemRows.length === 0) {
+    if (!itemData) {
       return { success: false, error: `Item '${templateKey}' not found` };
     }
 
-    const itemId = itemRows[0].item_id;
-    const itemName = itemRows[0].name;
-    const isStackable = itemRows[0].stackable;
+    const itemId = itemData.item_id;
+    const itemName = itemData.name;
+    const isStackable = itemData.stackable;
 
     // Check what the user has in inventory
     const [inventoryRows] = await gameDb.query(
@@ -346,26 +334,37 @@ function initializeShoutboxHandlers(socket, user) {
    */
   socket.on('shoutbox:get', async (data, callback) => {
     try {
-      // Only fetch the most recent 50 messages to limit payload size
-      const [messages] = await forumDb.query(
-        `SELECT entryID, userID, username, time, message
-         FROM wcf1_shoutbox_entry
-         WHERE shoutboxID = 1
-         ORDER BY time DESC
-         LIMIT 50`
-      );
+      // Try Redis cache first
+      let msgs = await getCachedShoutboxMessages();
 
-      // Reverse to get chronological order (oldest first)
-      const chronological = messages.reverse();
+      if (msgs) {
+        // Cache stores newest-first, reverse for chronological order
+        msgs = msgs.reverse();
+      } else {
+        // Cache miss - fetch from DB and populate cache
+        const [messages] = await forumDb.query(
+          `SELECT entryID, userID, username, time, message
+           FROM wcf1_shoutbox_entry
+           WHERE shoutboxID = 1
+           ORDER BY time DESC
+           LIMIT 50`
+        );
 
-      // Normalize keys to camelCase
-      const msgs = chronological.map(m => ({
-        entryId: m.entryID,
-        userId: m.userID,
-        username: m.username,
-        time: m.time,
-        message: m.message
-      }));
+        // Reverse to get chronological order (oldest first)
+        const chronological = messages.reverse();
+
+        // Normalize keys to camelCase
+        msgs = chronological.map(m => ({
+          entryId: m.entryID,
+          userId: m.userID,
+          username: m.username,
+          time: m.time,
+          message: m.message
+        }));
+
+        // Populate cache (expects chronological order)
+        await setShoutboxMessages(msgs);
+      }
 
       if (callback) {
         callback({ success: true, messages: msgs });
@@ -373,7 +372,7 @@ function initializeShoutboxHandlers(socket, user) {
 
       logger.info('Shoutbox messages retrieved', { 
         userId: user.userId,
-        messageCount: messages.length
+        messageCount: msgs.length
       });
 
     } catch (error) {
@@ -442,7 +441,11 @@ function initializeShoutboxHandlers(socket, user) {
           };
 
           // Update lastShoutboxId to avoid re-broadcasts from polling
-          if (res.insertId > lastShoutboxId) lastShoutboxId = res.insertId;
+          const currentLastId = await getLastShoutboxId();
+          if (res.insertId > currentLastId) await setLastShoutboxId(res.insertId);
+
+          // Add to Redis cache
+          await addShoutboxMessage(systemMessage);
 
           // Broadcast to all clients including sender
           socket.nsp.emit('shoutbox:message', systemMessage);
@@ -488,12 +491,16 @@ function initializeShoutboxHandlers(socket, user) {
         message: message.trim()
       };
 
+      // Add to Redis cache
+      await addShoutboxMessage(messageData);
+
       // Broadcast to all clients except sender (they get it via callback)
       socket.broadcast.emit('shoutbox:message', messageData);
 
       // Update last shoutbox ID to prevent polling from re-sending this message
-      if (result.insertId > lastShoutboxId) {
-        lastShoutboxId = result.insertId;
+      const currentLastId = await getLastShoutboxId();
+      if (result.insertId > currentLastId) {
+        await setLastShoutboxId(result.insertId);
       }
 
       if (callback) {
@@ -523,22 +530,30 @@ function initializeShoutboxHandlers(socket, user) {
  */
 async function startShoutboxPolling(io) {
   try {
-    // Initialize lastShoutboxId to the current max entryID so we don't
-    // accidentally broadcast the entire history when the service starts.
-    const [rows] = await forumDb.query(
-      `SELECT MAX(entryID) as maxId FROM wcf1_shoutbox_entry WHERE shoutboxID = 1`
-    );
-    if (rows && rows.length > 0 && rows[0].maxId) {
-      lastShoutboxId = rows[0].maxId;
+    // Check if we have a persisted lastShoutboxId in Redis
+    let lastId = await getLastShoutboxId();
+
+    if (!lastId) {
+      // Initialize lastShoutboxId to the current max entryID so we don't
+      // accidentally broadcast the entire history when the service starts.
+      const [rows] = await forumDb.query(
+        `SELECT MAX(entryID) as maxId FROM wcf1_shoutbox_entry WHERE shoutboxID = 1`
+      );
+      if (rows && rows.length > 0 && rows[0].maxId) {
+        lastId = rows[0].maxId;
+        await setLastShoutboxId(lastId);
+      }
     }
 
-    logger.info('Shoutbox polling initialized', { lastShoutboxId });
+    logger.info('Shoutbox polling initialized', { lastShoutboxId: lastId });
   } catch (err) {
     logger.error('Failed to initialize lastShoutboxId', { error: err.message });
   }
 
   setInterval(async () => {
     try {
+      const lastShoutboxId = await getLastShoutboxId();
+
       const [messages] = await forumDb.query(
         `SELECT entryID, userID, username, time, message
          FROM wcf1_shoutbox_entry
@@ -549,19 +564,23 @@ async function startShoutboxPolling(io) {
       );
 
       if (messages.length > 0) {
-        // Update last ID
-        lastShoutboxId = messages[messages.length - 1].entryID;
+        // Update last ID in Redis
+        const newLastId = messages[messages.length - 1].entryID;
+        await setLastShoutboxId(newLastId);
 
-        // Broadcast each new message to all clients
-        messages.forEach(msg => {
-          io.emit('shoutbox:message', {
+        // Broadcast each new message to all clients and add to cache
+        for (const msg of messages) {
+          const messageData = {
             entryId: msg.entryID,
             userId: msg.userID,
             username: msg.username,
             time: msg.time,
             message: msg.message
-          });
-        });
+          };
+
+          await addShoutboxMessage(messageData);
+          io.emit('shoutbox:message', messageData);
+        }
 
         logger.info('Broadcasted new shoutbox messages', { count: messages.length });
       }

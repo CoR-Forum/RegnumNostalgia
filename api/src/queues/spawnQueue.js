@@ -11,6 +11,7 @@ const {
   COLLECTABLE_VISUAL_NAMES
 } = require('../config/constants');
 const { pointInPolygon, minDistanceToEdge, getRandomPointInPolygon } = require('../utils/geometry');
+const { getItemByTemplateKey } = require('../config/cache');
 
 const regionsData = require('../../gameData/regions.json');
 
@@ -20,14 +21,11 @@ let io = null;
 // pointInPolygon, minDistanceToEdge, getRandomPointInPolygon imported from ../utils/geometry
 
 /**
- * Get item_id from template_key
+ * Get item_id from template_key (Redis cached)
  */
 async function getItemId(templateKey) {
-  const [rows] = await gameDb.query(
-    'SELECT item_id FROM items WHERE template_key = ?',
-    [templateKey]
-  );
-  return rows.length > 0 ? rows[0].item_id : null;
+  const cached = await getItemByTemplateKey(gameDb, templateKey);
+  return cached ? cached.item_id : null;
 }
 
 /**

@@ -7,7 +7,9 @@ const { BullAdapter } = require('@bull-board/api/bullAdapter');
 const { ExpressAdapter } = require('@bull-board/express');
 
 const logger = require('./config/logger');
-const { testConnections, initScreenshotsDb } = require('./config/database');
+const { testConnections, initScreenshotsDb, gameDb } = require('./config/database');
+const { preloadStaticData, flushLastActive, cleanupOnlinePlayers } = require('./config/cache');
+const { ONLINE_THRESHOLD_SECONDS } = require('./config/constants');
 const { initializeQueues, closeQueues, walkerQueue, healthQueue, timeQueue, territoryQueue } = require('./queues');
 const { initializeSocketHandlers } = require('./sockets');
 const { initDatabase } = require('../scripts/init-db');
@@ -158,8 +160,17 @@ async function start() {
     // Initialize screenshots database
     await initScreenshotsDb();
 
+    // Preload static game data (items, levels) into Redis cache
+    await preloadStaticData(gameDb);
+
     // Initialize Bull queues with Socket.io instance
     await initializeQueues(io);
+
+    // Start periodic last_active flush from Redis to MariaDB (every 5s)
+    setInterval(() => flushLastActive(gameDb), 5000);
+
+    // Periodically clean up stale entries from Redis online players set
+    setInterval(() => cleanupOnlinePlayers(ONLINE_THRESHOLD_SECONDS), 10000);
 
     // Start HTTP server
     httpServer.listen(PORT, () => {

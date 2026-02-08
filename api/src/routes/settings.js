@@ -3,14 +3,14 @@ const router = express.Router();
 const { authenticateJWT } = require('../middleware/auth');
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
+const { getCachedUserSettings, invalidateUserSettings } = require('../config/cache');
 
 // Get current user's settings
 router.get('/', authenticateJWT, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version FROM user_settings WHERE user_id = ?', [userId]);
-    if (rows && rows.length > 0) {
-      const row = rows[0];
+    const row = await getCachedUserSettings(gameDb, userId);
+    if (row) {
       return res.json({ success: true, settings: {
         musicEnabled: row.music_enabled === 1 ? 1 : 0,
         musicVolume: typeof row.music_volume === 'number' ? row.music_volume : parseFloat(row.music_volume) || 0.6,
@@ -74,6 +74,9 @@ router.post('/', authenticateJWT, async (req, res) => {
          updated_at = VALUES(updated_at)`,
       [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, updatedAt]
     );
+
+    // Invalidate cached settings so next read picks up changes
+    await invalidateUserSettings(userId);
 
     return res.json({ success: true });
   } catch (err) {

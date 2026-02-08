@@ -3,6 +3,7 @@ const axios = require('axios');
 const { gameDb } = require('../config/database');
 const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, WARSTATUS_API_URL } = require('../config/constants');
 const logger = require('../config/logger');
+const { invalidateTerritories } = require('../config/cache');
 
 let io = null;
 
@@ -110,6 +111,11 @@ territoryQueue.process('sync-territories', async (job) => {
           to: newOwner || 'neutral'
         });
       }
+    }
+
+    // Invalidate Redis territory cache when changes detected
+    if (updatedCount > 0) {
+      await invalidateTerritories();
     }
 
     // Emit territory capture events

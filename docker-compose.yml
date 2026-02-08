@@ -100,5 +100,13 @@ services:
       - db
     restart: unless-stopped
 
+  redisinsight:
+    image: redis/redisinsight:latest
+    ports:
+      - "8323:5540"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
 volumes:
   frontend_node_modules:

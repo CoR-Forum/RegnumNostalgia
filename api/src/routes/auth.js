@@ -13,6 +13,7 @@ const {
   GM_STARTER_ITEMS
 } = require('../config/constants');
 const logger = require('../config/logger');
+const { getItemByTemplateKey, bufferLastActive } = require('../config/cache');
 
 /**
  * POST /login
@@ -96,11 +97,8 @@ router.post('/', async (req, res) => {
     } else {
       realm = existingPlayer[0].realm;
       
-      // Update last_active
-      await gameDb.query(
-        'UPDATE players SET last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
-        [userId]
-      );
+      // Buffer last_active update via Redis
+      bufferLastActive(userId);
     }
 
     // Step 5: Generate JWT token (realm not included, fetched from DB when needed)
@@ -194,15 +192,12 @@ router.post('/select', async (req, res) => {
     const itemsToGrant = (decoded.userId === 146) ? GM_STARTER_ITEMS || STARTER_ITEMS : STARTER_ITEMS;
 
     for (const starterItem of itemsToGrant) {
-      // Get item_id and stackable from template_key
-      const [itemRows] = await gameDb.query(
-        'SELECT item_id, stackable FROM items WHERE template_key = ?',
-        [starterItem.template_key]
-      );
+      // Get item_id and stackable from cache
+      const itemData = await getItemByTemplateKey(gameDb, starterItem.template_key);
 
-      if (itemRows.length > 0) {
-        const itemId = itemRows[0].item_id;
-        const isStackable = itemRows[0].stackable;
+      if (itemData) {
+        const itemId = itemData.item_id;
+        const isStackable = itemData.stackable;
 
         if (!isStackable && starterItem.quantity > 1) {
           // For non-stackable items with quantity > 1, add multiple entries

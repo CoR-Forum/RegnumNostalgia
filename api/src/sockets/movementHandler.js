@@ -2,6 +2,7 @@ const { gameDb } = require('../config/database');
 const { findPath, createWalker } = require('../services/pathfinding');
 const logger = require('../config/logger');
 const { pointInPolygon } = require('../utils/geometry');
+const { updatePlayerPosition, bufferLastActive } = require('../config/cache');
 
 /**
  * Register movement-related socket handlers.
@@ -30,6 +31,10 @@ function registerMovementHandlers(socket, user, io, deps) {
         'UPDATE players SET x = ?, y = ?, last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
         [x, y, user.userId]
       );
+
+      // Update position in Redis cache
+      updatePlayerPosition(user.userId, x, y);
+      bufferLastActive(user.userId);
 
       io.emit('players:position', [{
         userId: user.userId,

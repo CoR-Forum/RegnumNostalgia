@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/constants');
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
+const { bufferLastActive, getCachedUserSettings } = require('../config/cache');
 
 /**
  * Express middleware to verify JWT token from X-Session-Token header
@@ -17,11 +18,8 @@ async function authenticateJWT(req, res, next) {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded; // { userId, username, realm }
 
-    // Update last_active timestamp
-    await gameDb.query(
-      'UPDATE players SET last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
-      [decoded.userId]
-    );
+    // Buffer last_active update in Redis (flushed to DB every 5s)
+    bufferLastActive(decoded.userId);
 
     next();
   } catch (error) {
@@ -51,7 +49,7 @@ async function authenticateSocket(socket, next) {
     
     const realm = playerRows.length > 0 ? playerRows[0].realm : null;
     
-    // Load user settings (if present)
+    // Load user settings from Redis cache (falls back to DB)
     let settings = {
       musicEnabled: 0,
       musicVolume: 0.20,
@@ -65,20 +63,8 @@ async function authenticateSocket(socket, next) {
     };
 
     try {
-      const [rows] = await gameDb.query('SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version FROM user_settings WHERE user_id = ?', [decoded.userId]);
-      if (rows && rows.length > 0) {
-        settings = {
-          musicEnabled: rows[0].music_enabled === 1 ? 1 : 0,
-          musicVolume: typeof rows[0].music_volume === 'number' ? rows[0].music_volume : parseFloat(rows[0].music_volume) || 0.6,
-          soundsEnabled: rows[0].sounds_enabled === 1 ? 1 : 0,
-          soundVolume: typeof rows[0].sound_volume === 'number' ? rows[0].sound_volume : parseFloat(rows[0].sound_volume) || 1.0,
-          captureSoundsEnabled: rows[0].capture_sounds_enabled === 1 ? 1 : 0,
-          captureSoundsVolume: typeof rows[0].capture_sounds_volume === 'number' ? rows[0].capture_sounds_volume : parseFloat(rows[0].capture_sounds_volume) || 1.0,
-          collectionSoundsEnabled: rows[0].collection_sounds_enabled === 1 ? 1 : 0,
-          collectionSoundsVolume: typeof rows[0].collection_sounds_volume === 'number' ? rows[0].collection_sounds_volume : parseFloat(rows[0].collection_sounds_volume) || 1.0,
-          mapVersion: rows[0].map_version || 'v1'
-        };
-      }
+      const cached = await getCachedUserSettings(gameDb, decoded.userId);
+      if (cached) settings = cached;
     } catch (e) {
       logger.error('Failed to load user settings during socket auth', { error: e && e.message ? e.message : String(e), userId: decoded.userId });
     }

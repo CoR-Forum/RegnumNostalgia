@@ -2,6 +2,7 @@ const Bull = require('bull');
 const { gameDb } = require('../config/database');
 const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, SERVER_TIME_TICK_SECONDS } = require('../config/constants');
 const logger = require('../config/logger');
+const { setCachedServerTime } = require('../config/cache');
 
 let io = null;
 
@@ -70,6 +71,9 @@ timeQueue.process('update-server-time', async (job) => {
        WHERE id = 1`,
       [now, ingameHour, ingameMinute]
     );
+
+    // Update Redis cache (write-through)
+    await setCachedServerTime({ id: 1, ingame_hour: ingameHour, ingame_minute: ingameMinute, started_at: startedAt, last_updated: now });
 
     // Emit time update event
     if (io) {

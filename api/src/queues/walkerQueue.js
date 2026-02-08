@@ -4,6 +4,7 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, COLLECTABLE_CONFIG, LOOT_TABLES } = r
 const logger = require('../config/logger');
 const { addPlayerLog } = require('../sockets');
 const { pointInPolygon, distance } = require('../utils/geometry');
+const { getItemByTemplateKey, getItemById, updatePlayerPosition, bufferLastActive } = require('../config/cache');
 
 let io = null; // Socket.io instance, injected later
 // Track last-known region id per user for walker-based movement
@@ -40,16 +41,13 @@ async function resolveLootTable(lootTableKey) {
 
     if (!selectedItem) selectedItem = lootTable.pool[0];
 
-    // Get item_id from template_key
-    const [rows] = await gameDb.query(
-      'SELECT item_id FROM items WHERE template_key = ?',
-      [selectedItem.item]
-    );
+    // Get item_id from template_key (Redis cached)
+    const cachedItem = await getItemByTemplateKey(gameDb, selectedItem.item);
 
-    if (rows.length > 0) {
+    if (cachedItem) {
       const [minQty, maxQty] = selectedItem.quantity;
       const quantity = Math.floor(Math.random() * (maxQty - minQty + 1)) + minQty;
-      rewards.push({ itemId: rows[0].item_id, templateKey: selectedItem.item, quantity });
+      rewards.push({ itemId: cachedItem.item_id, templateKey: selectedItem.item, quantity });
     }
 
   } else if (lootTable.mode === 'multi-drop') {
@@ -70,15 +68,12 @@ async function resolveLootTable(lootTableKey) {
 
       if (!selectedItem) selectedItem = lootTable.pool[0];
 
-      const [rows] = await gameDb.query(
-        'SELECT item_id FROM items WHERE template_key = ?',
-        [selectedItem.item]
-      );
+      const cachedItem = await getItemByTemplateKey(gameDb, selectedItem.item);
 
-      if (rows.length > 0) {
+      if (cachedItem) {
         const [minQty, maxQty] = selectedItem.quantity;
         const quantity = Math.floor(Math.random() * (maxQty - minQty + 1)) + minQty;
-        rewards.push({ itemId: rows[0].item_id, templateKey: selectedItem.item, quantity });
+        rewards.push({ itemId: cachedItem.item_id, templateKey: selectedItem.item, quantity });
       }
     }
 
@@ -89,15 +84,12 @@ async function resolveLootTable(lootTableKey) {
       const roll = Math.random() * totalWeight;
 
       if (roll <= item.weight) {
-        const [rows] = await gameDb.query(
-          'SELECT item_id FROM items WHERE template_key = ?',
-          [item.item]
-        );
+        const cachedItem = await getItemByTemplateKey(gameDb, item.item);
 
-        if (rows.length > 0) {
+        if (cachedItem) {
           const [minQty, maxQty] = item.quantity;
           const quantity = Math.floor(Math.random() * (maxQty - minQty + 1)) + minQty;
-          rewards.push({ itemId: rows[0].item_id, templateKey: item.item, quantity });
+          rewards.push({ itemId: cachedItem.item_id, templateKey: item.item, quantity });
         }
       }
     }
@@ -112,18 +104,15 @@ async function resolveLootTable(lootTableKey) {
 async function addToInventory(userId, itemId, quantity) {
   const now = Math.floor(Date.now() / 1000);
 
-  // Check if item is stackable and already exists in inventory
-  const [itemInfo] = await gameDb.query(
-    'SELECT stackable FROM items WHERE item_id = ?',
-    [itemId]
-  );
+  // Check if item is stackable (Redis cached)
+  const cachedItem = await getItemById(gameDb, itemId);
 
-  if (itemInfo.length === 0) {
+  if (!cachedItem) {
     logger.warn(`Item not found: ${itemId}`);
     return null;
   }
 
-  if (itemInfo[0].stackable) {
+  if (cachedItem.stackable) {
     // Try to stack with existing item
     const [existing] = await gameDb.query(
       'SELECT inventory_id, quantity FROM inventory WHERE user_id = ? AND item_id = ?',
@@ -255,6 +244,10 @@ walkerQueue.process('process-walkers', async (job) => {
           [finalPos[0], finalPos[1], walker.user_id]
         );
 
+        // Update position in Redis cache
+        updatePlayerPosition(walker.user_id, finalPos[0], finalPos[1]);
+        bufferLastActive(walker.user_id);
+
         // Emit final step and completion events
         if (io) {
           io.emit('walker:step', {
@@ -302,15 +295,14 @@ walkerQueue.process('process-walkers', async (job) => {
                     if (spawn.item_id) {
                       const inventoryId = await addToInventory(walker.user_id, spawn.item_id, 1);
                       
-                      // Get item details for notification
-                      const [itemData] = await gameDb.query(
-                        'SELECT template_key, name, icon_name FROM items WHERE item_id = ?',
-                        [spawn.item_id]
-                      );
+                      // Get item details for notification (Redis cached)
+                      const itemDataCached = await getItemById(gameDb, spawn.item_id);
 
-                      if (itemData.length > 0) {
+                      if (itemDataCached) {
                         itemsCollected.push({
-                          ...itemData[0],
+                          template_key: itemDataCached.template_key,
+                          name: itemDataCached.name,
+                          icon_name: itemDataCached.icon_name,
                           quantity: 1,
                           inventoryId
                         });
@@ -323,15 +315,14 @@ walkerQueue.process('process-walkers', async (job) => {
                     for (const reward of rewards) {
                       const inventoryId = await addToInventory(walker.user_id, reward.itemId, reward.quantity);
                       
-                      // Get item details
-                      const [itemData] = await gameDb.query(
-                        'SELECT template_key, name, icon_name FROM items WHERE item_id = ?',
-                        [reward.itemId]
-                      );
+                      // Get item details (Redis cached)
+                      const rewardItemData = await getItemById(gameDb, reward.itemId);
 
-                      if (itemData.length > 0) {
+                      if (rewardItemData) {
                         itemsCollected.push({
-                          ...itemData[0],
+                          template_key: rewardItemData.template_key,
+                          name: rewardItemData.name,
+                          icon_name: rewardItemData.icon_name,
                           quantity: reward.quantity,
                           inventoryId
                         });
@@ -449,6 +440,10 @@ walkerQueue.process('process-walkers', async (job) => {
         'UPDATE players SET x = ?, y = ?, last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
         [newPos[0], newPos[1], walker.user_id]
       );
+
+      // Update position in Redis cache
+      updatePlayerPosition(walker.user_id, newPos[0], newPos[1]);
+      bufferLastActive(walker.user_id);
 
       // Emit walker step event to all clients (for player visibility)
       if (io) {

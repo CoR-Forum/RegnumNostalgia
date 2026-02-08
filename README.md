@@ -147,6 +147,7 @@ regnum-nostalgia/
 │   │   ├── server.js                 # Express + Socket.io server
 │   │   ├── config/
 │   │   │   ├── database.js           # MariaDB + Redis + SQLite connections
+│   │   │   ├── cache.js              # Redis caching layer (items, levels, territories, settings)
 │   │   │   ├── constants.js          # Game configuration & loot tables
 │   │   │   └── logger.js             # Winston logger setup
 │   │   ├── middleware/
@@ -204,7 +205,7 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - **Frontend**: HTML5, JavaScript (ES Modules), Leaflet.js, Socket.io Client (v4.6.1), Vite (dev server & build)
 - **Backend**: Node.js 20, Express.js, Socket.io Server
 - **Database**: MariaDB 11.3 for game data, SQLite for screenshot metadata
-- **Cache/Pub-Sub**: Redis 7-Alpine
+- **Cache/Pub-Sub**: Redis 7-Alpine (application-level caching + Bull queue backend)
 - **Queue System**: Bull (Redis-backed job queues)
 - **Web Server**: Nginx (Alpine) with WebSocket proxy
 - **Containerization**: Docker & Docker Compose
@@ -225,9 +226,42 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - **server_time**: Synchronized in-game clock
 
 ### Redis Keys
-- `session:{sessionToken}` - Session data cache
-- `player:{userId}:state` - Real-time player state
-- `bull:{queueName}:*` - Queue job data
+
+#### Application Cache (managed by `api/src/config/cache.js`)
+- `cache:item:tmpl:{templateKey}` - Item data by template key (permanent, preloaded at startup)
+- `cache:item:id:{itemId}` - Item data by ID (permanent, preloaded at startup)
+- `cache:levels` - Hash of level → XP thresholds (permanent, preloaded at startup)
+- `cache:territories` - All territories JSON (TTL: 30s, invalidated on capture/health change)
+- `cache:superbosses` - All superbosses JSON (TTL: 10s, invalidated on health change)
+- `cache:server_time` - In-game time JSON (TTL: 15s, write-through on each tick)
+- `cache:settings:{userId}` - User settings JSON (TTL: 300s, invalidated on save)
+- `cache:gm:{userId}` - GM status boolean (TTL: 600s)
+- `cache:online_players` - Sorted set of online player data (scored by timestamp)
+- `cache:player:{userId}` - Player position/realm JSON (TTL: 10s)
+- `cache:last_active` - Sorted set of userId → timestamp, batch-flushed to DB every 5s
+- `cache:shoutbox:messages` - List of recent shoutbox messages (newest at head, max 50)
+- `cache:shoutbox:last_id` - Last polled shoutbox entry ID (persists across restarts)
+
+#### Queue System
+- `bull:{queueName}:*` - Queue job data (walker-processor, health-regeneration, server-time, territory-sync, spawn-queue)
+
+### Redis Caching Strategy
+
+The API uses Redis as a comprehensive caching layer (see `api/src/config/cache.js`) to minimize database queries:
+
+| Category | Strategy | TTL | Invalidation |
+|---|---|---|---|
+| **Items & Levels** | Preloaded at startup | Permanent | Server restart |
+| **Territories** | Lazy-load + TTL | 30s | On capture or health change |
+| **Superbosses** | Lazy-load + TTL | 10s | On health change |
+| **Server Time** | Write-through | 15s | Updated every 10s by timeQueue |
+| **User Settings** | Lazy-load + TTL | 300s | On settings save |
+| **GM Status** | Lazy-load + TTL | 600s | Natural expiry |
+| **Online Players** | Sorted set | N/A | Cleaned every 10s (stale > 30s removed) |
+| **Player Positions** | Updated on move | 10s | On each movement step |
+| **Last Active** | Buffered in sorted set | N/A | Batch-flushed to DB every 5s |
+| **Shoutbox Messages** | Redis list (newest at head) | N/A | New messages pushed on send/poll, trimmed to 50 |
+| **Shoutbox Last ID** | Persisted in Redis | Permanent | Updated on each poll/send |
 
 ## 🔌 API Endpoints
 
@@ -412,6 +446,13 @@ window.getSocket().connected  // Should be true
 // Manually emit
 window.getSocket().emit('test:event', { data: 'hello' })
 ```
+
+### Redis Monitoring
+**RedisInsight Dashboard**
+```bash
+open http://localhost:8323
+```
+On first launch, add a connection with host `redis`, port `6379`. Browse all cache keys (`cache:*`), queue keys (`bull:*`), and monitor commands in real-time.
 
 ### Queue Monitoring
 **Bull Board Dashboard**
