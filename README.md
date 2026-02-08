@@ -241,6 +241,9 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - `cache:last_active` - Sorted set of userId → timestamp, batch-flushed to DB every 5s
 - `cache:shoutbox:messages` - List of recent shoutbox messages (newest at head, max 50)
 - `cache:shoutbox:last_id` - Last polled shoutbox entry ID (persists across restarts)
+- `cache:walkers:active` - Hash of walkerId → walker state JSON (active walkers)
+- `cache:walkers:user:{userId}` - Current active walkerId for a user
+- `cache:walk_speed:{userId}` - Cached total walk_speed from equipped items (TTL: 60s)
 
 #### Queue System
 - `bull:{queueName}:*` - Queue job data (walker-processor, health-regeneration, server-time, territory-sync, spawn-queue)
@@ -262,6 +265,8 @@ The API uses Redis as a comprehensive caching layer (see `api/src/config/cache.j
 | **Last Active** | Buffered in sorted set | N/A | Batch-flushed to DB every 5s |
 | **Shoutbox Messages** | Redis list (newest at head) | N/A | New messages pushed on send/poll, trimmed to 50 |
 | **Shoutbox Last ID** | Persisted in Redis | Permanent | Updated on each poll/send |
+| **Active Walkers** | Redis hash (walker state per tick) | N/A | Added on create, removed on complete/interrupt |
+| **Walk Speed** | Lazy-load + TTL | 60s | Invalidated on equip/unequip |
 
 ## 🔌 API Endpoints
 

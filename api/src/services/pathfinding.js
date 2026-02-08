@@ -6,6 +6,7 @@ const pathsData = require('../../gameData/paths.json');
 const regionsData = require('../../gameData/regions.json');
 const wallsData = require('../../gameData/walls.json');
 const { gameDb } = require('../config/database');
+const { setActiveWalker, removeActiveWalkerByUser } = require('../config/cache');
 const logger = require('../config/logger');
 const { pointInPolygon, distance } = require('../utils/geometry');
 
@@ -645,6 +646,9 @@ async function findPath(userId, targetX, targetY, realm) {
 async function createWalker(userId, positions, collecting = null) {
   const now = Math.floor(Date.now() / 1000);
 
+  // Remove any active walker from Redis cache
+  await removeActiveWalkerByUser(userId);
+
   // Mark any active walks as interrupted
   await gameDb.query(
     `UPDATE walkers SET status = 'interrupted_by_new_walk', updated_at = ? 
@@ -666,6 +670,17 @@ async function createWalker(userId, positions, collecting = null) {
       collecting ? collecting.collectingSpawnId : null
     ]
   );
+
+  // Store walker state in Redis for fast tick processing
+  await setActiveWalker(result.insertId, {
+    user_id: userId,
+    positions: positions,
+    current_index: 0,
+    status: 'walking',
+    collecting_x: collecting ? collecting.collectingX : null,
+    collecting_y: collecting ? collecting.collectingY : null,
+    collecting_spawn_id: collecting ? collecting.collectingSpawnId : null
+  });
 
   logger.info('Walker created', { 
     walkerId: result.insertId, 

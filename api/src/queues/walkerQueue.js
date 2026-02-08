@@ -4,7 +4,7 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, COLLECTABLE_CONFIG, LOOT_TABLES } = r
 const logger = require('../config/logger');
 const { addPlayerLog } = require('../sockets');
 const { pointInPolygon, distance } = require('../utils/geometry');
-const { getItemByTemplateKey, getItemById, updatePlayerPosition, bufferLastActive } = require('../config/cache');
+const { getItemByTemplateKey, getItemById, updatePlayerPosition, bufferLastActive, getActiveWalkers, updateWalkerIndex, removeActiveWalker, getCachedWalkSpeed, computeAndCacheWalkSpeed } = require('../config/cache');
 
 let io = null; // Socket.io instance, injected later
 // Track last-known region id per user for walker-based movement
@@ -158,12 +158,18 @@ const walkerQueue = new Bull('walker-processor', {
 
 walkerQueue.process('process-walkers', async (job) => {
   try {
-    // Get all active walkers
-    const [walkers] = await gameDb.query(
-      `SELECT walker_id, user_id, positions, current_index, status, collecting_x, collecting_y, collecting_spawn_id
-       FROM walkers
-       WHERE status = 'walking'`
-    );
+    // Try getting active walkers from Redis first, fall back to DB
+    let walkers = await getActiveWalkers();
+
+    if (!walkers) {
+      // Cache miss — fall back to DB query
+      const [dbWalkers] = await gameDb.query(
+        `SELECT walker_id, user_id, positions, current_index, status, collecting_x, collecting_y, collecting_spawn_id
+         FROM walkers
+         WHERE status = 'walking'`
+      );
+      walkers = dbWalkers;
+    }
 
     if (walkers.length === 0) {
       return { processed: 0 };
@@ -179,47 +185,16 @@ walkerQueue.process('process-walkers', async (job) => {
       // Determine how many steps to advance this tick based on equipment walk_speed
       let totalWalkSpeed = 0;
       try {
-        const [equipRows] = await gameDb.query(
-          `SELECT COALESCE(e.head,0) as eq_head,
-                  COALESCE(e.body,0) as eq_body,
-                  COALESCE(e.hands,0) as eq_hands,
-                  COALESCE(e.shoulders,0) as eq_shoulders,
-                  COALESCE(e.legs,0) as eq_legs,
-                  COALESCE(e.weapon_right,0) as eq_weapon_right,
-                  COALESCE(e.weapon_left,0) as eq_weapon_left,
-                  COALESCE(e.ring_right,0) as eq_ring_right,
-                  COALESCE(e.ring_left,0) as eq_ring_left,
-                  COALESCE(e.amulet,0) as eq_amulet
-           FROM equipment e WHERE e.user_id = ?`,
-          [walker.user_id]
-        );
-
-        if (equipRows.length > 0) {
-          const eq = equipRows[0];
-          const equipmentIds = [
-            eq.eq_head, eq.eq_body, eq.eq_hands, eq.eq_shoulders,
-            eq.eq_legs, eq.eq_weapon_right, eq.eq_weapon_left,
-            eq.eq_ring_right, eq.eq_ring_left, eq.eq_amulet
-          ].filter(id => id && id > 0);
-
-          if (equipmentIds.length > 0) {
-            const [itemRows] = await gameDb.query(
-              `SELECT i.stats FROM inventory inv
-               JOIN items i ON inv.item_id = i.item_id
-               WHERE inv.inventory_id IN (?)`,
-              [equipmentIds]
-            );
-
-            itemRows.forEach(row => {
-              if (row.stats) {
-                const stats = typeof row.stats === 'string' ? JSON.parse(row.stats) : row.stats;
-                totalWalkSpeed += stats.walk_speed || 0;
-              }
-            });
-          }
+        // Check Redis cache first
+        const cached = await getCachedWalkSpeed(walker.user_id);
+        if (cached !== null) {
+          totalWalkSpeed = cached;
+        } else {
+          // Cache miss — compute from DB and cache
+          totalWalkSpeed = await computeAndCacheWalkSpeed(gameDb, walker.user_id);
         }
       } catch (e) {
-        logger.error('Failed to calculate walk_speed from equipment', { error: e && e.message ? e.message : String(e), userId: walker.user_id });
+        logger.error('Failed to get walk_speed', { error: e && e.message ? e.message : String(e), userId: walker.user_id });
       }
 
       // Advance by 1 step plus any walk_speed points (skips)
@@ -238,6 +213,9 @@ walkerQueue.process('process-walkers', async (job) => {
            WHERE walker_id = ?`,
           [arriveIndex, now, now, walker.walker_id]
         );
+
+        // Remove completed walker from Redis
+        await removeActiveWalker(walker.walker_id, walker.user_id);
 
         await gameDb.query(
           'UPDATE players SET x = ?, y = ?, last_active = UNIX_TIMESTAMP() WHERE user_id = ?',
@@ -429,11 +407,9 @@ walkerQueue.process('process-walkers', async (job) => {
 
       // Advance walker to next position
       const newPos = positions[nextIndex];
-      await gameDb.query(
-        `UPDATE walkers SET current_index = ?, updated_at = ?
-         WHERE walker_id = ?`,
-        [nextIndex, now, walker.walker_id]
-      );
+
+      // Update walker index in Redis (skip DB write for intermediate steps)
+      await updateWalkerIndex(walker.walker_id, nextIndex);
 
       // Update player position
       await gameDb.query(

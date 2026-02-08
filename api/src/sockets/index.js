@@ -6,7 +6,7 @@ const { pointInPolygon } = require('../utils/geometry');
 const {
   bufferLastActive, markPlayerOnline, markPlayerOffline, updatePlayerPosition,
   getOnlinePlayers, getCachedTerritories, getCachedSuperbosses, getCachedServerTime,
-  getLevelXp, invalidateUserSettings
+  getLevelXp, invalidateUserSettings, getActiveWalkerByUser
 } = require('../config/cache');
 
 // Handler modules
@@ -352,18 +352,23 @@ async function sendInitialGameState(socket, user) {
       logger.error('Failed to load paths/regions', { error: error && error.message ? error.message : String(error) });
     }
 
-    // Get active walker for this player
-    const [walkerRows] = await gameDb.query(
-      `SELECT walker_id, positions, current_index, started_at, collecting_x, collecting_y, collecting_spawn_id
-       FROM walkers
-       WHERE user_id = ? AND status = 'walking'
-       ORDER BY walker_id DESC
-       LIMIT 1`,
-      [user.userId]
-    );
+    // Get active walker for this player (Redis first, DB fallback)
+    let walker = await getActiveWalkerByUser(user.userId);
 
-    if (walkerRows.length > 0) {
-      const walker = walkerRows[0];
+    if (!walker) {
+      // Redis miss — fall back to database
+      const [walkerRows] = await gameDb.query(
+        `SELECT walker_id, positions, current_index, started_at, collecting_x, collecting_y, collecting_spawn_id
+         FROM walkers
+         WHERE user_id = ? AND status = 'walking'
+         ORDER BY walker_id DESC
+         LIMIT 1`,
+        [user.userId]
+      );
+      if (walkerRows.length > 0) walker = walkerRows[0];
+    }
+
+    if (walker) {
       const positions = typeof walker.positions === 'string' ? JSON.parse(walker.positions) : walker.positions;
       const destination = positions[positions.length - 1];
       
@@ -488,25 +493,37 @@ async function buildPlayerState(userId) {
   const baseDamage = player.strength * 0.5 + player.intelligence * 0.3;
   const baseArmor = player.constitution * 0.5 + player.dexterity * 0.3;
 
-  // Get walker status
-  const [walkerRows] = await gameDb.query(
-    `SELECT walker_id, current_index, positions, status 
-     FROM walkers 
-     WHERE user_id = ? AND status = 'walking' 
-     ORDER BY started_at DESC LIMIT 1`,
-    [userId]
-  );
-
+  // Get walker status (Redis first, DB fallback)
   let walkerStatus = null;
-  if (walkerRows.length > 0) {
-    const walker = walkerRows[0];
-    const positions = typeof walker.positions === 'string' ? JSON.parse(walker.positions) : walker.positions;
+  const cachedWalker = await getActiveWalkerByUser(userId);
+
+  if (cachedWalker) {
+    const positions = typeof cachedWalker.positions === 'string' ? JSON.parse(cachedWalker.positions) : cachedWalker.positions;
     walkerStatus = {
-      walkerId: walker.walker_id,
-      currentIndex: walker.current_index,
+      walkerId: cachedWalker.walker_id,
+      currentIndex: cachedWalker.current_index,
       totalSteps: positions.length,
       destination: positions[positions.length - 1]
     };
+  } else {
+    const [walkerRows] = await gameDb.query(
+      `SELECT walker_id, current_index, positions, status 
+       FROM walkers 
+       WHERE user_id = ? AND status = 'walking' 
+       ORDER BY started_at DESC LIMIT 1`,
+      [userId]
+    );
+
+    if (walkerRows.length > 0) {
+      const walker = walkerRows[0];
+      const positions = typeof walker.positions === 'string' ? JSON.parse(walker.positions) : walker.positions;
+      walkerStatus = {
+        walkerId: walker.walker_id,
+        currentIndex: walker.current_index,
+        totalSteps: positions.length,
+        destination: positions[positions.length - 1]
+      };
+    }
   }
 
   // Get server time from Redis cache

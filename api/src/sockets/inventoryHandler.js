@@ -1,5 +1,6 @@
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
+const { invalidateWalkSpeed } = require('../config/cache');
 
 // Helper functions to convert equipment slot names between snake_case (DB) and camelCase (API)
 const slotToDb = {
@@ -326,6 +327,9 @@ function registerInventoryHandlers(socket, user, io, deps) {
         [inventoryId, user.userId]
       );
 
+      // Invalidate cached walk_speed since equipment changed
+      await invalidateWalkSpeed(user.userId);
+
       await addPlayerLog(user.userId, `Equipped ${item.name}`, 'info', io);
 
       logger.info('Item equipped', { 
@@ -416,6 +420,9 @@ function registerInventoryHandlers(socket, user, io, deps) {
         `UPDATE equipment SET ${slot} = NULL, updated_at = UNIX_TIMESTAMP() WHERE user_id = ?`,
         [user.userId]
       );
+
+      // Invalidate cached walk_speed since equipment changed
+      await invalidateWalkSpeed(user.userId);
 
       if (itemRows.length > 0) {
         await addPlayerLog(user.userId, `Unequipped ${itemRows[0].name}`, 'info', io);
