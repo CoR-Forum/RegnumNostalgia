@@ -3,7 +3,7 @@
  */
 
 import { gameState, batchUpdate } from './state.js';
-import { getMap, getTotalH } from './map-state.js';
+import { getMap, getTotalH, getTotalW } from './map-state.js';
 import { escapeHtml } from './utils.js';
 import { apiCall } from './api.js';
 import { updatePlayerFromState } from './player.js';

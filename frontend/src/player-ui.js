@@ -9,6 +9,7 @@ import { openWindow, closeWindow, saveWindowState, setHudPressed } from './windo
 // ── Reactive subscriptions — auto-update UI when state changes ──
 subscribe(['health', 'maxHealth', 'mana', 'maxMana'], () => updatePlayerStats());
 subscribe(['username', 'realm', 'level'], () => showPlayerInfo());
+subscribe(['username', 'realm', 'className', 'level', 'xp', 'xpToNext', 'damage', 'armor', 'stats', 'damageTypes', 'armorTypes'], () => updateCharacterStats());
 
 export function showPlayerInfo() {
   const username = gameState.username || '';
@@ -48,6 +49,71 @@ export function updatePlayerStats() {
 
 // Expose globally for non-module consumers
 window.updatePlayerStats = updatePlayerStats;
+
+/**
+ * Populate the character window DOM with current gameState values.
+ */
+export function updateCharacterStats() {
+  try {
+    const lvlEl = document.getElementById('char-level');
+    if (lvlEl) lvlEl.textContent = gameState.level || 1;
+
+    const nameEl = document.getElementById('char-name');
+    if (nameEl) nameEl.textContent = gameState.username || '-';
+
+    const realmEl = document.getElementById('char-realm');
+    if (realmEl) {
+      const r = gameState.realm ? (String(gameState.realm).charAt(0).toUpperCase() + String(gameState.realm).slice(1)) : '-';
+      realmEl.textContent = r;
+    }
+
+    const classEl = document.getElementById('char-class');
+    if (classEl) classEl.textContent = gameState.className || 'Unknown';
+
+    // XP bar
+    const xp = Number(gameState.xp || 0);
+    const xpToNext = Number(gameState.xpToNext || 0);
+    const pct = xpToNext > 0 ? Math.round((xp / (xp + xpToNext)) * 100) : 100;
+    const fill = document.getElementById('char-xp-fill');
+    if (fill) fill.style.width = pct + '%';
+    const xpText = document.getElementById('char-xp-text');
+    if (xpText) xpText.textContent = `${xp} / ${xp + xpToNext}`;
+
+    // Attributes
+    const s = gameState.stats || {};
+    const setIf = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = String(val); };
+    setIf('stat-int', s.intelligence || 20);
+    setIf('stat-dex', s.dexterity || 20);
+    setIf('stat-con', s.concentration || 20);
+    setIf('stat-str', s.strength || 20);
+    setIf('stat-const', s.constitution || 20);
+
+    // Attack / Armor / secondary stats
+    setIf('stat-attack', Number(gameState.damage || 0));
+    setIf('stat-armor', Number(gameState.armor || 0));
+    setIf('stat-hit', Number(gameState.hitChance || 0));
+    setIf('stat-evasion', Number(gameState.evasion || 0));
+    setIf('stat-block', Number(gameState.blockChance || 0));
+    setIf('stat-weakness', Number(gameState.weakness || 0) + '%');
+
+    // Damage / Armor type breakdowns
+    const dt = gameState.damageTypes || {};
+    const at = gameState.armorTypes || {};
+    setIf('stat-damage-lightning', Number(dt.lightning || 0));
+    setIf('stat-damage-fire', Number(dt.fire || 0));
+    setIf('stat-damage-ice', Number(dt.ice || 0));
+    setIf('stat-damage-pierce', Number(dt.pierce || 0));
+    setIf('stat-damage-blunt', Number(dt.blunt || 0));
+    setIf('stat-damage-slash', Number(dt.slash || 0));
+
+    setIf('stat-armor-lightning', Number(at.lightning || 0));
+    setIf('stat-armor-fire', Number(at.fire || 0));
+    setIf('stat-armor-ice', Number(at.ice || 0));
+    setIf('stat-armor-pierce', Number(at.pierce || 0));
+    setIf('stat-armor-blunt', Number(at.blunt || 0));
+    setIf('stat-armor-slash', Number(at.slash || 0));
+  } catch (e) { /* character window may not be loaded yet */ }
+}
 
 export function updatePlayerCoords(x, y) {
   const el = document.getElementById('player-coords');

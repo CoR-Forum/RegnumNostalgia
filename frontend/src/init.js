@@ -6,7 +6,7 @@ import { gameState, batchUpdate } from './state.js';
 import { apiCall } from './api.js';
 import { getMap, getTotalH, getTotalW } from './map-state.js';
 import { initializeWebSocket } from './socket-client.js';
-import { showPlayerInfo, updatePlayerCoords } from './player-ui.js';
+import { showPlayerInfo, updatePlayerCoords, initHudButtons } from './player-ui.js';
 import { createPlayerMarker } from './player.js';
 import { enableClickToMove, buildGoHereIcon } from './walking.js';
 import { initWindows, initWindow, saveWindowState, getWindowState } from './windows.js';
@@ -300,6 +300,9 @@ export function loadShoutbox() {
 export function bootstrap() {
   // Initialize draggable/closable windows
   initWindows();
+
+  // Set up HUD button click handlers
+  initHudButtons();
 
   // Set up inventory drag-drop zone
   initInventoryDropZone();
