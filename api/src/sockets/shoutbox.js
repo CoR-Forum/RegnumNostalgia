@@ -338,8 +338,7 @@ function initializeShoutboxHandlers(socket, user) {
       let msgs = await getCachedShoutboxMessages();
 
       if (msgs) {
-        // Cache stores newest-first, reverse for chronological order
-        msgs = msgs.reverse();
+        // Cache stores messages in chronological order (oldest first) — use as-is
       } else {
         // Cache miss - fetch from DB and populate cache
         const [messages] = await forumDb.query(
