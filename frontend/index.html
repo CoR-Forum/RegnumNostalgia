@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Regnum Nostalgia - Old World Interactive Map & Browser Game</title>
+
+  <!-- Basic metadata -->
+  <meta name="description" content="Experience Regnum Online's Old World in this nostalgic browser-based RPG. Explore the classic map, battle monsters, complete quests, and relive the golden age of Champions of Regnum.">
+  <meta name="keywords" content="Regnum Nostalgia, Regnum Online, Champions of Regnum, Old World, browser game, RPG, MMORPG, interactive map, retro game, nostalgia, fantasy RPG, online game">
+  <meta name="author" content="Joshua Treudler">
+  <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#8b4513">
+
+  <!-- Social preview -->
+  <meta property="og:title" content="Regnum Nostalgia - Relive the Old World">
+  <meta property="og:description" content="Experience the classic Regnum Online Old World in this nostalgic browser-based RPG. Explore, battle, and quest in the legendary realm of Champions of Regnum.">
+  <meta property="og:type" content="game">
+  <meta property="og:image" content="/assets/preview.png">
+  <meta property="og:url" content="">
+  <meta property="og:site_name" content="Regnum Nostalgia">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Regnum Nostalgia - Relive the Old World">
+  <meta name="twitter:description" content="Experience the classic Regnum Online Old World in this nostalgic browser-based RPG.">
+  <meta name="twitter:image" content="/assets/preview.png">
+
+  <link rel="icon" href="/assets/favicon.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- CSS loaded via Vite module entry point (src/main.js → src/styles/main.css) -->
+  <script type="module" src="/src/main.js"></script>
+</head>
+<body>
+  <!-- Login window loader (define but don't fetch immediately) -->
+  <script>
+    // Load the login modal HTML into the document when needed.
+    // Returns a Promise that resolves after scripts have been appended.
+    window.loadLoginForm = function loadLoginForm() {
+      return fetch('login.html').then(r => r.text()).then(html => {
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+
+        // Move non-script nodes directly to body (not into a container)
+        Array.from(tmp.childNodes).forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
+          document.body.appendChild(node);
+        });
+
+        // Execute inline scripts and load external scripts (skip Vite dev injections)
+        const scripts = tmp.querySelectorAll('script');
+        scripts.forEach(s => {
+          if (s.src && (s.src.includes('@vite') || s.src.includes('vite/client'))) return;
+          const ns = document.createElement('script');
+          if (s.type) ns.type = s.type;
+          if (s.src) ns.src = s.src;
+          else ns.textContent = s.textContent;
+          document.body.appendChild(ns);
+        });
+      }).catch(err => console.error('Failed to load login window:', err));
+    };
+  </script>
+
+  <!-- Inventory Window -->
+  <div id="inventory-window" class="ui-window" style="position: absolute; right: 12px; bottom: 62px; width: 304px; z-index: 1000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+    <div id="inventory-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+      <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Inventory</h2>
+      <button id="inventory-close-btn" class="ui-window-close-btn"></button>
+    </div>
+
+    <div class="ui-window-body" style="padding: 10px 10px 0 10px;">
+      <div class="equipment-area">
+        <div class="equipment-row" id="equipment-row-top">
+          <div class="equipment-slot empty" data-slot="head" title="Head"></div>
+          <div class="equipment-slot empty" data-slot="body" title="Body"></div>
+          <div class="equipment-slot empty" data-slot="hands" title="Hands"></div>
+          <div class="equipment-slot empty" data-slot="shoulders" title="Shoulders"></div>
+          <div class="equipment-slot empty" data-slot="legs" title="Legs"></div>
+        </div>
+        <div class="equipment-row" id="equipment-row-bottom">
+          <div class="equipment-slot empty" data-slot="weaponRight" title="Weapon R"></div>
+          <div class="equipment-slot empty" data-slot="weaponLeft" title="Weapon L"></div>
+          <div class="equipment-slot empty" data-slot="ringRight" title="Ring R"></div>
+          <div class="equipment-slot empty" data-slot="ringLeft" title="Ring L"></div>
+          <div class="equipment-slot empty" data-slot="amulet" title="Amulet"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="inventory-list" class="ui-window-body dark-scrollbar" style="padding: 20px 8px;">
+      <div id="inventory-loading" style="text-align: center; color: #e0e0e0; padding: 40px;">
+        <div class="loading-spinner" style="margin: 0 auto 12px;"></div>
+        <div style="font-size: 11px;">Loading inventory...</div>
+      </div>
+      <div id="inventory-items" style="display: none;"></div>
+      <div id="inventory-empty" style="text-align: center; color: #e0e0e0; padding: 40px; display: none; font-size: 11px;">
+        Your inventory is empty
+      </div>
+    </div>
+    <div id="inventory-footer" class="ui-window-body" style="padding: 20px 8px; display: none;">
+      <div style="display: flex; align-items: center; gap: 4px; color: #e0e0e0; font-size: 11px;">
+        <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-gold.png" alt="Gold" style="width: 14px; height: 14px; display: inline-block;" draggable="false" ondragstart="return false;">
+        <span id="inventory-gold" style="font-weight: 400;">0 Gold</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Build Path panel moved to public/build-path.js -->
+
+  <div id="settings-include"></div>
+
+  <!-- Player info moved into the top-left character-status overlay -->
+
+  <div id="map"></div>
+  <div id="coords" aria-hidden="true"></div>
+  
+  <!-- Character window loaded from separate file -->
+  <div id="character-include"></div>
+  <script>
+    (function(){
+      fetch('character.html').then(r => r.text()).then(html => {
+        const container = document.getElementById('character-include');
+        if (!container) return;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+
+        // Move non-script nodes into the container
+        Array.from(tmp.childNodes).forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
+          container.appendChild(node);
+        });
+
+        // Execute inline scripts and load external scripts (skip Vite dev injections)
+        const scripts = tmp.querySelectorAll('script');
+        scripts.forEach(s => {
+          if (s.src && (s.src.includes('@vite') || s.src.includes('vite/client'))) return;
+          const ns = document.createElement('script');
+          if (s.type) ns.type = s.type;
+          if (s.src) ns.src = s.src;
+          else ns.textContent = s.textContent;
+          document.body.appendChild(ns);
+        });
+
+        try { if (typeof initWindows === 'function') initWindows(); } catch (e) {}
+      }).catch(err => console.error('Failed to load character window:', err));
+    })();
+  </script>
+
+  <script>
+    (function(){
+      fetch('settings.html').then(r => r.text()).then(html => {
+        const container = document.getElementById('settings-include');
+        if (!container) return;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+
+        // Move non-script nodes into container
+        Array.from(tmp.childNodes).forEach(node => {
+          if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
+          container.appendChild(node);
+        });
+
+        // Execute inline scripts and load external scripts (skip Vite dev injections)
+        const scripts = tmp.querySelectorAll('script');
+        scripts.forEach(s => {
+          if (s.src && (s.src.includes('@vite') || s.src.includes('vite/client'))) return;
+          const ns = document.createElement('script');
+          if (s.type) ns.type = s.type;
+          if (s.src) ns.src = s.src;
+          else ns.textContent = s.textContent;
+          document.body.appendChild(ns);
+        });
+      }).catch(err => console.error('Failed to load settings include:', err));
+    })();
+  </script>
+
+  <!-- Screenshots Window -->
+  <div id="screenshots-window" class="ui-window" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 580px; height: 480px; z-index: 10000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+    <div id="screenshots-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+      <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff; text-align: center;">Screenshots Manager</h2>
+      <button id="screenshots-close-btn" class="ui-window-close-btn"></button>
+    </div>
+
+    <div class="ui-window-body" style="padding: 8px; display: flex; gap: 8px; height: 100%; overflow: hidden;">
+      <!-- Left side: Form -->
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 6px; overflow-y: auto;">
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Screenshot File *</label>
+          <input type="file" id="screenshot-file-input" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+          <div id="screenshot-preview" style="margin-top: 6px; max-height: 100px; overflow: hidden; border: 1px solid #2a3f5f; border-radius: 2px; display: none;">
+            <img id="screenshot-preview-img" style="width: 100%; height: auto; display: block;">
+          </div>
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Name (EN)</label>
+          <input type="text" id="screenshot-name-en" placeholder="English name" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Name (DE)</label>
+          <input type="text" id="screenshot-name-de" placeholder="Deutscher Name" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Name (ES)</label>
+          <input type="text" id="screenshot-name-es" placeholder="Nombre español" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Description (EN)</label>
+          <textarea id="screenshot-desc-en" placeholder="English description" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px; resize: vertical; min-height: 40px;"></textarea>
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Description (DE)</label>
+          <textarea id="screenshot-desc-de" placeholder="Deutsche Beschreibung" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px; resize: vertical; min-height: 40px;"></textarea>
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Description (ES)</label>
+          <textarea id="screenshot-desc-es" placeholder="Descripción española" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px; resize: vertical; min-height: 40px;"></textarea>
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Location</label>
+          <input type="text" id="screenshot-location" placeholder="e.g., Alsius Castle" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+        </div>
+
+        <div style="font-size: 10px; color: #e0e0e0;">
+          <label style="display: block; margin-bottom: 3px; font-weight: 600;">Visible Characters</label>
+          <input type="text" id="screenshot-characters" placeholder="e.g., PlayerName1, PlayerName2" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+          <div style="font-size: 8px; color: #888; margin-top: 2px;">Comma-separated list of character names</div>
+        </div>
+
+        <div style="display: flex; gap: 6px;">
+          <div style="flex: 1; font-size: 10px; color: #e0e0e0;">
+            <label style="display: block; margin-bottom: 3px; font-weight: 600;">X Coordinate *</label>
+            <input type="number" id="screenshot-x" placeholder="X" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+          </div>
+          <div style="flex: 1; font-size: 10px; color: #e0e0e0;">
+            <label style="display: block; margin-bottom: 3px; font-weight: 600;">Y Coordinate *</label>
+            <input type="number" id="screenshot-y" placeholder="Y" style="width: 100%; padding: 3px; background: rgba(0,0,0,0.4); border: 1px solid #2a3f5f; color: #e0e0e0; font-size: 10px; border-radius: 2px;">
+          </div>
+        </div>
+
+        <div style="margin-top: 6px; display: flex; gap: 6px;">
+          <button id="screenshot-save-btn" style="flex: 1; padding: 6px; background: linear-gradient(180deg, #3b82f6, #2563eb); border: 1px solid #1d4ed8; color: white; font-size: 10px; font-weight: 600; border-radius: 3px; cursor: pointer;">Save</button>
+          <button id="screenshot-delete-btn" style="flex: 1; padding: 6px; background: linear-gradient(180deg, #ef4444, #dc2626); border: 1px solid #b91c1c; color: white; font-size: 10px; font-weight: 600; border-radius: 3px; cursor: pointer; display: none;">Delete</button>
+          <button id="screenshot-cancel-btn" style="flex: 1; padding: 6px; background: linear-gradient(180deg, #6b7280, #4b5563); border: 1px solid #374151; color: white; font-size: 10px; font-weight: 600; border-radius: 3px; cursor: pointer;">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Right side: List -->
+      <div style="width: 180px; display: flex; flex-direction: column; gap: 6px;">
+        <div style="font-size: 10px; color: #e0e0e0; font-weight: 600; padding-bottom: 3px; border-bottom: 1px solid #2a3f5f;">Screenshots</div>
+        <div id="screenshots-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;">
+          <div style="text-align: center; color: #888; font-size: 9px; padding: 20px;">No screenshots</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header actions moved into compass for top-right placement -->
+  <!-- UI images overlay (rendered from public/assets/ui-v1) -->
+  <div id="ui-image-overlay" aria-hidden="true">
+    <div class="ui-bar-repeat"></div>
+    <div class="ui-bar-right">
+      <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bottom-right-premium.png" alt="">
+      <div class="ui-hud-group" aria-hidden="false">
+        <button id="inventory-hud-btn" class="ui-hud-btn" data-action="inventory" aria-label="Open Inventory"></button>
+        <button id="character-hud-btn" class="ui-hud-btn" data-action="character" aria-label="Open Character"></button>
+        <button id="actions-hud-btn" class="ui-hud-btn" data-action="actions" aria-label="Actions"></button>
+        <button id="party-hud-btn" class="ui-hud-btn" data-action="party" aria-label="Party"></button>
+        <button id="premium-hud-btn" class="ui-hud-btn" data-action="premium" aria-label="Premium"></button>
+        <button id="quests-hud-btn" class="ui-hud-btn" data-action="quests" aria-label="Quests"></button>
+        <button id="spellbook-hud-btn" class="ui-hud-btn" data-action="spellbook" aria-label="Spellbook"></button>
+      </div>
+    </div>
+    <div class="ui-bar-repeat ui-bar-repeat-right"></div>
+  </div>
+  <!-- Top-right compass with interactive controls (map settings + logout) -->
+    <div id="ui-compass" aria-hidden="false">
+    <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-compass.png" alt="" draggable="false" ondragstart="return false;">
+    <div class="compass-controls" aria-hidden="false">
+      <button class="btn-logout" id="settings-btn">Settings</button>
+      <button class="btn-logout" id="logout-btn">Logout</button>
+    </div>
+  </div>
+  <!-- Server time icon (overlays the compass, shows tooltip on hover) -->
+  <div id="ui-server-time" aria-hidden="false">
+    <img id="server-time-icon" src="/assets/v1/time/ui-icon-time-day.png" alt="Server Time">
+    <div id="server-time-tooltip" class="server-time-tooltip" role="status" aria-hidden="true"></div>
+  </div>
+  <!-- Top-left character status (non-interactive) -->
+  <div id="ui-character-status" aria-hidden="true">
+    <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-character-status.png" alt="" draggable="false" ondragstart="return false;">
+    <div class="ui-character-overlay" aria-hidden="true">
+      <div class="status-top">
+        <div id="player-level" style="font-weight:700; color:#ffd700; font-size:13px; min-width:28px; text-align:left;">1</div>
+      </div>
+      <div class="status-name">
+        <span id="player-username" style="font-size:13px; color:#ffffff;">-</span>
+      </div>
+      <div class="status-bars">
+        <div style="display:flex; align-items:center;">
+          <div class="territory-health-bar overlay-bar" style="margin-right:6px;">
+            <div id="player-health-fill" class="territory-health-fill health-high" style="width:100%; height:100%;"></div>
+            <div id="player-health-text" class="bar-text">1000/1000</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; margin-top:0;">
+          <div class="territory-health-bar overlay-bar" style="margin-right:6px;">
+            <div id="player-mana-fill" class="territory-health-fill" style="width:100%; height:100%;"></div>
+            <div id="player-mana-text" class="bar-text">500/500</div>
+          </div>
+        </div>
+      </div>
+      <div id="player-coords" style="font-size:11px; color:#e0e0e0; margin-top:4px;">Position: 0, 0</div>
+    </div>
+  </div>
+    <!-- Mini info window is now loaded from a separate file -->
+    <div id="mini-info-include"></div>
+    <script>
+      (function(){
+        fetch('info-box.html').then(r => r.text()).then(html => {
+          const container = document.getElementById('mini-info-include');
+          if (container) container.innerHTML = html;
+          try { if (typeof initWindows === 'function') initWindows(); } catch (e) {}
+        }).catch(err => console.error('Failed to load info box:', err));
+      })();
+    </script>
+  <div id="attribution" aria-label="Map author and source">
+    <a href="https://github.com/CoR-Forum/RegnumNostalgia" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <script src="regions.js"></script>
+  <script src="screenshotManager.js"></script>
+
+  <script src="build-path.js"></script>
+  
+  <!-- Shoutbox container (loaded by init.js bootstrap) -->
+  <div id="shoutbox-include"></div>
+
+
+</body>
+</html>

@@ -93,6 +93,55 @@ Open http://localhost/game in your browser
 
 ```
 regnum-nostalgia/
+├── frontend/                         # Vite-powered frontend
+│   ├── index.html                    # Main game client (entry point)
+│   ├── login.html                    # Login page
+│   ├── character.html                # Character creation
+│   ├── settings.html                 # User settings page
+│   ├── shoutbox.html                 # Chat/shoutbox page
+│   ├── info-box.html                 # Info overlay
+│   ├── regionEditor.html             # Map region editor
+│   ├── regions.js                    # Region overlays
+│   ├── screenshotManager.js          # Screenshot manager
+│   ├── build-path.js                 # Path builder UI
+│   ├── package.json                  # Vite dependency
+│   ├── vite.config.js                # Vite dev/build config
+│   └── src/
+│       ├── main.js                   # ES module entry point (imports all modules)
+│       ├── state.js                  # Reactive state store (subscribe, batchUpdate)
+│       ├── utils.js                  # escapeHtml, formatDurationSeconds, getErrorMessage
+│       ├── items.js                  # getItemName, getItemTypeLabel
+│       ├── api.js                    # apiCall, emitOrApi (HTTP + WebSocket)
+│       ├── server-time.js            # In-game time display & fetch
+│       ├── map-state.js              # Map instance accessors (map, totalH, totalW)
+│       ├── map-init.js               # Leaflet map creation & tile loading
+│       ├── tooltip.js                # Item/equipment hover tooltips
+│       ├── windows.js                # Draggable/closable window system, z-index stacking
+│       ├── player-ui.js              # HUD buttons, stats display
+│       ├── player.js                 # Player marker & state updates
+│       ├── players.js                # Other players' markers
+│       ├── territories.js            # Territory markers & health bars
+│       ├── superbosses.js            # World boss markers & respawn
+│       ├── screenshots.js            # Screenshot markers on map
+│       ├── inventory.js              # Inventory display & drag-drop
+│       ├── equipment.js              # Equipment slots & rendering
+│       ├── walking.js                # Click-to-move & pathfinding
+│       ├── context-menu.js           # Right-click map context menu
+│       ├── audio.js                  # Music/SFX playback & volume
+│       ├── socket-client.js          # WebSocket client & event handlers
+│       ├── init.js                   # Game bootstrap, auto-login, partial loaders
+│       └── styles/
+│           └── main.css              # All game CSS (extracted from HTML)
+├── public/                           # Static assets (served by nginx + Vite)
+│   └── assets/
+│       ├── tiles-v1/, tiles-v2/      # Map tile layers
+│       ├── markers/                  # Map marker icons
+│       ├── markers.json              # Marker definitions
+│       ├── ingame-maps/              # Mini-maps
+│       ├── v1/, v2/                  # UI sprites & icons
+│       ├── 3d/                       # 3D models
+│       ├── original-map/             # Original map tiles
+│       └── *.png, *.webp, *.jpg      # Logos, backgrounds
 ├── api/                              # Node.js backend
 │   ├── src/
 │   │   ├── server.js                 # Express + Socket.io server
@@ -128,58 +177,33 @@ regnum-nostalgia/
 │   ├── scripts/                      # DB init, item import
 │   ├── package.json
 │   └── Dockerfile
-│   │   │   └── redis.js          # Redis client setup
-│   │   ├── middleware/
-│   │   │   └── auth.js           # JWT authentication
-│   │   ├── routes/
-│   │   │   ├── auth.js           # Login, realm selection
-│   │   │   ├── settings.js       # User settings
-│   │   │   └── screenshots.js    # Screenshot management
-│   │   ├── sockets/
-│   │   │   ├── index.js          # Socket orchestrator & shared state
-│   │   │   ├── inventoryHandler.js  # Inventory, equipment, items
-│   │   │   ├── movementHandler.js   # Position updates, pathfinding
-│   │   │   ├── collectableHandler.js # Spawned item collection
-│   │   │   ├── editorHandler.js      # Region/path/wall/water CRUD
-│   │   │   ├── logHandler.js         # Player log retrieval
-│   │   │   └── shoutbox.js           # Chat/shoutbox polling
-│   │   ├── queues/
-│   │   │   ├── walkerQueue.js    # Movement processor (1s)
-│   │   │   ├── healthQueue.js    # Health/mana regen (1s)
-│   │   │   ├── timeQueue.js      # Ingame time sync (10s)
-│   │   │   ├── territoryQueue.js # Territory updates (10s)
-│   │   │   └── spawnQueue.js     # Collectable spawning (5s)
-│   │   ├── services/
-│   │   │   └── pathfinding.js    # Dijkstra pathfinding + wall detection
-│   │   └── utils/
-│   │       └── geometry.js       # Shared point-in-polygon, distance
-│   ├── gameData/                 # JSON game data (regions, paths, items)
-│   ├── scripts/                  # DB init, item import
-│   ├── package.json
-│   └── Dockerfile
-├── public/                       # Frontend
-│   ├── index.html                # Main game client with WebSocket
-│   ├── build-path.js             # Path builder UI
-│   ├── regions.js                # Region overlays
-│   ├── screenshotManager.js      # Screenshot manager
-│   └── assets/
-│       ├── tiles/                # Map tiles (3x3 grid)
-│       ├── screenshots/          # User uploads
-│       ├── ingame-maps/          # Mini-maps
-│       ├── icons/                # UI icons
-│       ├── markers.json          # Map markers
-│       └── screenshots.json      # Screenshot metadata
 ├── nginx/
-│   └── default.conf              # WebSocket-enabled proxy
-├── docker-compose.yml            # Container orchestration
-└── README.md                     # This file
+│   └── default.conf                  # Proxy: Vite + API + assets
+├── docker-compose.yml                # Container orchestration (6 services)
+├── Makefile                          # Dev shortcuts
+└── README.md                         # This file
 ```
+
+## 🏗️ Architecture
+
+### Frontend Module System
+The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded through a single entry point (`main.js`). Key patterns:
+
+- **Reactive State Store** (`state.js`): Zero-dependency pub/sub with `subscribe(keys, callback)`, `setState(key, value)`, and `batchUpdate(updates)` — UI elements auto-update when state changes
+- **Lazy Imports**: Circular dependencies between `windows.js` ↔ `inventory.js`/`equipment.js` are resolved via `await import()` at call sites
+- **Legacy Interop**: Non-module scripts (`build-path.js`, `regions.js`, `screenshotManager.js`) access shared state via `window.*` globals exposed from `map-state.js` and `state.js`
+- **Shared Helpers**: `getErrorMessage()` in `utils.js` and `nextZIndex()` in `windows.js` eliminate duplication across modules
+
+### Backend Architecture
+- **Socket Handlers**: Decomposed into domain-specific handlers (`inventoryHandler.js`, `movementHandler.js`, `collectableHandler.js`, etc.) with shared state passed via dependency injection
+- **Shared Utilities**: `utils/geometry.js` provides point-in-polygon, distance calculations used by multiple handlers
+- **Queue Workers**: 5 Bull queues handle background processing (movement, health regen, time sync, territories, spawning)
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: HTML5, JavaScript (ES6+), Leaflet.js, Socket.io Client (v4.6.1)
+- **Frontend**: HTML5, JavaScript (ES Modules), Leaflet.js, Socket.io Client (v4.6.1), Vite (dev server & build)
 - **Backend**: Node.js 20, Express.js, Socket.io Server
-- **Database**: MariaDB 10.11 for game data, SQLite for screenshot metadata
+- **Database**: MariaDB 11.3 for game data, SQLite for screenshot metadata
 - **Cache/Pub-Sub**: Redis 7-Alpine
 - **Queue System**: Bull (Redis-backed job queues)
 - **Web Server**: Nginx (Alpine) with WebSocket proxy
@@ -515,6 +539,25 @@ export JWT_SECRET=your_secret
 # Start server
 npm run dev  # Development with nodemon
 npm start    # Production
+```
+
+### Frontend Development
+The frontend uses Vite as a dev server with hot module replacement (HMR). In Docker, the `frontend` service runs Vite automatically.
+
+```bash
+# View frontend (Vite) logs
+make frontend-logs
+
+# Build frontend for production
+make build-frontend
+```
+
+To run Vite locally (outside Docker):
+```bash
+cd frontend
+npm install
+npm run dev   # Starts Vite dev server on port 5173
+npm run build # Production build to frontend/dist/
 ```
 
 ### Adding New Items

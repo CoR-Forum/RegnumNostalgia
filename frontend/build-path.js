@@ -148,7 +148,9 @@
 
     const wrap = document.createElement('div');
     wrap.innerHTML = html || tpl;
-    document.body.appendChild(wrap.firstElementChild);
+    // Use querySelector to skip any Vite-injected scripts at the top
+    const panel = wrap.querySelector('#build-path-panel') || wrap.firstElementChild;
+    if (panel) document.body.appendChild(panel);
     return document.getElementById('build-path-panel');
   }
 
@@ -314,6 +316,7 @@
   }
 
   function wireDrag(header, panel) {
+    if (!header || !panel) return;
     let isDragging = false; let currentX; let currentY; let initialX; let initialY; let xOffset = 0; let yOffset = 0;
     function setTranslate(xPos, yPos, el){ el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`; }
     function dragStart(e){ initialX = e.clientX - xOffset; initialY = e.clientY - yOffset; isDragging = true; }

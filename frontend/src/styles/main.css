@@ -1,0 +1,925 @@
+/* ==========================================================================
+   Regnum Nostalgia – Main Stylesheet
+   Extracted from inline <style> blocks in index.html
+   ========================================================================== */
+
+    /* Utility: hide elements by adding the `hidden` class */
+    .hidden { display: none !important; }
+
+    /* Prevent dragging of UI images (compass, character status, inventory icons) */
+    #ui-compass img,
+    #ui-character-status img,
+    #inventory-window img {
+      -webkit-user-drag: none;
+      user-drag: none;
+      -khtml-user-drag: none;
+    }
+
+    /* Prevent the page from scrolling; map handles panning */
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    /* Map fills the viewport */
+    #map { width: 100vw; height: 100vh; margin: 0; padding: 0; background: url('/assets/background.jpg') center center / cover no-repeat; }
+      #coords {
+        .ui-hud-btn{
+          width: 39px;
+          height: 39px;
+          background-size: contain;
+          background-repeat: no-repeat;
+          background-position: center center;
+          border: none;
+          padding: 0;
+          margin: 0;
+          cursor: pointer;
+          pointer-events: auto; /* allow clicks */
+          z-index: 20002;
+          background-color: transparent;
+          flex: 0 0 auto;
+        }
+
+        /* HUD group layout */
+        .ui-bar-right{ position: relative; }
+        .ui-hud-group{ position: absolute; right: 12px; bottom: 8px; display:flex; gap:8px; align-items:flex-end; pointer-events: auto; }
+
+        /* per-action icons (base/hover/pressed) */
+        .ui-hud-btn[data-action="inventory"]{ background-image: url('/assets/v1/hud/ui-icon-inventory-base.png'); }
+        .ui-hud-btn[data-action="inventory"]:hover{ background-image: url('/assets/v1/hud/ui-icon-inventory-hover.png'); }
+        .ui-hud-btn[data-action="inventory"]:active{ background-image: url('/assets/v1/hud/ui-icon-inventory-pressed.png'); }
+
+        .ui-hud-btn[data-action="character"]{ background-image: url('/assets/v1/hud/ui-icon-character-base.png'); }
+        .ui-hud-btn[data-action="character"]:hover{ background-image: url('/assets/v1/hud/ui-icon-character-hover.png'); }
+        .ui-hud-btn[data-action="character"]:active{ background-image: url('/assets/v1/hud/ui-icon-character-pressed.png'); }
+
+        .ui-hud-btn[data-action="actions"]{ background-image: url('/assets/v1/hud/ui-icon-actions-base.png'); }
+        .ui-hud-btn[data-action="actions"]:hover{ background-image: url('/assets/v1/hud/ui-icon-actions-hover.png'); }
+        .ui-hud-btn[data-action="actions"]:active{ background-image: url('/assets/v1/hud/ui-icon-actions-pressed.png'); }
+
+        .ui-hud-btn[data-action="party"]{ background-image: url('/assets/v1/hud/ui-icon-party-base.png'); }
+        .ui-hud-btn[data-action="party"]:hover{ background-image: url('/assets/v1/hud/ui-icon-party-hover.png'); }
+        .ui-hud-btn[data-action="party"]:active{ background-image: url('/assets/v1/hud/ui-icon-party-pressed.png'); }
+
+        .ui-hud-btn[data-action="premium"]{ background-image: url('/assets/v1/hud/ui-icon-premium-base.png'); }
+        .ui-hud-btn[data-action="premium"]:hover{ background-image: url('/assets/v1/hud/ui-icon-premium-hover.png'); }
+        .ui-hud-btn[data-action="premium"]:active{ background-image: url('/assets/v1/hud/ui-icon-premium-pressed.png'); }
+
+        .ui-hud-btn[data-action="quests"]{ background-image: url('/assets/v1/hud/ui-icon-quests-base.png'); }
+        .ui-hud-btn[data-action="quests"]:hover{ background-image: url('/assets/v1/hud/ui-icon-quests-hover.png'); }
+        .ui-hud-btn[data-action="quests"]:active{ background-image: url('/assets/v1/hud/ui-icon-quests-pressed.png'); }
+
+        .ui-hud-btn[data-action="spellbook"]{ background-image: url('/assets/v1/hud/ui-icon-spellbook-base.png'); }
+        .ui-hud-btn[data-action="spellbook"]:hover{ background-image: url('/assets/v1/hud/ui-icon-spellbook-hover.png'); }
+        .ui-hud-btn[data-action="spellbook"]:active{ background-image: url('/assets/v1/hud/ui-icon-spellbook-pressed.png'); }
+
+        /* Persisted pressed state when the corresponding window is open */
+        .ui-hud-btn.pressed[data-action="inventory"]{ background-image: url('/assets/v1/hud/ui-icon-inventory-pressed.png'); }
+        .ui-hud-btn.pressed[data-action="character"]{ background-image: url('/assets/v1/hud/ui-icon-character-pressed.png'); }
+      z-index: 1100;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      pointer-events: auto;
+    }
+    
+    #header-actions {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 20010;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    #header-actions .btn-logout{
+      pointer-events: auto;
+    }
+
+    /* Login/Realm Modal Styles */
+    #modal-overlay{
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    #modal-overlay.hidden{ display: none; }
+
+    /* Hide all UI elements until the user is authenticated. Keep the modal overlay, background map, and mini info window visible. */
+    body:not(.authenticated) > :not(#modal-overlay):not(#map):not(#mini-info-window):not(script):not(style) {
+      display: none !important;
+    }
+
+    /* Show mini info window only on the login screen (when NOT authenticated).
+       Hide it when the user is authenticated / in-game. */
+    body.authenticated #mini-info-window { display: none !important; }
+    body:not(.authenticated) #mini-info-window { display: flex !important; }
+
+    .modal-content{
+      background: transparent;
+      border: none;
+      padding: 0;
+      max-width: 252px;
+      width: 90%;
+      position: relative;
+      font-family: 'MS Sans Serif', Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-content::before{
+      display: none;
+    }
+
+    .modal-step{ display: none; }
+    .modal-step.active{ display: block; }
+    /* Map context menu (right-click) */
+    .map-contextmenu{
+      position: absolute;
+      background: #1f2937;
+      color: #fff;
+      padding: 6px 8px;
+      border-radius: 6px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+      font-size: 13px;
+      z-index: 20000;
+      display: none;
+      min-width: 96px;
+      pointer-events: auto;
+    }
+    .map-contextmenu .map-contextmenu-item{
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .map-contextmenu .map-contextmenu-item:hover{ background: rgba(255,255,255,0.04) }
+
+    /* Screenshot markers */
+    .screenshot-marker {
+      background: transparent;
+      border: none;
+    }
+    .screenshot-dot {
+      width: 8px;
+      height: 8px;
+      background: rgba(128, 128, 128, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .screenshot-marker:hover .screenshot-dot {
+      background: rgba(128, 128, 128, 0.8);
+      transform: scale(1.3);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+    }
+    .screenshot-tooltip {
+      background: linear-gradient(180deg, rgba(20,22,26,0.98), rgba(10,12,15,0.98)) !important;
+      border: 1px solid #2a2f37 !important;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.6) !important;
+      padding: 8px !important;
+      border-radius: 4px !important;
+    }
+    /* Player tooltip styling */
+    .player-tooltip .leaflet-tooltip-content{
+      background: linear-gradient(180deg, rgba(20,22,26,0.98), rgba(10,12,15,0.98));
+      color: #e6e6e6;
+      padding: 6px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: 1px solid rgba(255,255,255,0.06);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.6);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .screenshot-tooltip .leaflet-tooltip-content {
+      margin: 0 !important;
+    }
+
+    .modal-title{
+      /* Now using ui-window-titlebar styling */
+    }
+
+    .modal-body{
+      /* Now using ui-window-body styling with 9-slice border-image */
+      padding-left: 16px;
+      padding-right: 16px;
+      padding-bottom: 16px;
+    }
+
+    .form-group{
+      margin-bottom: 14px;
+    }
+
+    .form-label{
+      display: block;
+      color: #e0e0e0;
+      font-size: 11px;
+      margin-bottom: 4px;
+      font-family: 'MS Sans Serif', Arial, sans-serif;
+    }
+    .item-icon img{
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+
+    .form-input{
+      width: 100%;
+      padding: 3px 8px;
+      border: 1px solid #444;
+      background: #2a2a2a;
+      color: #e0e0e0;
+      font-size: 11px;
+      font-family: 'MS Sans Serif', Arial, sans-serif;
+      box-sizing: border-box;
+      transition: none;
+    }
+    .form-input:focus{
+      outline: 1px solid #0d6efd;
+      outline-offset: 0;
+      border-color: #0d6efd;
+    }
+
+    .btn{
+      width: 100%;
+      padding: 4px 12px;
+      border: 1px solid #444;
+      font-size: 11px;
+      font-weight: 400;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-family: 'MS Sans Serif', Arial, sans-serif;
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+
+    .btn-primary{
+      background: #4a4a4a;
+      color: #ffffff;
+      border-color: #4a4a4a;
+    }
+    .btn-primary:hover{ background: #5a5a5a; }
+    .btn-primary:active{
+      background: #3a3a3a;
+    }
+    .btn-primary:disabled{
+      background: #2a2a2a;
+      color: #666;
+      cursor: not-allowed;
+      border-color: #333;
+    }
+
+    .realm-cards{
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .realm-card{
+      padding: 8px;
+      border: 1px solid #444;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      background: #2a2a2a;
+      color: #e0e0e0;
+      flex: 1;
+      text-align: center;
+    }
+    .realm-card:hover{
+      background: #333;
+      border-color: #555;
+    }
+    .realm-card:active{
+      background: #1a1a1a;
+    }
+
+    .realm-card.syrtis{
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+    .realm-card.alsius{
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+    .realm-card.ignis{
+      background: #2a2a2a;
+      color: #e0e0e0;
+    }
+
+    .realm-icon{
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+    }
+    .realm-icon img{
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .realm-info h3{
+      margin: 0 0 2px 0;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .realm-info p{
+      margin: 0;
+      font-size: 11px;
+      opacity: 1;
+    }
+
+    .error-message{
+      background: #3a1a1a;
+      color: #ff6b6b;
+      padding: 8px;
+      margin-bottom: 12px;
+      font-size: 11px;
+      border: 1px solid #661a1a;
+    }
+    .error-message.hidden{ display: none; }
+
+    .loading-spinner{
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin{
+      to{ transform: rotate(360deg); }
+    }
+
+
+
+    .realm-badge{
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+    }
+    .realm-badge.syrtis{ background: #008000; }
+    .realm-badge.alsius{ background: #0000ff; }
+    .realm-badge.ignis{ background: #ff0000; }
+
+    .player-info-body{
+      padding: 8px;
+      background: transparent;
+    }
+
+    .player-coords{
+      font-size: 11px;
+      color: #e0e0e0;
+      margin-bottom: 8px;
+    }
+
+    .btn-logout{
+      padding: 4px 8px;
+      background: #2a2a2a;
+      color: #e0e0e0;
+      border: 1px solid #444;
+      cursor: pointer;
+      font-size: 11px;
+      width: 100%;
+      font-family: 'MS Sans Serif', Arial, sans-serif;
+      transition: background 0.2s;
+      text-shadow: none;
+      box-shadow: none;
+      margin-bottom: 4px;
+    }
+    .btn-logout:hover{ 
+      background: #333;
+    }
+    .btn-logout:active{
+      background: #1a1a1a;
+    }
+
+    /* Territory Health Bar Styles */
+    .territory-marker{
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .territory-icon{
+      width: 32px;
+      height: 32px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    .territory-health-bar{
+      width: 40px;
+      height: 4px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    /* Hide map-mounted territory health bars by default but keep layout/space. */
+    .territory-health-bar {
+      opacity: 0;
+      transition: opacity 0.16s ease;
+      pointer-events: none; /* don't block map interactions */
+    }
+    /* Reveal territory health bars when hovering markers or when they receive focus. */
+    .custom-territory-marker:hover .territory-health-bar,
+    .custom-player-marker:hover .territory-health-bar,
+    .custom-territory-marker:focus .territory-health-bar,
+    .custom-player-marker:focus .territory-health-bar {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .territory-health-fill{
+      height: 100%;
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
+    /* Allies (same realm / self) */
+    .health-ally{ background-color: #22c55e; }
+    /* Enemies (other realms) */
+    .health-enemy{ background-color: #ef4444; }
+    /* Status-based helpers (kept for compatibility) */
+    .health-medium{ background-color: #eab308; }
+    .health-low{ background-color: #ef4444; }
+
+    /* Inventory Grid Styles */
+    .inventory-grid{
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      padding: 8px;
+      background: rgba(0,0,0,0.3);
+      border: 2px solid #1a2538;
+      border-radius: 3px;
+    }
+
+    /* Dark scrollbar - reusable class */
+    .dark-scrollbar {
+      scrollbar-width: thin; /* Firefox */
+      scrollbar-color: rgba(0,0,0,0.6) rgba(0,0,0,0.08);
+    }
+    .dark-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+    .dark-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.08); border-radius: 6px; }
+    .dark-scrollbar::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.6); border-radius: 6px; border: 2px solid rgba(0,0,0,0); background-clip: padding-box; }
+    .dark-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.75); }
+
+    /* Inventory window sizing */
+    #inventory-window{
+      height: 600px;
+      max-height: 600px;
+    }
+    #inventory-list{
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      padding-right: 30px;
+    }
+
+    /* Equipment Slot Styles */
+    .equipment-area{ padding: 8px; border: 2px solid #1a2538; border-radius: 3px; margin-bottom: 8px; background: transparent;}    
+    .equipment-row{ display:flex; gap:6px; justify-content: flex-start; margin-bottom:6px; }
+    .equipment-slot{ width:44px; height:44px; background: transparent; border: 2px solid #2a3f5f; border-radius: 4px; display:flex; align-items:center; justify-content:center; position:relative; cursor:pointer; background-size: contain; background-position: center; background-repeat: no-repeat; }
+    /* Character styles moved to public/character.html */
+    .char-stat-row{ display:flex; justify-content:space-between; gap: 8px; margin: 2px 0; }
+    .char-status{ display:flex; justify-content:space-between; color: #ef4444; font-weight: 700; }
+
+    /* Visual for items that cannot be equipped into any slot */
+    .not-equippable{ opacity: 0.6; filter: grayscale(80%); }
+
+    /* Brief invalid equip animation (flash) */
+    .invalid-equip{ animation: invalidFlash 0.35s ease-in-out; }
+    @keyframes invalidFlash{ 0%{ box-shadow: 0 0 0 rgba(255,0,0,0); } 50%{ box-shadow: 0 0 8px rgba(255,0,0,0.8); } 100%{ box-shadow: 0 0 0 rgba(255,0,0,0); } }
+
+    .inventory-slot{
+      aspect-ratio: 1;
+      background: transparent;
+      border: 2px solid #2a3f5f;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    }
+    .inventory-slot:hover{
+      border-color: #4a6f9f;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 0 8px rgba(74,111,159,0.4);
+    }
+    .inventory-slot.empty{
+      opacity: 0.5;
+    }
+
+    .slot-icon{
+      font-size: 32px;
+      filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7));
+    }
+    .slot-icon img{
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      display: block;
+    }
+
+    .slot-quantity{
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 4px;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,0.2);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .slot-rarity-border{
+      position: absolute;
+      inset: -2px;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+    .slot-rarity-border.common{ border: 2px solid #6b7280; }
+    .slot-rarity-border.uncommon{ border: 2px solid #22c55e; box-shadow: 0 0 6px rgba(34,197,94,0.3); }
+    .slot-rarity-border.rare{ border: 2px solid #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.3); }
+    .slot-rarity-border.epic{ border: 2px solid #a855f7; box-shadow: 0 0 6px rgba(168,85,247,0.3); }
+
+    .item-tooltip{
+      position: fixed;
+      background: linear-gradient(180deg, rgba(20,22,26,0.98), rgba(10,12,15,0.98));
+      border: 1px solid #2a2f37;
+      padding: 8px 10px;
+      color: #e6e6e6;
+      font-size: 11px;
+      z-index: 10001;
+      pointer-events: none;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
+      max-width: 208px;
+      line-height: 1.35;
+      font-family: 'MS Sans Serif', Arial, sans-serif;
+    }
+    .item-tooltip::before{
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border: 1px solid rgba(0,0,0,0.6);
+      pointer-events: none;
+    }
+    .item-tooltip .tooltip-name{
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 2px;
+      color: #e6e6e6;
+      text-shadow: 0 1px 0 rgba(0,0,0,0.8);
+    }
+    .item-tooltip .tooltip-name.common{ color: #b5b5b5; }
+    .item-tooltip .tooltip-name.uncommon{ color: #7ee787; }
+    .item-tooltip .tooltip-name.rare{ color: #7aa2ff; }
+    .item-tooltip .tooltip-name.epic{ color: #c084fc; }
+    .item-tooltip .tooltip-header{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+    .item-tooltip .tooltip-icon{
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
+      color: #e6e6e6;
+      flex: 0 0 auto;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.7));
+    }
+    .item-tooltip .tooltip-icon img{
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      display: block;
+    }
+    .item-tooltip .tooltip-title{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .item-tooltip .tooltip-level{
+      font-size: 9px;
+      color: #cfcfcf;
+      margin-left: 6px;
+      font-weight: 700;
+      background: rgba(0,0,0,0.35);
+      padding: 1px 4px;
+      border-radius: 2px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .item-tooltip .tooltip-type{
+      font-size: 10px;
+      color: #cfcfcf;
+      margin-bottom: 6px;
+      text-transform: none;
+    }
+    .item-tooltip .tooltip-description{
+      color: #c8c8c8;
+      font-size: 10px;
+      margin-bottom: 6px;
+      font-style: normal;
+    }
+    .item-tooltip .tooltip-stats{
+      font-size: 10px;
+      color: #77c2ff;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding-top: 6px;
+      margin-top: 6px;
+      white-space: nowrap;
+    }
+    .item-tooltip .tooltip-rarity{
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-top: 6px;
+      color: #6ee787;
+    }
+    .item-tooltip .tooltip-rarity.common{ color: #b5b5b5; }
+    .item-tooltip .tooltip-rarity.uncommon{ color: #7ee787; }
+    .item-tooltip .tooltip-rarity.rare{ color: #7aa2ff; }
+    .item-tooltip .tooltip-rarity.epic{ color: #c084fc; }
+
+    /* Inventory Item Styles - compact smart list */
+    .inventory-item{
+      height: 32px;
+      min-height: 32px;
+      background: transparent;
+      border: none;
+      padding: 0 6px;
+      margin-bottom: 2px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      transition: background 0.12s, color 0.12s;
+    }
+    .inventory-item:hover{ background: rgba(13,110,253,0.12); color: #ffffff; }
+
+    .item-icon{
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .item-name{
+      flex: 1 1 auto;
+      min-width: 0;
+      font-weight: 400;
+      font-size: 11px;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .item-name.common{ color: #b5b5b5; }
+    .item-name.uncommon{ color: #7ee787; }
+    .item-name.rare{ color: #7aa2ff; }
+    .item-name.epic{ color: #c084fc; }
+
+    .item-name .item-level{ font-size: 9px; color: #cfcfcf; margin-left: 6px; font-weight: 700; background: transparent; padding: 0 3px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.04); }
+
+    .item-quantity{
+      flex: 0 0 auto;
+      font-size: 11px;
+      color: #cfcfcf;
+      margin-left: 6px;
+      padding-left: 6px;
+      border-left: 1px solid rgba(255,255,255,0.04);
+    }
+
+/* ==========================================================================
+   UI Overlay, Compass, Character Status, HUD Buttons, Window 9-Slice
+   (Originally the second <style> block near the bottom of index.html)
+   ========================================================================== */
+
+    .info-tooltip { background: rgba(20,20,24,0.95); color: #fff; border-radius:6px; padding:8px; font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,0.6); }
+    .info-tooltip .tooltip-title { font-weight:700; margin-bottom:6px; font-size:14px }
+    .info-tooltip .tooltip-row { margin-bottom:4px }
+    .info-tooltip .status-contested { color:#ffb4b4; font-weight:700 }
+    /* UI image overlay (bottom-right) */
+    #ui-image-overlay{
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 73px; /* scaled up ~30% */
+      z-index: 20000;
+      pointer-events: none;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+    }
+    #ui-image-overlay .ui-bar-repeat{
+      flex: 1 1 auto;
+      height: 73px;
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bottom-bar-left.png');
+      background-repeat: repeat-x;
+      background-position: left top;
+      background-size: auto 100%;
+    }
+    #ui-image-overlay .ui-bar-repeat-right{
+      flex: 1 1 auto;
+      height: 73px;
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bottom-bar-left.png');
+      background-repeat: repeat-x;
+      background-position: right top;
+      background-size: auto 100%;
+      transform: scaleX(-1);
+      pointer-events: none;
+    }
+    #ui-image-overlay .ui-bar-right{ flex: 0 0 auto; position: relative; }
+    #ui-image-overlay .ui-bar-right img{ height: 73px; display:block; pointer-events: none; }
+    /* Anchor HUD buttons to the right image container so they follow it on resize */
+    #ui-image-overlay .ui-hud-group{
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+    }
+    /* Place each HUD button absolutely so existing per-button `right:` rules apply */
+    #ui-image-overlay .ui-hud-group .ui-hud-btn{
+      position: absolute;
+      bottom: 4px;
+      width: 38px;
+      height: 38px;
+      pointer-events: auto;
+    }
+    /* Top-right compass image (now interactive) */
+    #ui-compass{ position: fixed; top: 0; right: 0; z-index: 20001; pointer-events: auto; }
+    #ui-compass img{ height: 166px; display:block; }
+
+    /* Compass controls (map settings + logout) */
+    #ui-compass .compass-controls{ position: absolute; top: 36px; right: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; z-index: 20002; }
+    #ui-compass .compass-controls .btn-logout{ font-size: 11px; padding: 6px 8px; background: linear-gradient(180deg, #2b6cb0, #1e40af); border: 1px solid rgba(0,0,0,0.4); color: #fff; border-radius: 4px; cursor: pointer; }
+    #ui-compass .compass-controls .btn-logout:hover{ filter: brightness(1.05); }
+
+    /* Server time icon overlay (placed above compass) */
+    #ui-server-time{ position: fixed; top: 0px; right: 2px; z-index: 20003; pointer-events: auto; width:29px; height:29px; display:flex; align-items:center; justify-content:center; }
+    #ui-server-time img{ width:26px; height:26px; display:block; image-rendering: pixelated; cursor:default; }
+    .server-time-tooltip{ position: absolute; top: 38px; right: 0; display: none; background: linear-gradient(180deg, rgba(20,22,26,0.98), rgba(10,12,15,0.98)); color: #e6e6e6; padding: 4px 6px; border-radius: 6px; font-size: 12px; box-shadow: 0 6px 18px rgba(0,0,0,0.6); white-space: nowrap; pointer-events: none; z-index: 20004; }
+    #ui-server-time:hover .server-time-tooltip{ display: block; }
+
+    /* Top-left character status (overlay) */
+    /* Allow hover on the character overlay so its health/mana bars can be revealed on hover. */
+    #ui-character-status{ position: fixed; top: 0; left: 0; z-index: 20001; pointer-events: auto; }
+    #ui-character-status img{ height: 86px; width: auto; display:block; }
+    #ui-character-status .ui-character-overlay{ position: absolute; top: 4px; left: 6px; right: 6px; bottom: 4px; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; gap:4px; box-sizing:border-box; pointer-events: none; z-index:20002; transform: translate(-6px, -2px); }
+    #ui-character-status .ui-character-overlay .status-top{ position:absolute; top:2px; left:4px; display:flex; align-items:center; gap:6px; z-index:20003; }
+    #ui-character-status .ui-character-overlay .status-name{ margin-top:6px; padding-top:0; font-size:13px; color:#ffffff; font-weight:600; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; text-align:center; align-self:center; max-width:160px; text-shadow:0 1px 0 rgba(0,0,0,0.8); transform: translateX(-20px); }
+    #ui-character-status .ui-character-overlay .status-bars{ display:flex; flex-direction:column; gap:1px; transform: translateX(-15px) translateY(7px); }
+    /* Add padding to the level number so it sits away from top/left edges */
+    #ui-character-status .ui-character-overlay .status-top #player-level{ padding-top:8px; padding-left:12px; }
+    /* Username visibility */
+    #ui-character-status .ui-character-overlay .status-top #player-username{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:inline-block; max-width:120px; font-weight:600; text-shadow:0 1px 0 rgba(0,0,0,0.8); color:#fff; }
+    /* Use UI bar images for overlay health/mana fills and stretch them horizontally */
+    #ui-character-status .ui-character-overlay .territory-health-bar{ background: transparent; border: none; }
+    #ui-character-status .ui-character-overlay .territory-health-bar .territory-health-fill{ background-color: transparent; }
+    /* Use border-image 9-slice style like window title/body so caps are preserved and center repeats */
+    #ui-character-status .ui-character-overlay #player-health-fill{
+      background-color: transparent;
+      height:100%;
+      border-width: 0 2px 0 2px;
+      border-style: solid;
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bar-health.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch;
+      box-sizing: border-box;
+    }
+    #ui-character-status .ui-character-overlay #player-mana-fill{
+      background-color: transparent;
+      height:100%;
+      border-width: 0 2px 0 2px;
+      border-style: solid;
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-bar-mana.png') 0 2 0 2 fill / 0 2px 0 2px / 0 stretch;
+      box-sizing: border-box;
+    }
+    /* Nudge health/mana fills vertically: health down 1px, mana up 2px */
+    #ui-character-status .ui-character-overlay #player-health-fill{ position: relative; top: -3px; }
+    #ui-character-status .ui-character-overlay #player-mana-fill{ position: relative; top: -1px; }
+    /* Overlay-specific bar sizing: less wide, taller */
+    #ui-character-status .ui-character-overlay .overlay-bar{ flex: 0 0 auto; width: 218px; height: 15px; border-radius: 4px; overflow: hidden; }
+    /* Ensure the top-left character overlay bars are always visible and interactive. */
+    #ui-character-status .ui-character-overlay .overlay-bar { opacity: 1 !important; pointer-events: auto !important; }
+    /* Center bar text on top of the bar */
+    #ui-character-status .ui-character-overlay .overlay-bar{ position: relative; }
+    #ui-character-status .ui-character-overlay .bar-text{ position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size:11px; color:#ffffff; text-shadow:0 1px 0 rgba(0,0,0,0.8); pointer-events: none; }
+    /* hide small realm badge in the compact overlay (was showing as a green dot) */
+    #ui-character-status .ui-character-overlay .status-top .realm-badge{ display:none; }
+
+    /* Unified HUD button styles */
+    .ui-hud-btn{
+      position: absolute;
+      bottom: 4px;
+      width: 38px;
+      height: 38px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center center;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      pointer-events: auto; /* allow clicks */
+      z-index: 20002;
+      background-color: transparent;
+    }
+    .ui-hud-btn[data-action="spellbook"]{ right: 303px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-spellbook-base.png'); }
+    .ui-hud-btn[data-action="spellbook"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-spellbook-hover.png'); }
+    .ui-hud-btn[data-action="spellbook"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-spellbook-pressed.png'); }
+
+    .ui-hud-btn[data-action="character"]{ right: 251px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-base.png'); }
+    .ui-hud-btn[data-action="character"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-hover.png'); }
+    .ui-hud-btn[data-action="character"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-pressed.png'); }
+
+    .ui-hud-btn[data-action="inventory"]{ right: 207px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-base.png'); }
+    .ui-hud-btn[data-action="inventory"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-hover.png'); }
+    .ui-hud-btn[data-action="inventory"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-pressed.png'); }
+
+    /* Persisted pressed state (ensure correct ui asset path used) */
+    .ui-hud-btn.pressed[data-action="inventory"]{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-inventory-pressed.png'); }
+    .ui-hud-btn.pressed[data-action="character"]{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-character-pressed.png'); }
+
+    .ui-hud-btn[data-action="actions"]{ right: 164px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-actions-base.png'); }
+    .ui-hud-btn[data-action="actions"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-actions-hover.png'); }
+    .ui-hud-btn[data-action="actions"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-actions-pressed.png'); }
+
+    .ui-hud-btn[data-action="party"]{ right: 123px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-party-base.png'); }
+    .ui-hud-btn[data-action="party"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-party-hover.png'); }
+    .ui-hud-btn[data-action="party"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-party-pressed.png'); }
+
+    .ui-hud-btn[data-action="quests"]{ right: 78px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-quests-base.png'); }
+    .ui-hud-btn[data-action="quests"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-quests-hover.png'); }
+    .ui-hud-btn[data-action="quests"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-quests-pressed.png'); }
+
+    .ui-hud-btn[data-action="premium"]{ right: 34px; background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-premium-base.png'); }
+    .ui-hud-btn[data-action="premium"]:hover{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-premium-hover.png'); }
+    .ui-hud-btn[data-action="premium"]:active{ background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-icon-premium-pressed.png'); }
+
+    /* 9-slice window styling (title bar + body) */
+    .ui-window{
+      /* No backgrounds - pure image-based */
+    }
+    .ui-window-titlebar{
+      height: 16px;
+      padding: 0 4px;
+      position: relative;
+      z-index: 1;
+      /* 9-slice: repeat center 10px strip horizontally (128px - 59px - 59px = 10px) */
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-title-bar.png') 0 59 0 59 fill / 0 59px 0 59px / 0 repeat;
+    }
+    .ui-window-body{
+      margin-top: -16px;
+      padding-top: 16px;
+      /* 9-slice: repeat center 10px horizontally, 1px vertically (128px - 49px - 78px = 1px), moved 10px up */
+      border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-main.png') 49 59 78 59 fill / 49px 59px 78px 59px / 0 repeat repeat;
+      background: rgba(0,0,0,0.3);
+    }
+    .ui-window-close-btn{
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: none;
+      cursor: pointer;
+      background: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-close-base.png') center center no-repeat;
+      background-size: 16px 16px;
+      flex-shrink: 0;
+    }
+    .ui-window-close-btn:hover{
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-close-hover.png');
+    }
+    .ui-window-close-btn:active{
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-close-pressed.png');
+    }
