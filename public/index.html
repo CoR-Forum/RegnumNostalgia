@@ -2702,14 +2702,14 @@
 
         // Tooltip on hover
         itemDiv.addEventListener('mouseenter', (e) => showTooltip(e, item));
-        itemDiv.addEventListener('mouseleave', hideTooltip);
+        itemDiv.addEventListener('mouseleave', (e) => { if (!tooltipKeepOpen) hideTooltip(); });
         itemDiv.addEventListener('mousemove', (e) => moveTooltip(e));
+        itemDiv.addEventListener('click', () => { tooltipKeepOpen = true; });
         // Ensure tooltip stays above windows when item is clicked/pressed
         itemDiv.addEventListener('mousedown', () => {
           try {
             if (currentTooltip) {
-              if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
-              currentTooltip.style.zIndex = String(++window.__windowTopZ);
+              currentTooltip.style.zIndex = '50000';
             }
           } catch (e) {}
         });
@@ -2822,6 +2822,7 @@
     let pendingTooltipTimer = null;
     let lastMouseX = 0;
     let lastMouseY = 0;
+    let tooltipKeepOpen = false;
 
     function positionTooltip(tooltip, mouseX, mouseY) {
       if (!tooltip) return;
@@ -2865,6 +2866,7 @@
 
       lastMouseX = event.clientX;
       lastMouseY = event.clientY;
+      tooltipKeepOpen = false;
 
       // Schedule tooltip creation after 200ms. If the pointer moves away
       // before this timer fires, the tooltip will not be shown.
@@ -2888,7 +2890,7 @@
 
         document.body.appendChild(tooltip);
         if (typeof window.__windowTopZ === 'undefined') window.__windowTopZ = 30000;
-        try { tooltip.style.zIndex = String(++window.__windowTopZ); } catch (e) { tooltip.style.zIndex = '40000'; }
+        try { tooltip.style.zIndex = '40000'; } catch (e) { tooltip.style.zIndex = '40000'; }
         currentTooltip = tooltip;
         requestAnimationFrame(() => positionTooltip(tooltip, event.clientX, event.clientY));
 
