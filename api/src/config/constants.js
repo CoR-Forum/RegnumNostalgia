@@ -70,11 +70,11 @@ module.exports = {
   
   // Queue Intervals (milliseconds)
   QUEUE_INTERVALS: {
-    WALKER: 1000,     // 2 seconds
-    HEALTH: 1000,     // 1 second
-    TIME: 10000,      // 10 seconds
-    TERRITORY: 5000,  // 15 seconds
-    SPAWN: 5000       // 5 seconds
+    WALKER: 1000,
+    HEALTH: 1000,
+    TIME: 10000,
+    TERRITORY: 10000,
+    SPAWN: 5000
   },
   
   // Health Regeneration Rates
@@ -92,7 +92,7 @@ module.exports = {
   
   // Bull Queue Configuration
   BULL_JOB_OPTIONS: {
-    removeOnComplete: 100,
+    removeOnComplete: 1000,
     removeOnFail: 50,
     attempts: 3,
     backoff: {
@@ -133,6 +133,15 @@ module.exports = {
       pool: [
         { item: 'gold_coin', weight: 7, quantity: [1, 20] },
         { item: 'magnanite', weight: 2, quantity: [1, 5] }
+      ]
+    },
+    treasure_chest: {
+      mode: 'multi-drop',
+      rolls: 3,
+      pool: [
+        { item: 'gold_coin', weight: 5, quantity: [10, 50] },
+        { item: 'health_potion', weight: 3, quantity: [1, 5] },
+        { item: 'mana_potion', weight: 2, quantity: [1, 5] }
       ]
     },
     gold_pile: {

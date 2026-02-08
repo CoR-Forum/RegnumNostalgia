@@ -1880,7 +1880,7 @@
           <div style="
             width: 28px;
             height: 28px;
-            background: url('assets/markers/${item.visualIcon}') center center / contain no-repeat;
+            background: url('https://cor-forum.de/regnum/RegnumNostalgia/markers/${item.visualIcon}') center center / contain no-repeat;
             ${isCollecting ? 'border: 3px solid #ff8800; border-radius: 50%;' : ''}
             cursor: pointer;
             filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));
@@ -3805,8 +3805,8 @@
         
         // Prefer server-provided icon URLs; fall back to marker map
         const iconUrl = isContested
-          ? (territory.iconUrlContested || (iconNameContested ? `/assets/markers/${iconNameContested}` : null))
-          : (territory.iconUrl || (iconName ? `/assets/markers/${iconName}` : null));
+          ? (territory.iconUrlContested || (iconNameContested ? `https://cor-forum.de/regnum/RegnumNostalgia/markers/${iconNameContested}` : null))
+          : (territory.iconUrl || (iconName ? `https://cor-forum.de/regnum/RegnumNostalgia/markers/${iconName}` : null));
 
         if (!iconUrl) return;
 
@@ -3892,7 +3892,7 @@
         const latLng = [totalH - boss.y, boss.x];
         const healthPercent = Math.max(0, Math.min(100, Math.round(((Number(boss.health) || 0) / (Number(maxHealth) || 1)) * 100)));
         
-        const iconUrl = boss.iconUrl || (iconName ? `/assets/markers/${iconName}` : null);
+        const iconUrl = boss.iconUrl || (iconName ? `https://cor-forum.de/regnum/RegnumNostalgia/markers/${iconName}` : null);
 
         if (!iconUrl) return;
 
