@@ -11,6 +11,7 @@ import { createPlayerMarker } from './player.js';
 import { enableClickToMove, buildGoHereIcon } from './walking.js';
 import { initWindows, initWindow, saveWindowState, getWindowState } from './windows.js';
 import { initInventoryDropZone } from './inventory.js';
+import { initSpellsUI } from './spells.js';
 
 let _autoLoginFallback = null;
 
@@ -172,6 +173,9 @@ export async function initGame() {
 
     enableClickToMove();
     updatePlayerCoords(gameState.position.x, gameState.position.y);
+
+    // Initialize active spells UI
+    try { initSpellsUI(); } catch (e) { console.debug('initSpellsUI failed', e); }
   } catch (error) {
     console.debug('initGame failed, returning to login:', error && error.message ? error.message : error);
     try {

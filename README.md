@@ -17,6 +17,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Advanced Systems
 - **Inventory & Equipment**: 10 equipment slots (head, body, hands, shoulders, legs, weapons, rings, amulet)
 - **Item System**: Weapons, armor, consumables with rarity tiers (common, uncommon, rare, epic, legendary)
+- **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time), with active spell UI
 - **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution
 - **Territory Control**: Realm-owned forts and castles with health and vulnerability mechanics
 - **World Bosses**: Superbosses with spawn timers and respawn mechanics
@@ -27,7 +28,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Technical Features
 - **WebSocket Real-Time**: Socket.io for instant updates with auto-reconnection
 - **Session Management**: JWT-based 24-hour sessions with Redis storage
-- **Background Workers**: Bull queue system for health regen, time sync, walking processor, territory updates
+- **Background Workers**: Bull queue system for health regen, spell processing, time sync, walking processor, territory updates
 - **MariaDB Database**: Persistent storage for players, items, territories, sessions
 - **Redis Pub/Sub**: Real-time event broadcasting across workers
 - **RESTful API**: Node.js/Express backend with comprehensive endpoints
@@ -163,10 +164,12 @@ regnum-nostalgia/
 │   │   │   ├── collectableHandler.js # Spawned item collection
 │   │   │   ├── editorHandler.js      # Region/path/wall/water CRUD
 │   │   │   ├── logHandler.js         # Player log retrieval
+│   │   │   ├── spellHandler.js       # Spell casting & active spell queries
 │   │   │   └── shoutbox.js           # Chat/shoutbox polling
 │   │   ├── queues/
 │   │   │   ├── walkerQueue.js        # Movement processor (1s)
 │   │   │   ├── healthQueue.js        # Health/mana regen (1s)
+│   │   │   ├── spellQueue.js         # Spell tick processor (1s)
 │   │   │   ├── timeQueue.js          # Ingame time sync (10s)
 │   │   │   ├── territoryQueue.js     # Territory updates (10s)
 │   │   │   └── spawnQueue.js         # Collectable spawning (5s)
@@ -198,7 +201,7 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 ### Backend Architecture
 - **Socket Handlers**: Decomposed into domain-specific handlers (`inventoryHandler.js`, `movementHandler.js`, `collectableHandler.js`, etc.) with shared state passed via dependency injection
 - **Shared Utilities**: `utils/geometry.js` provides point-in-polygon, distance calculations used by multiple handlers
-- **Queue Workers**: 5 Bull queues handle background processing (movement, health regen, time sync, territories, spawning)
+- **Queue Workers**: 6 Bull queues handle background processing (movement, health regen, spell processing, time sync, territories, spawning)
 
 ## 🛠️ Technology Stack
 
@@ -223,6 +226,7 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - **territory_captures**: Historical ownership changes
 - **superbosses**: World bosses with spawn mechanics
 - **walkers**: Active player movement queues with paths
+- **active_spells**: Currently active spell buffs on players (spell_key, heal/mana per tick, duration, remaining)
 - **server_time**: Synchronized in-game clock
 
 ### Redis Keys
@@ -244,9 +248,10 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - `cache:walkers:active` - Hash of walkerId → walker state JSON (active walkers)
 - `cache:walkers:user:{userId}` - Current active walkerId for a user
 - `cache:walk_speed:{userId}` - Cached total walk_speed from equipped items (TTL: 60s)
+- `cache:spells:active:{userId}` - Active spells JSON array for a user (TTL: 300s, updated on cast/tick/expire)
 
 #### Queue System
-- `bull:{queueName}:*` - Queue job data (walker-processor, health-regeneration, server-time, territory-sync, spawn-queue)
+- `bull:{queueName}:*` - Queue job data (walker-processor, health-regeneration, spell-processor, server-time, territory-sync, spawn-queue)
 
 ### Redis Caching Strategy
 
@@ -267,6 +272,7 @@ The API uses Redis as a comprehensive caching layer (see `api/src/config/cache.j
 | **Shoutbox Last ID** | Persisted in Redis | Permanent | Updated on each poll/send |
 | **Active Walkers** | Redis hash (walker state per tick) | N/A | Added on create, removed on complete/interrupt |
 | **Walk Speed** | Lazy-load + TTL | 60s | Invalidated on equip/unequip |
+| **Active Spells** | Updated on cast/tick | 300s | Updated every spell tick, cleared on expire |
 
 ## 🔌 API Endpoints
 

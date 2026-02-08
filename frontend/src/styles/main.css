@@ -783,6 +783,75 @@
     #ui-compass{ position: fixed; top: 0; right: 0; z-index: 20001; pointer-events: auto; }
     #ui-compass img{ height: 166px; display:block; }
 
+    /* Active spells display (to the left of compass) */
+    #active-spells-container{
+      position: fixed;
+      top: 8px;
+      right: 176px;
+      z-index: 20001;
+      display: flex;
+      flex-direction: row;
+      gap: 6px;
+      pointer-events: auto;
+    }
+    .active-spell{
+      position: relative;
+      width: 40px;
+      height: 40px;
+      border: 2px solid rgba(255,210,122,0.6);
+      border-radius: 6px;
+      background: rgba(0,0,0,0.55);
+      overflow: hidden;
+      cursor: default;
+    }
+    .active-spell img{
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: auto;
+    }
+    .active-spell .spell-timer{
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      padding: 1px 0;
+      line-height: 1;
+    }
+    .active-spell .spell-cooldown-overlay{
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0,0,0,0.45);
+      pointer-events: none;
+      transition: height 1s linear;
+    }
+    .active-spell .spell-tooltip{
+      display: none;
+      position: absolute;
+      bottom: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(10,12,15,0.95);
+      color: #e6e6e6;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      z-index: 20005;
+      pointer-events: none;
+    }
+    .active-spell:hover .spell-tooltip{
+      display: block;
+    }
+
     /* Compass controls (map settings + logout) */
     #ui-compass .compass-controls{ position: absolute; top: 36px; right: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; z-index: 20002; }
     #ui-compass .compass-controls .btn-logout{ font-size: 11px; padding: 6px 8px; background: linear-gradient(180deg, #2b6cb0, #1e40af); border: 1px solid rgba(0,0,0,0.4); color: #fff; border-radius: 4px; cursor: pointer; }

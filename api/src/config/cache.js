@@ -767,6 +767,91 @@ async function preloadStaticData(gameDb) {
   }
 }
 
+// ── Active Spells Cache ──
+
+const SPELL_KEY_PREFIX = 'cache:spells:active:';
+
+/**
+ * Get all active spells for a user from Redis.
+ * Returns an array of spell objects or null if not cached.
+ */
+async function getActiveSpells(userId) {
+  try {
+    const raw = await redis.get(`${SPELL_KEY_PREFIX}${userId}`);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    logger.error('getActiveSpells error', { userId, error: e.message });
+    return null;
+  }
+}
+
+/**
+ * Set the full active spells array for a user.
+ */
+async function setActiveSpells(userId, spells) {
+  try {
+    if (!spells || spells.length === 0) {
+      await redis.del(`${SPELL_KEY_PREFIX}${userId}`);
+    } else {
+      await redis.set(`${SPELL_KEY_PREFIX}${userId}`, JSON.stringify(spells), 'EX', 300);
+    }
+  } catch (e) {
+    logger.error('setActiveSpells error', { userId, error: e.message });
+  }
+}
+
+/**
+ * Add a spell to a user's active spells.
+ */
+async function addActiveSpell(userId, spell) {
+  try {
+    const current = (await getActiveSpells(userId)) || [];
+    current.push(spell);
+    await setActiveSpells(userId, current);
+  } catch (e) {
+    logger.error('addActiveSpell error', { userId, error: e.message });
+  }
+}
+
+/**
+ * Remove a spell by spellId from a user's active spells.
+ */
+async function removeActiveSpell(userId, spellId) {
+  try {
+    const current = (await getActiveSpells(userId)) || [];
+    const filtered = current.filter(s => s.spellId !== spellId);
+    await setActiveSpells(userId, filtered);
+  } catch (e) {
+    logger.error('removeActiveSpell error', { userId, error: e.message });
+  }
+}
+
+/**
+ * Decrement remaining on all spells for a user, returning { expired, active } arrays.
+ */
+async function tickActiveSpells(userId) {
+  try {
+    const current = (await getActiveSpells(userId)) || [];
+    if (current.length === 0) return { expired: [], active: [] };
+    const expired = [];
+    const active = [];
+    for (const spell of current) {
+      spell.remaining = (spell.remaining || 0) - 1;
+      if (spell.remaining <= 0) {
+        expired.push(spell);
+      } else {
+        active.push(spell);
+      }
+    }
+    await setActiveSpells(userId, active);
+    return { expired, active };
+  } catch (e) {
+    logger.error('tickActiveSpells error', { userId, error: e.message });
+    return { expired: [], active: [] };
+  }
+}
+
 module.exports = {
   CACHE_KEYS,
   TTL,
@@ -816,6 +901,12 @@ module.exports = {
   getCachedWalkSpeed,
   computeAndCacheWalkSpeed,
   invalidateWalkSpeed,
+  // Active Spells
+  getActiveSpells,
+  setActiveSpells,
+  addActiveSpell,
+  removeActiveSpell,
+  tickActiveSpells,
   // Startup
   preloadStaticData,
 };

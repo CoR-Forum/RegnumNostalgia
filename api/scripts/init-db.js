@@ -356,6 +356,24 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // active_spells - currently active spells/buffs on players
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS active_spells (
+        spell_id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        spell_key VARCHAR(128) NOT NULL,
+        icon_name VARCHAR(255) NULL,
+        heal_per_tick INT NOT NULL DEFAULT 0,
+        mana_per_tick INT NOT NULL DEFAULT 0,
+        duration INT NOT NULL DEFAULT 10,
+        remaining INT NOT NULL DEFAULT 10,
+        started_at INT NOT NULL,
+        INDEX idx_active_spells_user (user_id),
+        INDEX idx_active_spells_remaining (remaining),
+        FOREIGN KEY (user_id) REFERENCES players(user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     logger.info('Database initialization completed');
   } catch (err) {
     logger.error('Database initialization failed', { error: err.message });

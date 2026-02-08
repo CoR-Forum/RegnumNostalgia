@@ -30,6 +30,9 @@ Node.js implementation of the Regnum Nostalgia MMORPG backend, replacing PHP pol
 - `territories:update` - Territory health/ownership changes
 - `superbosses:health` - Boss health updates
 - `shoutbox:message` - New chat messages
+- `spell:started` - Spell cast notification with spell details
+- `spell:update` - Active spells array update (every tick)
+- `spell:expired` - Spell expired notification
 - `time:update` - Server time updates
 - `player:connected` / `player:disconnected` - Player status
 
@@ -37,6 +40,8 @@ Node.js implementation of the Regnum Nostalgia MMORPG backend, replacing PHP pol
 - `position:update` - Manual position update
 - `move:request` - Initiate pathfinding
 - `shoutbox:send` - Send chat message (supports GM commands)
+- `spell:cast` - Cast a consumable spell from inventory
+- `spell:active` - Get all active spells for current user
 
 ### GM Commands (Shoutbox)
 
@@ -65,8 +70,9 @@ GM/Admin users can execute commands in the shoutbox:
 
 1. **Walker Queue** (2s interval) - Advances player movement along calculated paths
 2. **Health Queue** (1s interval) - Regenerates health/mana for players, territories, superbosses
-3. **Time Queue** (10s interval) - Updates ingame time (24h cycle per real hour)
-4. **Territory Queue** (15s interval) - Syncs ownership from external API
+3. **Spell Queue** (1s interval) - Processes active spell ticks (applies heal/mana per tick, expires finished spells)
+4. **Time Queue** (10s interval) - Updates ingame time (24h cycle per real hour)
+5. **Territory Queue** (15s interval) - Syncs ownership from external API
 
 ## Project Structure
 

@@ -90,8 +90,26 @@ export function displayInventory(items) {
 
         const itemDetails = await getItemDetails();
         const isUsable = itemDetails.type === 'premium' && itemDetails.stats && itemDetails.stats.loot_table;
+        const isSpell = itemDetails.type === 'consumable' && itemDetails.stats && itemDetails.stats.spell;
 
-        if (isUsable) {
+        if (isSpell) {
+          // Cast spell
+          try {
+            const castSpell = () => new Promise((resolve, reject) => {
+              if (window.socket && window.socket.connected) {
+                window.socket.emit('spell:cast', { inventoryId: id }, (resp) => {
+                  if (resp && resp.success) resolve(resp);
+                  else reject(new Error(resp?.error || 'Failed to cast spell'));
+                });
+              } else {
+                reject(new Error('Not connected'));
+              }
+            });
+            await castSpell();
+          } catch (err) {
+            if (window.addLogMessage) window.addLogMessage(getErrorMessage(err, 'Failed to cast spell'), 'error');
+          }
+        } else if (isUsable) {
           try {
             const useItem = () => new Promise((resolve, reject) => {
               if (window.socket && window.socket.connected) {

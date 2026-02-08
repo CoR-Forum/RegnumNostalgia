@@ -16,6 +16,7 @@ const { registerMovementHandlers } = require('./movementHandler');
 const { registerCollectableHandlers } = require('./collectableHandler');
 const { registerEditorHandlers } = require('./editorHandler');
 const { registerLogHandlers } = require('./logHandler');
+const { registerSpellHandlers } = require('./spellHandler');
 
 // Store connected sockets by userId
 const connectedUsers = new Map();
@@ -97,6 +98,9 @@ function initializeSocketHandlers(io) {
 
     // ==================== SHOUTBOX/CHAT ====================
     initializeShoutboxHandlers(socket, user);
+
+    // ==================== SPELLS ====================
+    registerSpellHandlers(socket, user, io, deps);
 
     // ==================== PLAYER LOGS ====================
     registerLogHandlers(socket, user);

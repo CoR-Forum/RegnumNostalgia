@@ -56,6 +56,7 @@ module.exports = {
   QUEUE_INTERVALS: {
     WALKER: 1000,     // 1 second — movement tick
     HEALTH: 1000,     // 1 second — health/mana regen tick
+    SPELL: 1000,      // 1 second — spell tick (buff/debuff processing)
     TIME: 10000,      // 10 seconds — in-game clock sync
     TERRITORY: 10000, // 10 seconds — territory status check
     SPAWN: 5000       // 5 seconds — collectable spawn check

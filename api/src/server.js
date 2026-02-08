@@ -10,7 +10,7 @@ const logger = require('./config/logger');
 const { testConnections, initScreenshotsDb, gameDb } = require('./config/database');
 const { preloadStaticData, flushLastActive, cleanupOnlinePlayers } = require('./config/cache');
 const { ONLINE_THRESHOLD_SECONDS } = require('./config/constants');
-const { initializeQueues, closeQueues, walkerQueue, healthQueue, timeQueue, territoryQueue } = require('./queues');
+const { initializeQueues, closeQueues, walkerQueue, healthQueue, spellQueue, timeQueue, territoryQueue } = require('./queues');
 const { initializeSocketHandlers } = require('./sockets');
 const { initDatabase } = require('../scripts/init-db');
 const { importItems } = require('../scripts/import-items');
@@ -103,6 +103,7 @@ createBullBoard({
   queues: [
     new BullAdapter(walkerQueue),
     new BullAdapter(healthQueue),
+    new BullAdapter(spellQueue),
     new BullAdapter(timeQueue),
     new BullAdapter(territoryQueue)
   ],
