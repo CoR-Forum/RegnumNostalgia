@@ -61,6 +61,10 @@
         </select>
       </div>
     </div>
+
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-quickbar-tooltips" checked> Quickbar Tooltips</label>
+    </div>
   </div>
   <div id="settings-footer" style="padding:8px 12px 12px 12px; font-size:11px; color:#bfcbdc; border-top:1px solid rgba(255,255,255,0.02); display:flex; justify-content:center; align-items:center;">
     <span id="settings-map-version-display">Map: v1</span>
@@ -87,6 +91,9 @@
         document.getElementById('setting-collection-enabled').checked = !!r.settings.collectionSoundsEnabled;
         document.getElementById('setting-collection-volume').value = (typeof r.settings.collectionSoundsVolume === 'number' ? r.settings.collectionSoundsVolume : parseFloat(r.settings.collectionSoundsVolume)) || 1.0;
         document.getElementById('setting-map-version').value = r.settings.mapVersion || 'v1';
+        document.getElementById('setting-quickbar-tooltips').checked = r.settings.quickbarTooltipsEnabled !== 0;
+        // Apply quickbar tooltips setting immediately
+        try { if (window.setQuickbarTooltipsEnabled) window.setQuickbarTooltipsEnabled(r.settings.quickbarTooltipsEnabled !== 0); } catch (e) {}
         // Apply to AudioManager immediately
         try { window.AudioManager && window.AudioManager.setMusicEnabled(!!r.settings.musicEnabled); } catch (e) {}
         try { window.AudioManager && window.AudioManager.setMusicVolume(parseFloat(r.settings.musicVolume) || 0.6); } catch (e) {}
@@ -132,7 +139,8 @@
           captureSoundsVolume: parseFloat(document.getElementById('setting-capture-volume').value),
           collectionSoundsEnabled: document.getElementById('setting-collection-enabled').checked ? 1 : 0,
           collectionSoundsVolume: parseFloat(document.getElementById('setting-collection-volume').value),
-          mapVersion: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1'
+          mapVersion: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1',
+          quickbarTooltipsEnabled: document.getElementById('setting-quickbar-tooltips').checked ? 1 : 0
         };
         if (window.socket && window.socket.emit) window.socket.emit('user:settings:update', payload);
       } catch (e) { /* ignore */ }
@@ -155,6 +163,7 @@
   const collectionEnabledEl = document.getElementById('setting-collection-enabled');
   const collectionVolEl = document.getElementById('setting-collection-volume');
   const mapVersionEl = document.getElementById('setting-map-version');
+  const quickbarTooltipsEl = document.getElementById('setting-quickbar-tooltips');
 
   if (musicEnabledEl) {
     musicEnabledEl.addEventListener('change', (e) => {
@@ -220,6 +229,14 @@
       try { localStorage.setItem('tileVersion', v); } catch (e) {}
       try { if (typeof currentTileVersion !== 'undefined') { currentTileVersion = v; if (typeof loadTiles === 'function') loadTiles(); } } catch (e) {}
         try { const d = document.getElementById('settings-map-version-display'); if (d) d.textContent = `Map: ${v}`; } catch (e) {}
+      scheduleEmitSettings();
+    });
+  }
+
+  if (quickbarTooltipsEl) {
+    quickbarTooltipsEl.addEventListener('change', (e) => {
+      const enabled = !!e.target.checked;
+      try { if (window.setQuickbarTooltipsEnabled) window.setQuickbarTooltipsEnabled(enabled); } catch (err) {}
       scheduleEmitSettings();
     });
   }

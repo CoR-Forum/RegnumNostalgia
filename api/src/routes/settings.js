@@ -12,15 +12,16 @@ router.get('/', authenticateJWT, async (req, res) => {
     const row = await getCachedUserSettings(gameDb, userId);
     if (row) {
       return res.json({ success: true, settings: {
-        musicEnabled: row.music_enabled === 1 ? 1 : 0,
-        musicVolume: typeof row.music_volume === 'number' ? row.music_volume : parseFloat(row.music_volume) || 0.6,
-        soundsEnabled: row.sounds_enabled === 1 ? 1 : 0,
-        soundVolume: typeof row.sound_volume === 'number' ? row.sound_volume : parseFloat(row.sound_volume) || 1.0,
-        captureSoundsEnabled: row.capture_sounds_enabled === 1 ? 1 : 0,
-        captureSoundsVolume: typeof row.capture_sounds_volume === 'number' ? row.capture_sounds_volume : parseFloat(row.capture_sounds_volume) || 1.0,
-        collectionSoundsEnabled: row.collection_sounds_enabled === 1 ? 1 : 0,
-        collectionSoundsVolume: typeof row.collection_sounds_volume === 'number' ? row.collection_sounds_volume : parseFloat(row.collection_sounds_volume) || 1.0,
-        mapVersion: row.map_version || 'v1'
+        musicEnabled: row.musicEnabled != null ? (row.musicEnabled ? 1 : 0) : (row.music_enabled === 1 ? 1 : 0),
+        musicVolume: typeof row.musicVolume === 'number' ? row.musicVolume : (typeof row.music_volume === 'number' ? row.music_volume : parseFloat(row.music_volume || row.musicVolume) || 0.6),
+        soundsEnabled: row.soundsEnabled != null ? (row.soundsEnabled ? 1 : 0) : (row.sounds_enabled === 1 ? 1 : 0),
+        soundVolume: typeof row.soundVolume === 'number' ? row.soundVolume : (typeof row.sound_volume === 'number' ? row.sound_volume : parseFloat(row.sound_volume || row.soundVolume) || 1.0),
+        captureSoundsEnabled: row.captureSoundsEnabled != null ? (row.captureSoundsEnabled ? 1 : 0) : (row.capture_sounds_enabled === 1 ? 1 : 0),
+        captureSoundsVolume: typeof row.captureSoundsVolume === 'number' ? row.captureSoundsVolume : (typeof row.capture_sounds_volume === 'number' ? row.capture_sounds_volume : parseFloat(row.capture_sounds_volume || row.captureSoundsVolume) || 1.0),
+        collectionSoundsEnabled: row.collectionSoundsEnabled != null ? (row.collectionSoundsEnabled ? 1 : 0) : (row.collection_sounds_enabled === 1 ? 1 : 0),
+        collectionSoundsVolume: typeof row.collectionSoundsVolume === 'number' ? row.collectionSoundsVolume : (typeof row.collection_sounds_volume === 'number' ? row.collection_sounds_volume : parseFloat(row.collection_sounds_volume || row.collectionSoundsVolume) || 1.0),
+        mapVersion: row.mapVersion || row.map_version || 'v1',
+        quickbarTooltipsEnabled: row.quickbarTooltipsEnabled != null ? (row.quickbarTooltipsEnabled ? 1 : 0) : (row.quickbar_tooltips_enabled === 1 ? 1 : 0)
       }});
     }
     // return defaults
@@ -33,7 +34,8 @@ router.get('/', authenticateJWT, async (req, res) => {
       captureSoundsVolume: 1.0,
       collectionSoundsEnabled: 1,
       collectionSoundsVolume: 1.0,
-      mapVersion: 'v1'
+      mapVersion: 'v1',
+      quickbarTooltipsEnabled: 1
     }});
   } catch (err) {
     logger.error('Failed to get user settings', { error: err.message });
@@ -56,11 +58,12 @@ router.post('/', authenticateJWT, async (req, res) => {
     const collection_sounds_enabled = body.collectionSoundsEnabled ? 1 : 0;
     const collection_sounds_volume = typeof body.collectionSoundsVolume === 'number' ? body.collectionSoundsVolume : parseFloat(body.collectionSoundsVolume) || 1.0;
     const map_version = typeof body.mapVersion === 'string' ? body.mapVersion : (body.mapVersion || 'v1');
+    const quickbar_tooltips_enabled = body.quickbarTooltipsEnabled ? 1 : 0;
     const updatedAt = Math.floor(Date.now() / 1000);
 
     await gameDb.query(
-      `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          music_enabled = VALUES(music_enabled),
          music_volume = VALUES(music_volume),
@@ -71,8 +74,9 @@ router.post('/', authenticateJWT, async (req, res) => {
          collection_sounds_enabled = VALUES(collection_sounds_enabled),
          collection_sounds_volume = VALUES(collection_sounds_volume),
          map_version = VALUES(map_version),
+         quickbar_tooltips_enabled = VALUES(quickbar_tooltips_enabled),
          updated_at = VALUES(updated_at)`,
-      [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, updatedAt]
+      [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled, updatedAt]
     );
 
     // Invalidate cached settings so next read picks up changes

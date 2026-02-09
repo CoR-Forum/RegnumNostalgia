@@ -79,18 +79,21 @@ export function showTooltip(event, item) {
 
     // Fetch fresh item details from server
     const invId = item.inventoryId || null;
-    if (invId && window.getSocket) {
+    const itmId = item.itemId || null;
+    if ((invId || itmId) && window.getSocket) {
       try {
         const sock = window.getSocket();
         const doEmit = (s) => {
           try {
-            tooltip.__requestInventoryId = String(invId);
-            s.emit('item:details', { inventoryId: invId }, (resp) => {
+            const requestKey = invId ? String(invId) : `item_${itmId}`;
+            tooltip.__requestInventoryId = requestKey;
+            const payload = invId ? { inventoryId: invId } : { itemId: itmId };
+            s.emit('item:details', payload, (resp) => {
               try {
                 if (!resp || !resp.success) return;
                 const det = resp.item || {};
                 if (!currentTooltip || currentTooltip !== tooltip) return;
-                if (String(tooltip.__requestInventoryId) !== String(invId)) return;
+                if (String(tooltip.__requestInventoryId) !== requestKey) return;
 
                 let newStatsHtml = '';
                 if (det.stats && Object.keys(det.stats || {}).length > 0) {

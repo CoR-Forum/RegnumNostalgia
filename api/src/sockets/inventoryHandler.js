@@ -190,19 +190,31 @@ function registerInventoryHandlers(socket, user, io, deps) {
    */
   socket.on('item:details', async (data, callback) => {
     try {
-      const inventoryId = (data && data.inventoryId) || data;
-      if (!inventoryId) {
-        if (callback) callback({ success: false, error: 'Inventory ID required' });
+      const inventoryId = (data && data.inventoryId) || null;
+      const itemId = (data && data.itemId) || null;
+
+      if (!inventoryId && !itemId) {
+        if (callback) callback({ success: false, error: 'Inventory ID or Item ID required' });
         return;
       }
 
-      const [rows] = await gameDb.query(
-        `SELECT inv.inventory_id, inv.quantity, i.template_key, i.name, i.type, i.description, i.stats, i.rarity, i.level, i.equipment_slot, i.icon_name
-         FROM inventory inv
-         JOIN items i ON inv.item_id = i.item_id
-         WHERE inv.inventory_id = ?`,
-        [inventoryId]
-      );
+      let rows;
+      if (inventoryId) {
+        [rows] = await gameDb.query(
+          `SELECT inv.inventory_id, inv.quantity, i.template_key, i.name, i.type, i.description, i.stats, i.rarity, i.level, i.equipment_slot, i.icon_name
+           FROM inventory inv
+           JOIN items i ON inv.item_id = i.item_id
+           WHERE inv.inventory_id = ?`,
+          [inventoryId]
+        );
+      } else {
+        [rows] = await gameDb.query(
+          `SELECT NULL as inventory_id, 1 as quantity, i.template_key, i.name, i.type, i.description, i.stats, i.rarity, i.level, i.equipment_slot, i.icon_name
+           FROM items i
+           WHERE i.item_id = ?`,
+          [itemId]
+        );
+      }
 
       if (!rows || rows.length === 0) {
         if (callback) callback({ success: false, error: 'Item not found' });

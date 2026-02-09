@@ -8,6 +8,7 @@
 
 import { isCasting, startCasting } from './castbar.js';
 import { isSpellOnCooldown, getActiveSpellCount, getSpellCooldownRemaining } from './spells.js';
+import { showTooltip, moveTooltip, hideTooltip } from './tooltip.js';
 
 const ROWS = 4;
 const SLOTS = 10;
@@ -17,6 +18,7 @@ let quickbarData = Array.from({ length: ROWS }, () => Array(SLOTS).fill(null));
 
 let activeRow = 0;
 let initialized = false;
+let quickbarTooltipsEnabled = true;
 
 /**
  * Initialize quickbar: build DOM, load data, wire events.
@@ -33,6 +35,17 @@ export function initQuickbar() {
   // Listen for socket reconnect to reload
   window.addEventListener('websocket:connected', () => loadFromServer());
 }
+
+/**
+ * Enable or disable quickbar tooltips on hover.
+ * Called from settings UI.
+ */
+export function setQuickbarTooltipsEnabled(enabled) {
+  quickbarTooltipsEnabled = !!enabled;
+}
+
+// Expose on window so inline settings scripts can call it
+window.setQuickbarTooltipsEnabled = setQuickbarTooltipsEnabled;
 
 // ── DOM Construction ──
 
@@ -190,6 +203,21 @@ function renderSlot(el, slotIndex, data) {
     img.draggable = false;
     el.appendChild(img);
   }
+
+  // Tooltip on hover
+  el.addEventListener('mouseenter', (e) => {
+    if (!quickbarTooltipsEnabled) return;
+    const tooltipItem = {
+      itemName: data.name || data.templateKey || '',
+      itemType: data.type || '',
+      rarity: data.rarity || 'common',
+      iconName: data.iconName || null,
+      itemId: data.itemId || null,
+    };
+    showTooltip(e, tooltipItem);
+  });
+  el.addEventListener('mousemove', (e) => moveTooltip(e));
+  el.addEventListener('mouseleave', () => hideTooltip());
 
   // Cooldown overlay
   if (data.spellKey) {

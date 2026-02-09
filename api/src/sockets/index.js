@@ -160,6 +160,7 @@ function registerSettingsHandler(socket, user, io) {
       if (typeof data.collectionSoundsEnabled !== 'undefined') s.settings.collectionSoundsEnabled = data.collectionSoundsEnabled ? 1 : 0;
       if (typeof data.collectionSoundsVolume !== 'undefined') s.settings.collectionSoundsVolume = typeof data.collectionSoundsVolume === 'number' ? data.collectionSoundsVolume : parseFloat(data.collectionSoundsVolume) || 1.0;
       if (typeof data.mapVersion !== 'undefined') s.settings.mapVersion = ('' + data.mapVersion) || 'v1';
+      if (typeof data.quickbarTooltipsEnabled !== 'undefined') s.settings.quickbarTooltipsEnabled = data.quickbarTooltipsEnabled ? 1 : 0;
       socket.user = s;
 
       // Persist settings to DB
@@ -175,10 +176,11 @@ function registerSettingsHandler(socket, user, io) {
           const collection_sounds_enabled = s.settings.collectionSoundsEnabled ? 1 : 0;
           const collection_sounds_volume = typeof s.settings.collectionSoundsVolume === 'number' ? s.settings.collectionSoundsVolume : parseFloat(s.settings.collectionSoundsVolume) || 1.0;
           const map_version = typeof s.settings.mapVersion === 'string' ? s.settings.mapVersion : (s.settings.mapVersion || 'v1');
+          const quickbar_tooltips_enabled = s.settings.quickbarTooltipsEnabled ? 1 : 0;
           const updatedAt = Math.floor(Date.now() / 1000);
           await gameDb.query(
-            `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE
                music_enabled = VALUES(music_enabled),
                music_volume = VALUES(music_volume),
@@ -189,8 +191,9 @@ function registerSettingsHandler(socket, user, io) {
                collection_sounds_enabled = VALUES(collection_sounds_enabled),
                collection_sounds_volume = VALUES(collection_sounds_volume),
                map_version = VALUES(map_version),
+               quickbar_tooltips_enabled = VALUES(quickbar_tooltips_enabled),
                updated_at = VALUES(updated_at)`,
-            [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, updatedAt]
+            [userId, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled, updatedAt]
           );
 
           // Invalidate Redis settings cache
