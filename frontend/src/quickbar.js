@@ -1,15 +1,15 @@
 /**
- * Quickbar — 5 rows × 10 slots at the bottom-left, next to the HUD buttons.
+ * Quickbar — 4 rows × 10 slots at the bottom-left, next to the HUD buttons.
  * Players drag items from inventory onto quickbar slots for quick use.
  * Left-click a filled slot to use/cast the item.
  * Drag items between slots to move/swap them, or drag outside to remove.
- * Scroll (mouse wheel or arrow buttons) to switch between the 5 rows.
+ * Scroll (mouse wheel or arrow buttons) to switch between the 4 rows.
  */
 
 import { isCasting, startCasting } from './castbar.js';
 import { isSpellOnCooldown, getActiveSpellCount, getSpellCooldownRemaining } from './spells.js';
 
-const ROWS = 5;
+const ROWS = 4;
 const SLOTS = 10;
 
 /** @type {Array<Array<{itemId:number, templateKey:string, name:string, iconName:string, type:string, rarity:string, spellKey:string|null, cooldown:number}|null>>} */

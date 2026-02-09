@@ -56,7 +56,7 @@ function registerQuickbarHandlers(socket, user) {
       if (row == null || slot == null || !itemId) {
         return callback({ success: false, error: 'Missing row, slot, or itemId' });
       }
-      if (row < 0 || row >= 5 || slot < 0 || slot >= 10) {
+      if (row < 0 || row >= 4 || slot < 0 || slot >= 10) {
         return callback({ success: false, error: 'Invalid row/slot index' });
       }
 
