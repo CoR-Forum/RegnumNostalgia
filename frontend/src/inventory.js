@@ -7,7 +7,7 @@ import { showTooltip, moveTooltip, hideTooltip, getCurrentTooltip, getTooltipKee
 import { emitOrApi } from './api.js';
 import { getErrorMessage } from './utils.js';
 import { startCasting, isCasting } from './castbar.js';
-import { getActiveSpellCount } from './spells.js';
+import { getActiveSpellCount, isSpellOnCooldown, getSpellCooldownRemaining } from './spells.js';
 
 /**
  * Render the inventory items list.
@@ -46,11 +46,20 @@ export function displayInventory(items) {
     const iconHtml = iconSrc ? `<img src="${iconSrc}" alt="${getItemName(item)}">` : '';
     const rarityClass = item.rarity || 'common';
 
+    // Check if this item's spell is on cooldown
+    const spellKey = item.spellKey || null;
+    const cdInfo = spellKey ? getSpellCooldownRemaining(spellKey) : null;
+    const cdHtml = cdInfo ? `<div class="item-cd-overlay"><span class="item-cd-timer">${cdInfo.remaining}s</span></div>` : '';
+
     itemDiv.innerHTML = `
-      <div class="item-icon">${iconHtml}</div>
+      <div class="item-icon">${iconHtml}${cdHtml}</div>
       <div class="item-name ${rarityClass}">${getItemName(item)}${typeof item.level !== 'undefined' ? ` <span class="item-level">Lv ${item.level}</span>` : ''}</div>
       ${item.quantity > 1 ? `<div class="item-quantity">×${item.quantity}</div>` : ''}
     `;
+
+    if (spellKey) {
+      itemDiv.dataset.spellKey = spellKey;
+    }
 
     const invId = item.inventoryId;
     const equipSlot = item.equipmentSlot ?? null;
@@ -97,6 +106,7 @@ export function displayInventory(items) {
         if (isSpell) {
           // Cast spell (with optional cast time)
           if (isCasting()) return;
+          if (isSpellOnCooldown(itemDetails.stats.spell)) return;
           const maxStack = itemDetails.stats.max_spell_stack || 1;
           if (getActiveSpellCount(itemDetails.stats.spell) >= maxStack) return;
           try {

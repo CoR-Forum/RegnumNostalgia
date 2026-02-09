@@ -861,6 +861,86 @@ async function tickActiveSpells(userId) {
   }
 }
 
+// ── Spell Cooldowns ──
+
+const SPELL_COOLDOWNS_PREFIX = 'cache:spell_cooldowns:'; // + userId → hash of spellKey → JSON
+
+/**
+ * Set a cooldown for a spell. Uses a Redis hash per user.
+ * @param {number} userId
+ * @param {string} spellKey
+ * @param {number} cooldownSeconds - total cooldown in seconds
+ * @param {string|null} iconName - icon to display during cooldown
+ */
+async function setSpellCooldown(userId, spellKey, cooldownSeconds, iconName) {
+  if (!cooldownSeconds || cooldownSeconds <= 0) return;
+  try {
+    const key = SPELL_COOLDOWNS_PREFIX + userId;
+    const expiresAt = Math.floor(Date.now() / 1000) + cooldownSeconds;
+    await redis.hset(key, spellKey, JSON.stringify({ expiresAt, total: cooldownSeconds, iconName: iconName || null }));
+    // Ensure the hash expires eventually (max cooldown + buffer)
+    const currentTtl = await redis.ttl(key);
+    if (currentTtl < cooldownSeconds + 60) {
+      await redis.expire(key, cooldownSeconds + 60);
+    }
+  } catch (e) {
+    logger.error('setSpellCooldown error', { userId, spellKey, error: e.message });
+  }
+}
+
+/**
+ * Get remaining cooldown for a specific spell. Returns { spellKey, remaining, total, iconName } or null.
+ */
+async function getSpellCooldown(userId, spellKey) {
+  try {
+    const key = SPELL_COOLDOWNS_PREFIX + userId;
+    const raw = await redis.hget(key, spellKey);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    const now = Math.floor(Date.now() / 1000);
+    const remaining = data.expiresAt - now;
+    if (remaining <= 0) {
+      await redis.hdel(key, spellKey);
+      return null;
+    }
+    return { spellKey, remaining, total: data.total, iconName: data.iconName };
+  } catch (e) {
+    logger.error('getSpellCooldown error', { userId, spellKey, error: e.message });
+    return null;
+  }
+}
+
+/**
+ * Get all active cooldowns for a user. Cleans up expired entries.
+ * Returns array of { spellKey, remaining, total, iconName }.
+ */
+async function getAllSpellCooldowns(userId) {
+  try {
+    const key = SPELL_COOLDOWNS_PREFIX + userId;
+    const all = await redis.hgetall(key);
+    if (!all || Object.keys(all).length === 0) return [];
+    const now = Math.floor(Date.now() / 1000);
+    const result = [];
+    const expiredKeys = [];
+    for (const [spellKey, raw] of Object.entries(all)) {
+      const data = JSON.parse(raw);
+      const remaining = data.expiresAt - now;
+      if (remaining <= 0) {
+        expiredKeys.push(spellKey);
+      } else {
+        result.push({ spellKey, remaining, total: data.total, iconName: data.iconName });
+      }
+    }
+    if (expiredKeys.length > 0) {
+      await redis.hdel(key, ...expiredKeys);
+    }
+    return result;
+  } catch (e) {
+    logger.error('getAllSpellCooldowns error', { userId, error: e.message });
+    return [];
+  }
+}
+
 module.exports = {
   CACHE_KEYS,
   TTL,
@@ -916,6 +996,10 @@ module.exports = {
   addActiveSpell,
   removeActiveSpell,
   tickActiveSpells,
+  // Spell Cooldowns
+  setSpellCooldown,
+  getSpellCooldown,
+  getAllSpellCooldowns,
   // Startup
   preloadStaticData,
 };

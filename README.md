@@ -17,7 +17,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Advanced Systems
 - **Inventory & Equipment**: 10 equipment slots (head, body, hands, shoulders, legs, weapons, rings, amulet)
 - **Item System**: Weapons, armor, consumables with rarity tiers (common, uncommon, rare, epic, legendary)
-- **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed, damage potions deal damage over time), with active spell UI, cast bar, and stacking rules (parallel/sequential)
+- **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed, damage potions deal damage over time), with active spell UI, cast bar, stacking rules (parallel/sequential), and per-spell cooldowns
 - **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution
 - **Territory Control**: Realm-owned forts and castles with health and vulnerability mechanics
 - **World Bosses**: Superbosses with spawn timers and respawn mechanics
@@ -251,6 +251,7 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - `cache:walkers:user:{userId}` - Current active walkerId for a user
 - `cache:walk_speed:{userId}` - Cached total walk_speed from equipped items and active spell buffs (TTL: 60s)
 - `cache:spells:active:{userId}` - Active spells JSON array for a user (TTL: 300s, updated on cast/tick/expire)
+- `cache:spell_cooldowns:{userId}` - Hash of spellKey → cooldown data (TTL: auto, cleaned on read)
 
 #### Queue System
 - `bull:{queueName}:*` - Queue job data (walker-processor, health-regeneration, spell-processor, server-time, territory-sync, spawn-queue)
@@ -275,6 +276,7 @@ The API uses Redis as a comprehensive caching layer (see `api/src/config/cache.j
 | **Active Walkers** | Redis hash (walker state per tick) | N/A | Added on create, removed on complete/interrupt |
 | **Walk Speed** | Lazy-load + TTL | 60s | Invalidated on equip/unequip and spell expiry |
 | **Active Spells** | Updated on cast/tick | 300s | Updated every spell tick, cleared on expire |
+| **Spell Cooldowns** | Set on cast | Auto (per spell) | Expires after cooldown duration |
 
 ## 🔌 API Endpoints
 

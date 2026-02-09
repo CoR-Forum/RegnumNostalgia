@@ -1,6 +1,6 @@
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
-const { getItemByTemplateKey, getActiveSpells, setActiveSpells, addActiveSpell, invalidateWalkSpeed } = require('../config/cache');
+const { getItemByTemplateKey, getActiveSpells, setActiveSpells, addActiveSpell, invalidateWalkSpeed, getSpellCooldown, setSpellCooldown, getAllSpellCooldowns } = require('../config/cache');
 
 /**
  * Register spell-related socket handlers.
@@ -47,6 +47,15 @@ function registerSpellHandlers(socket, user, io, deps) {
 
       if (!stats || !stats.spell) {
         return callback({ success: false, error: 'This item is not a spell' });
+      }
+
+      // Check cooldown
+      const cooldownSeconds = stats.cooldown || 0;
+      if (cooldownSeconds > 0) {
+        const cd = await getSpellCooldown(user.userId, stats.spell);
+        if (cd) {
+          return callback({ success: false, error: `On cooldown (${cd.remaining}s remaining)` });
+        }
       }
 
       // Check stacking rules — max_spell_stack limits how many of the same spell can be active (default 1)
@@ -107,9 +116,15 @@ function registerSpellHandlers(socket, user, io, deps) {
         walkSpeed: stats.walk_speed || 0,
         stackMode,
         duration,
-        remaining: duration
+        remaining: duration,
+        cooldown: cooldownSeconds
       };
       await addActiveSpell(user.userId, spellObj);
+
+      // Set cooldown in Redis (starts now)
+      if (cooldownSeconds > 0) {
+        await setSpellCooldown(user.userId, stats.spell, cooldownSeconds, invItem.icon_name);
+      }
 
       // If spell grants walk_speed, invalidate the walk speed cache so it's recomputed
       if (stats.walk_speed) {
@@ -165,7 +180,10 @@ function registerSpellHandlers(socket, user, io, deps) {
         await setActiveSpells(user.userId, spells);
       }
 
-      callback({ success: true, spells });
+      // Also return active cooldowns
+      const cooldowns = await getAllSpellCooldowns(user.userId);
+
+      callback({ success: true, spells, cooldowns });
     } catch (error) {
       logger.error('spell:active error', { userId: user.userId, error: error.message });
       callback({ success: false, error: 'Failed to get active spells' });

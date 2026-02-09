@@ -56,7 +56,7 @@ function registerInventoryHandlers(socket, user, io, deps) {
       // Detailed fields loaded on hover via `item:details`.
       let query = `
         SELECT inv.inventory_id, inv.item_id, inv.quantity, inv.acquired_at,
-               i.template_key, i.name, i.icon_name, i.type, i.rarity
+               i.template_key, i.name, i.icon_name, i.type, i.rarity, i.stats
         FROM inventory inv
         JOIN items i ON inv.item_id = i.item_id
         WHERE inv.user_id = ?
@@ -73,17 +73,25 @@ function registerInventoryHandlers(socket, user, io, deps) {
 
       const [items] = await gameDb.query(query, params);
 
-      const inventory = items.map(item => ({
-        inventoryId: item.inventory_id,
-        itemId: item.item_id,
-        quantity: item.quantity,
-        acquiredAt: item.acquired_at,
-        templateKey: item.template_key,
-        name: item.name,
-        iconName: item.icon_name,
-        type: item.type,
-        rarity: item.rarity
-      }));
+      const inventory = items.map(item => {
+        let parsedStats = null;
+        try {
+          parsedStats = typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats;
+        } catch (e) { /* ignore */ }
+        return {
+          inventoryId: item.inventory_id,
+          itemId: item.item_id,
+          quantity: item.quantity,
+          acquiredAt: item.acquired_at,
+          templateKey: item.template_key,
+          name: item.name,
+          iconName: item.icon_name,
+          type: item.type,
+          rarity: item.rarity,
+          spellKey: parsedStats?.spell || null,
+          cooldown: parsedStats?.cooldown || 0
+        };
+      });
 
       if (callback) callback({ success: true, items: inventory });
     } catch (error) {
