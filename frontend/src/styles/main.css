@@ -876,69 +876,76 @@
       text-shadow: 0 1px 2px rgba(0,0,0,0.9);
     }
 
-    /* ── Quickbar (bottom-left, beside HUD buttons) ── */
+    /* ── Quickbar (positioned on top of bottom-right bar image) ── */
     #quickbar{
-      position: fixed;
-      bottom: 6px;
-      left: 50%;
-      transform: translateX(calc(-50% - 20px));
-      z-index: 20001;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      pointer-events: auto;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
     }
     #quickbar-row-indicator{
-      width: 20px;
-      height: 20px;
+      position: absolute;
+      bottom: 6px;
+      right: 348px;
+      width: 16px;
+      height: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(10,12,15,0.85);
-      border: 1px solid rgba(255,210,122,0.45);
-      border-radius: 4px;
-      color: #ffd27a;
-      font-size: 12px;
+      color: rgba(255,210,122,0.6);
+      font-size: 10px;
       font-weight: 700;
       cursor: default;
       user-select: none;
+      pointer-events: auto;
+      z-index: 2;
+      background: none;
+      border: none;
     }
     #quickbar-slots{
-      display: flex;
-      gap: 2px;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
     }
     .quickbar-slot{
-      position: relative;
-      width: 40px;
-      height: 40px;
-      background: rgba(10,12,15,0.7);
-      border: 1px solid rgba(255,210,122,0.3);
-      border-radius: 4px;
+      position: absolute;
+      bottom: 4px;
+      width: 38px;
+      height: 38px;
       cursor: pointer;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       user-select: none;
-      transition: border-color 0.15s;
+      pointer-events: auto;
+      background: none;
+      border: none;
+      border-radius: 0;
     }
     .quickbar-slot:hover{
-      border-color: rgba(255,210,122,0.7);
+      background: rgba(255,255,255,0.08);
+      border-radius: 3px;
     }
     .quickbar-slot.drag-over{
-      border-color: #ffd27a;
       background: rgba(255,210,122,0.15);
+      border-radius: 3px;
     }
     .quickbar-slot.filled{
-      background: rgba(20,25,35,0.85);
+      background: none;
     }
     .quickbar-slot img{
-      width: 34px;
-      height: 34px;
+      width: 38px;
+      height: 38px;
       display: block;
       image-rendering: auto;
       pointer-events: none;
-      border-radius: 3px;
+      object-fit: contain;
     }
     .quickbar-slot-key{
       position: absolute;
@@ -963,7 +970,6 @@
       align-items: center;
       justify-content: center;
       pointer-events: none;
-      border-radius: 3px;
     }
     .quickbar-cd-timer{
       font-size: 10px;
@@ -971,6 +977,17 @@
       color: #ff9e9e;
       text-shadow: 0 1px 2px rgba(0,0,0,0.9);
     }
+    /* Position each quickbar slot — matching HUD button positioning pattern */
+    .quickbar-slot[data-slot="0"]{ right: 770px; }
+    .quickbar-slot[data-slot="1"]{ right: 727px; }
+    .quickbar-slot[data-slot="2"]{ right: 684px; }
+    .quickbar-slot[data-slot="3"]{ right: 641px; }
+    .quickbar-slot[data-slot="4"]{ right: 598px; }
+    .quickbar-slot[data-slot="5"]{ right: 555px; }
+    .quickbar-slot[data-slot="6"]{ right: 512px; }
+    .quickbar-slot[data-slot="7"]{ right: 469px; }
+    .quickbar-slot[data-slot="8"]{ right: 426px; }
+    .quickbar-slot[data-slot="9"]{ right: 383px; }
 
     /* Cast bar (bottom-center during spell casting) */
     #cast-bar{
