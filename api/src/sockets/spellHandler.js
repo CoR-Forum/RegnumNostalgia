@@ -1,6 +1,6 @@
 const { gameDb } = require('../config/database');
 const logger = require('../config/logger');
-const { getItemByTemplateKey, getActiveSpells, setActiveSpells, addActiveSpell } = require('../config/cache');
+const { getItemByTemplateKey, getActiveSpells, setActiveSpells, addActiveSpell, invalidateWalkSpeed } = require('../config/cache');
 
 /**
  * Register spell-related socket handlers.
@@ -49,13 +49,14 @@ function registerSpellHandlers(socket, user, io, deps) {
         return callback({ success: false, error: 'This item is not a spell' });
       }
 
-      // Check if this spell is already active (prevent stacking same spell)
+      // Check stacking rules — max_spell_stack limits how many of the same spell can be active (default 1)
+      const maxStack = stats.max_spell_stack || 1;
       const [existingSpells] = await gameDb.query(
-        'SELECT spell_id FROM active_spells WHERE user_id = ? AND spell_key = ? AND remaining > 0',
+        'SELECT COUNT(*) as cnt FROM active_spells WHERE user_id = ? AND spell_key = ? AND remaining > 0',
         [user.userId, stats.spell]
       );
-      if (existingSpells.length > 0) {
-        return callback({ success: false, error: 'This spell is already active' });
+      if (existingSpells[0].cnt >= maxStack) {
+        return callback({ success: false, error: maxStack === 1 ? 'This spell is already active' : `Max ${maxStack} stacks reached` });
       }
 
       // Consume 1 quantity
@@ -74,15 +75,18 @@ function registerSpellHandlers(socket, user, io, deps) {
       // Insert active spell
       const now = Math.floor(Date.now() / 1000);
       const duration = stats.duration || 10;
+      const stackMode = stats.spell_stack_mode || 'parallel';
       const [insertResult] = await gameDb.query(
-        `INSERT INTO active_spells (user_id, spell_key, icon_name, heal_per_tick, mana_per_tick, duration, remaining, started_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO active_spells (user_id, spell_key, icon_name, heal_per_tick, mana_per_tick, walk_speed, stack_mode, duration, remaining, started_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           user.userId,
           stats.spell,
           invItem.icon_name || null,
           stats.heal_per_tick || 0,
           stats.mana_per_tick || 0,
+          stats.walk_speed || 0,
+          stackMode,
           duration,
           duration,
           now
@@ -98,10 +102,17 @@ function registerSpellHandlers(socket, user, io, deps) {
         iconName: invItem.icon_name || null,
         healPerTick: stats.heal_per_tick || 0,
         manaPerTick: stats.mana_per_tick || 0,
+        walkSpeed: stats.walk_speed || 0,
+        stackMode,
         duration,
         remaining: duration
       };
       await addActiveSpell(user.userId, spellObj);
+
+      // If spell grants walk_speed, invalidate the walk speed cache so it's recomputed
+      if (stats.walk_speed) {
+        await invalidateWalkSpeed(user.userId);
+      }
 
       // Emit to client
       socket.emit('spell:started', spellObj);
@@ -131,9 +142,10 @@ function registerSpellHandlers(socket, user, io, deps) {
       if (spells === null) {
         // Fallback to DB
         const [rows] = await gameDb.query(
-          `SELECT spell_id, spell_key, icon_name, heal_per_tick, mana_per_tick, duration, remaining
+          `SELECT spell_id, spell_key, icon_name, heal_per_tick, mana_per_tick, walk_speed, stack_mode, duration, remaining
            FROM active_spells
-           WHERE user_id = ? AND remaining > 0`,
+           WHERE user_id = ? AND remaining > 0
+           ORDER BY spell_id ASC`,
           [user.userId]
         );
         spells = rows.map(r => ({
@@ -142,6 +154,8 @@ function registerSpellHandlers(socket, user, io, deps) {
           iconName: r.icon_name,
           healPerTick: r.heal_per_tick,
           manaPerTick: r.mana_per_tick,
+          walkSpeed: r.walk_speed,
+          stackMode: r.stack_mode,
           duration: r.duration,
           remaining: r.remaining
         }));

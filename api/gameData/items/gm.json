@@ -9,7 +9,7 @@
     "stackable": 0,
     "level": 1,
     "equipment_slot": "head",
-    "icon_name": "gm.png"
+    "icon_name": "gm-helmet.png"
   },
   {
     "template_key": "gm_pauldrons",
@@ -21,7 +21,7 @@
     "stackable": 0,
     "level": 1,
     "equipment_slot": "shoulders",
-    "icon_name": "gm.png"
+    "icon_name": "gm-pauldron.png"
   },
     {
     "template_key": "gm_chestplate",
@@ -33,7 +33,7 @@
     "stackable": 0,
     "level": 1,
     "equipment_slot": "body",
-    "icon_name": "gm.png"
+    "icon_name": "gm-armor.png"
   },
   {
     "template_key": "gm_leggings",
@@ -45,7 +45,7 @@
     "stackable": 0,
     "level": 1,
     "equipment_slot": "legs",
-    "icon_name": "gm.png"
+    "icon_name": "gm-leggings.png"
   },
     {
     "template_key": "gm_gloves",
@@ -57,7 +57,7 @@
     "stackable": 0,
     "level": 1,
     "equipment_slot": "hands",
-    "icon_name": "gm.png"
+    "icon_name": "gm-gauntlets.png"
   },
   {
     "template_key": "gm_amulet",

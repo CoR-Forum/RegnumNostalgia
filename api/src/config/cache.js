@@ -593,8 +593,8 @@ async function getCachedWalkSpeed(userId) {
 }
 
 /**
- * Compute and cache the total walk_speed from a user's equipped items.
- * Queries equipment + items tables, caches the result.
+ * Compute and cache the total walk_speed from a user's equipped items + active spell buffs.
+ * Queries equipment + items tables and active_spells, caches the result.
  */
 async function computeAndCacheWalkSpeed(gameDb, userId) {
   try {
@@ -638,6 +638,15 @@ async function computeAndCacheWalkSpeed(gameDb, userId) {
           }
         });
       }
+    }
+
+    // Add walk_speed bonuses from active spells
+    const [spellRows] = await gameDb.query(
+      'SELECT walk_speed FROM active_spells WHERE user_id = ? AND walk_speed > 0 AND remaining > 0',
+      [userId]
+    );
+    for (const row of spellRows) {
+      totalWalkSpeed += row.walk_speed;
     }
 
     await redis.set(CACHE_KEYS.WALK_SPEED + userId, String(totalWalkSpeed), 'EX', TTL.USER_EQUIPMENT);

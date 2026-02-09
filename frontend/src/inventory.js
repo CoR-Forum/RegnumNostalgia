@@ -6,6 +6,8 @@ import { getItemName } from './items.js';
 import { showTooltip, moveTooltip, hideTooltip, getCurrentTooltip, getTooltipKeepOpen, setTooltipKeepOpen } from './tooltip.js';
 import { emitOrApi } from './api.js';
 import { getErrorMessage } from './utils.js';
+import { startCasting, isCasting } from './castbar.js';
+import { getActiveSpellCount } from './spells.js';
 
 /**
  * Render the inventory items list.
@@ -93,19 +95,34 @@ export function displayInventory(items) {
         const isSpell = itemDetails.type === 'consumable' && itemDetails.stats && itemDetails.stats.spell;
 
         if (isSpell) {
-          // Cast spell
+          // Cast spell (with optional cast time)
+          if (isCasting()) return;
+          const maxStack = itemDetails.stats.max_spell_stack || 1;
+          if (getActiveSpellCount(itemDetails.stats.spell) >= maxStack) return;
           try {
-            const castSpell = () => new Promise((resolve, reject) => {
-              if (window.socket && window.socket.connected) {
-                window.socket.emit('spell:cast', { inventoryId: id }, (resp) => {
-                  if (resp && resp.success) resolve(resp);
-                  else reject(new Error(resp?.error || 'Failed to cast spell'));
-                });
-              } else {
-                reject(new Error('Not connected'));
-              }
-            });
-            await castSpell();
+            const castTime = itemDetails.stats.cast_time || 0;
+            if (castTime > 0) {
+              // Show cast bar, then emit spell:cast when done
+              await startCasting({
+                name: itemDetails.name || itemDetails.stats.spell,
+                castTime,
+                inventoryId: parseInt(id, 10),
+                iconName: itemDetails.icon_name
+              });
+            } else {
+              // Instant cast
+              const castSpell = () => new Promise((resolve, reject) => {
+                if (window.socket && window.socket.connected) {
+                  window.socket.emit('spell:cast', { inventoryId: id }, (resp) => {
+                    if (resp && resp.success) resolve(resp);
+                    else reject(new Error(resp?.error || 'Failed to cast spell'));
+                  });
+                } else {
+                  reject(new Error('Not connected'));
+                }
+              });
+              await castSpell();
+            }
           } catch (err) {
             if (window.addLogMessage) window.addLogMessage(getErrorMessage(err, 'Failed to cast spell'), 'error');
           }

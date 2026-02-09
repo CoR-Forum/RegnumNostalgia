@@ -365,6 +365,8 @@ async function initDatabase() {
         icon_name VARCHAR(255) NULL,
         heal_per_tick INT NOT NULL DEFAULT 0,
         mana_per_tick INT NOT NULL DEFAULT 0,
+        walk_speed INT NOT NULL DEFAULT 0,
+        stack_mode VARCHAR(16) NOT NULL DEFAULT 'parallel',
         duration INT NOT NULL DEFAULT 10,
         remaining INT NOT NULL DEFAULT 10,
         started_at INT NOT NULL,

@@ -6,7 +6,7 @@
 
 import { gameState } from './state.js';
 
-/** @type {Array<{spellId:number, spellKey:string, iconName:string, duration:number, remaining:number, healPerTick?:number, manaPerTick?:number}>} */
+/** @type {Array<{spellId:number, spellKey:string, iconName:string, duration:number, remaining:number, healPerTick?:number, manaPerTick?:number, walkSpeed?:number}>} */
 let activeSpells = [];
 
 /** Local timers to tick down the countdown without waiting for server */
@@ -14,7 +14,8 @@ let localTickInterval = null;
 
 const SPELL_NAMES = {
   health_potion: 'Health Potion',
-  mana_potion: 'Mana Potion'
+  mana_potion: 'Mana Potion',
+  speed_potion: 'Speed Potion'
 };
 
 /**
@@ -48,6 +49,7 @@ function renderActiveSpells() {
     const parts = [];
     if (spell.healPerTick) parts.push(`+${spell.healPerTick} HP/s`);
     if (spell.manaPerTick) parts.push(`+${spell.manaPerTick} MP/s`);
+    if (spell.walkSpeed) parts.push(`+${spell.walkSpeed} Speed`);
     const desc = parts.join(', ');
     const name = SPELL_NAMES[spell.spellKey] || spell.spellKey;
 
@@ -179,4 +181,11 @@ export function initSpellsUI() {
       fetchSpells();
     }
   });
+}
+
+/**
+ * Get the number of currently active spells matching a given spell key.
+ */
+export function getActiveSpellCount(spellKey) {
+  return activeSpells.filter(s => s.spellKey === spellKey).length;
 }

@@ -17,7 +17,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Advanced Systems
 - **Inventory & Equipment**: 10 equipment slots (head, body, hands, shoulders, legs, weapons, rings, amulet)
 - **Item System**: Weapons, armor, consumables with rarity tiers (common, uncommon, rare, epic, legendary)
-- **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time), with active spell UI
+- **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed), with active spell UI
 - **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution
 - **Territory Control**: Realm-owned forts and castles with health and vulnerability mechanics
 - **World Bosses**: Superbosses with spawn timers and respawn mechanics
@@ -226,7 +226,7 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - **territory_captures**: Historical ownership changes
 - **superbosses**: World bosses with spawn mechanics
 - **walkers**: Active player movement queues with paths
-- **active_spells**: Currently active spell buffs on players (spell_key, heal/mana per tick, duration, remaining)
+- **active_spells**: Currently active spell buffs on players (spell_key, heal/mana per tick, walk_speed, duration, remaining)
 - **server_time**: Synchronized in-game clock
 
 ### Redis Keys

@@ -70,7 +70,7 @@ GM/Admin users can execute commands in the shoutbox:
 
 1. **Walker Queue** (2s interval) - Advances player movement along calculated paths
 2. **Health Queue** (1s interval) - Regenerates health/mana for players, territories, superbosses
-3. **Spell Queue** (1s interval) - Processes active spell ticks (applies heal/mana per tick, expires finished spells)
+3. **Spell Queue** (1s interval) - Processes active spell ticks (applies heal/mana per tick, invalidates walk speed cache on spell expiry, expires finished spells)
 4. **Time Queue** (10s interval) - Updates ingame time (24h cycle per real hour)
 5. **Territory Queue** (15s interval) - Syncs ownership from external API
 

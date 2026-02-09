@@ -5,6 +5,7 @@
 import { gameState } from './state.js';
 import { getMap, getTotalH } from './map-state.js';
 import { showMapContextMenuAt, hideMapContextMenu, setLastContextAllowed } from './context-menu.js';
+import { cancelCasting } from './castbar.js';
 
 /**
  * Create the yellow "go here" destination icon.
@@ -20,6 +21,9 @@ export const buildGoHereIcon = () => L.divIcon({
  * Start walking toward a map location. Server computes path and advances via cron.
  */
 export async function performWalkAtLatLng(latlng) {
+  // Cancel any active spell cast when starting to move
+  cancelCasting();
+
   const totalH = getTotalH();
   const x = Math.round(latlng.lng);
   const y = Math.round(totalH - latlng.lat);

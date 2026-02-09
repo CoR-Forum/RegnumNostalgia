@@ -992,6 +992,12 @@
   </div>
   <!-- Active spells display (to the left of compass) -->
   <div id="active-spells-container" aria-hidden="true"></div>
+  <!-- Cast bar (shown at bottom-center during spell casting) -->
+  <div id="cast-bar">
+    <div id="cast-bar-label"></div>
+    <div id="cast-bar-track"><div id="cast-bar-fill"></div></div>
+    <div id="cast-bar-time"></div>
+  </div>
   <!-- Top-right compass with interactive controls (map settings + logout) -->
     <div id="ui-compass" aria-hidden="false">
     <img src="https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-compass.png" alt="" draggable="false" ondragstart="return false;">
@@ -4249,12 +4255,20 @@
 
     /* Active spells display (to the left of compass) */
     #active-spells-container{ position: fixed; top: 8px; right: 176px; z-index: 20001; display: flex; flex-direction: row; gap: 6px; pointer-events: auto; }
-    .active-spell{ position: relative; width: 40px; height: 40px; border: 2px solid rgba(255,210,122,0.6); border-radius: 6px; background: rgba(0,0,0,0.55); overflow: hidden; cursor: default; }
-    .active-spell img{ width: 100%; height: 100%; display: block; }
+    .active-spell{ position: relative; width: 40px; height: 40px; border: 2px solid rgba(255,210,122,0.6); border-radius: 6px; background: rgba(0,0,0,0.55); overflow: visible; cursor: default; }
+    .active-spell img{ width: 100%; height: 100%; display: block; border-radius: 4px; }
     .active-spell .spell-timer{ position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.9); background: linear-gradient(transparent, rgba(0,0,0,0.7)); padding: 1px 0; line-height: 1; }
-    .active-spell .spell-cooldown-overlay{ position: absolute; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.45); pointer-events: none; transition: height 1s linear; }
+    .active-spell .spell-cooldown-overlay{ position: absolute; top: 0; left: 0; right: 0; background: rgba(0,0,0,0.45); pointer-events: none; transition: height 1s linear; border-radius: 4px 4px 0 0; }
     .active-spell .spell-tooltip{ display: none; position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%); background: rgba(10,12,15,0.95); color: #e6e6e6; padding: 3px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; z-index: 20005; pointer-events: none; }
     .active-spell:hover .spell-tooltip{ display: block; }
+
+    /* Cast bar (bottom-center during spell casting) */
+    #cast-bar{ display: none; position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); z-index: 20010; width: 260px; background: rgba(10,12,15,0.92); border: 1px solid rgba(255,210,122,0.4); border-radius: 6px; padding: 6px 10px; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.6); }
+    #cast-bar.visible{ display: block; }
+    #cast-bar-label{ font-size: 11px; color: #ffd27a; margin-bottom: 4px; text-align: center; font-weight: 600; }
+    #cast-bar-track{ width: 100%; height: 10px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+    #cast-bar-fill{ height: 100%; width: 0%; background: linear-gradient(90deg, #f59e0b, #fbbf24); border-radius: 4px; }
+    #cast-bar-time{ font-size: 10px; color: #aaa; text-align: center; margin-top: 3px; }
 
     /* Compass controls (map settings + logout) */
     #ui-compass .compass-controls{ position: absolute; top: 36px; right: 12px; display: flex; flex-direction: column; gap: 6px; pointer-events: auto; z-index: 20002; }

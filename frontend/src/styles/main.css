@@ -801,7 +801,7 @@
       border: 2px solid rgba(255,210,122,0.6);
       border-radius: 6px;
       background: rgba(0,0,0,0.55);
-      overflow: hidden;
+      overflow: visible;
       cursor: default;
     }
     .active-spell img{
@@ -809,6 +809,7 @@
       height: 100%;
       display: block;
       image-rendering: auto;
+      border-radius: 4px;
     }
     .active-spell .spell-timer{
       position: absolute;
@@ -832,6 +833,7 @@
       background: rgba(0,0,0,0.45);
       pointer-events: none;
       transition: height 1s linear;
+      border-radius: 4px 4px 0 0;
     }
     .active-spell .spell-tooltip{
       display: none;
@@ -850,6 +852,52 @@
     }
     .active-spell:hover .spell-tooltip{
       display: block;
+    }
+
+    /* Cast bar (bottom-center during spell casting) */
+    #cast-bar{
+      display: none;
+      position: fixed;
+      bottom: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20010;
+      width: 260px;
+      background: rgba(10,12,15,0.92);
+      border: 1px solid rgba(255,210,122,0.4);
+      border-radius: 6px;
+      padding: 6px 10px;
+      pointer-events: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    }
+    #cast-bar.visible{
+      display: block;
+    }
+    #cast-bar-label{
+      font-size: 11px;
+      color: #ffd27a;
+      margin-bottom: 4px;
+      text-align: center;
+      font-weight: 600;
+    }
+    #cast-bar-track{
+      width: 100%;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #cast-bar-fill{
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b, #fbbf24);
+      border-radius: 4px;
+    }
+    #cast-bar-time{
+      font-size: 10px;
+      color: #aaa;
+      text-align: center;
+      margin-top: 3px;
     }
 
     /* Compass controls (map settings + logout) */

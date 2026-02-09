@@ -30,6 +30,7 @@ module.exports = {
     { template_key: 'gold_coin', quantity: 1000 },
     { template_key: 'health_potion', quantity: 100 },
     { template_key: 'mana_potion', quantity: 100 },
+    { template_key: 'gm_walk_speed_potion_15', quantity: 100 },
     { template_key: 'gm_ring', quantity: 2 },
     { template_key: 'gm_amulet', quantity: 1 },
     { template_key: 'gm_sword', quantity: 2 },
