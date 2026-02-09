@@ -42,6 +42,9 @@ Node.js implementation of the Regnum Nostalgia MMORPG backend, replacing PHP pol
 - `shoutbox:send` - Send chat message (supports GM commands)
 - `spell:cast` - Cast a consumable spell from inventory
 - `spell:active` - Get all active spells for current user
+- `quickbar:load` - Load all quickbar slots for current user
+- `quickbar:set` - Assign an item to a quickbar slot
+- `quickbar:clear` - Remove an item from a quickbar slot
 
 ### GM Commands (Shoutbox)
 

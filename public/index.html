@@ -973,6 +973,9 @@
     </div>
   </div>
 
+  <!-- Quickbar (5 rows × 10 slots, bottom-left of HUD) -->
+  <div id="quickbar"></div>
+
   <!-- Header actions moved into compass for top-right placement -->
   <!-- UI images overlay (rendered from public/assets/ui-v1) -->
   <div id="ui-image-overlay" aria-hidden="true">
@@ -4264,6 +4267,19 @@
     .active-spell:hover .spell-tooltip{ display: block; }
     .item-cd-overlay{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; pointer-events: none; border-radius: 3px; }
     .item-cd-timer{ font-size: 10px; font-weight: 700; color: #ff9e9e; text-shadow: 0 1px 2px rgba(0,0,0,0.9); }
+
+    /* Quickbar */
+    #quickbar{ position: fixed; bottom: 6px; left: 50%; transform: translateX(calc(-50% - 20px)); z-index: 20001; display: flex; align-items: center; gap: 4px; pointer-events: auto; }
+    #quickbar-row-indicator{ width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; background: rgba(10,12,15,0.85); border: 1px solid rgba(255,210,122,0.45); border-radius: 4px; color: #ffd27a; font-size: 12px; font-weight: 700; cursor: default; user-select: none; }
+    #quickbar-slots{ display: flex; gap: 2px; }
+    .quickbar-slot{ position: relative; width: 40px; height: 40px; background: rgba(10,12,15,0.7); border: 1px solid rgba(255,210,122,0.3); border-radius: 4px; cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: center; user-select: none; transition: border-color 0.15s; }
+    .quickbar-slot:hover{ border-color: rgba(255,210,122,0.7); }
+    .quickbar-slot.drag-over{ border-color: #ffd27a; background: rgba(255,210,122,0.15); }
+    .quickbar-slot.filled{ background: rgba(20,25,35,0.85); }
+    .quickbar-slot img{ width: 34px; height: 34px; display: block; image-rendering: auto; pointer-events: none; border-radius: 3px; }
+    .quickbar-slot-key{ position: absolute; top: 1px; left: 3px; font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.35); z-index: 2; pointer-events: none; user-select: none; line-height: 1; }
+    .quickbar-cd-overlay{ position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; pointer-events: none; border-radius: 3px; }
+    .quickbar-cd-timer{ font-size: 10px; font-weight: 700; color: #ff9e9e; text-shadow: 0 1px 2px rgba(0,0,0,0.9); }
 
     /* Cast bar (bottom-center during spell casting) */
     #cast-bar{ display: none; position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); z-index: 20010; width: 260px; background: rgba(10,12,15,0.92); border: 1px solid rgba(255,210,122,0.4); border-radius: 6px; padding: 6px 10px; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.6); }

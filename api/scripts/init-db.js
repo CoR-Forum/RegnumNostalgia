@@ -377,6 +377,21 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // quickbars - player quickbar slot assignments (5 rows × 10 slots)
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS quickbars (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        row_index TINYINT NOT NULL,
+        slot_index TINYINT NOT NULL,
+        item_id INT NOT NULL,
+        template_key VARCHAR(128) NOT NULL,
+        UNIQUE KEY uq_quickbar_slot (user_id, row_index, slot_index),
+        INDEX idx_quickbar_user (user_id),
+        FOREIGN KEY (user_id) REFERENCES players(user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     logger.info('Database initialization completed');
   } catch (err) {
     logger.error('Database initialization failed', { error: err.message });

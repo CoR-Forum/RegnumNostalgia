@@ -43,6 +43,9 @@ import './context-menu.js';   // createMapContextMenu, showMapContextMenuAt, hid
 // ── Audio ──
 import './audio.js';          // AudioManager → window.AudioManager
 
+// ── Quickbar ──
+import './quickbar.js';       // initQuickbar → bottom-bar quick-cast slots
+
 // ── Socket client (registers all event handlers) ──
 import './socket-client.js';  // initializeWebSocket, getSocket → window.*
 

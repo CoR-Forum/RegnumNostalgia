@@ -62,13 +62,15 @@ export function displayInventory(items) {
     }
 
     const invId = item.inventoryId;
+    const itemId = item.itemId;
     const equipSlot = item.equipmentSlot ?? null;
     itemDiv.draggable = true;
     itemDiv.dataset.inventoryId = invId;
+    itemDiv.dataset.itemId = itemId || '';
     itemDiv.dataset.equipmentSlot = equipSlot || '';
 
     itemDiv.addEventListener('dragstart', (ev) => {
-      const payload = JSON.stringify({ inventoryId: invId, equipmentSlot: equipSlot });
+      const payload = JSON.stringify({ inventoryId: invId, itemId, equipmentSlot: equipSlot, iconName: item.iconName, name: getItemName(item), type: item.type });
       try { ev.dataTransfer.setData('application/json', payload); } catch (_) { ev.dataTransfer.setData('text/plain', payload); }
     });
 
@@ -105,10 +107,12 @@ export function displayInventory(items) {
 
         if (isSpell) {
           // Cast spell (with optional cast time)
-          if (isCasting()) return;
-          if (isSpellOnCooldown(itemDetails.stats.spell)) return;
+          if (isCasting()) { if (window.addLogMessage) window.addLogMessage('Already casting a spell', 'error'); return; }
+          const _spellKey = itemDetails.stats.spell;
+          const _cdRemaining = getSpellCooldownRemaining(_spellKey);
+          if (isSpellOnCooldown(_spellKey)) { if (window.addLogMessage) window.addLogMessage(`Spell is on cooldown (${_cdRemaining ? _cdRemaining.remaining + 's' : ''})`, 'error'); return; }
           const maxStack = itemDetails.stats.max_spell_stack || 1;
-          if (getActiveSpellCount(itemDetails.stats.spell) >= maxStack) return;
+          if (getActiveSpellCount(_spellKey) >= maxStack) { if (window.addLogMessage) window.addLogMessage('Maximum spell stacks reached', 'error'); return; }
           try {
             const castTime = itemDetails.stats.cast_time || 0;
             if (castTime > 0) {

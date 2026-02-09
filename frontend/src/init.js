@@ -12,6 +12,7 @@ import { enableClickToMove, buildGoHereIcon } from './walking.js';
 import { initWindows, initWindow, saveWindowState, getWindowState } from './windows.js';
 import { initInventoryDropZone } from './inventory.js';
 import { initSpellsUI } from './spells.js';
+import { initQuickbar } from './quickbar.js';
 
 let _autoLoginFallback = null;
 
@@ -176,6 +177,9 @@ export async function initGame() {
 
     // Initialize active spells UI
     try { initSpellsUI(); } catch (e) { console.debug('initSpellsUI failed', e); }
+
+    // Initialize quickbar
+    try { initQuickbar(); } catch (e) { console.debug('initQuickbar failed', e); }
   } catch (error) {
     console.debug('initGame failed, returning to login:', error && error.message ? error.message : error);
     try {

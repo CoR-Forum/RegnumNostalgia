@@ -6,6 +6,7 @@
  */
 
 import { gameState } from './state.js';
+import { updateQuickbarCooldowns } from './quickbar.js';
 
 /** @type {Array<{spellId:number, spellKey:string, iconName:string, duration:number, remaining:number, healPerTick?:number, manaPerTick?:number, walkSpeed?:number, cooldown?:number}>} */
 let activeSpells = [];
@@ -72,6 +73,7 @@ function renderActiveSpells() {
 
   // Update cooldown overlays on inventory items
   updateInventoryCooldowns();
+  updateQuickbarCooldowns();
 }
 
 /**
@@ -98,6 +100,7 @@ function updateTimers() {
 
   // Update cooldown overlays on inventory items
   updateInventoryCooldowns();
+  updateQuickbarCooldowns();
 }
 
 /**
@@ -132,6 +135,7 @@ function startLocalTick() {
         stopLocalTick();
         renderActiveSpells();
         updateInventoryCooldowns();
+        updateQuickbarCooldowns();
       } else {
         updateTimers();
       }
