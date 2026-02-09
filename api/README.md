@@ -25,7 +25,7 @@ Node.js implementation of the Regnum Nostalgia MMORPG backend, replacing PHP pol
 ### WebSocket Events
 
 **Server → Client:**
-- `players:online` - Online players list (every 2s)
+- `players:online` - Online players list (every 1s)
 - `walker:step` - Walker position updates
 - `territories:update` - Territory health/ownership changes
 - `superbosses:health` - Boss health updates
@@ -68,11 +68,12 @@ GM/Admin users can execute commands in the shoutbox:
 
 ### Background Workers (Bull Queues)
 
-1. **Walker Queue** (2s interval) - Advances player movement along calculated paths
-2. **Health Queue** (1s interval) - Regenerates health/mana for players, territories, superbosses
-3. **Spell Queue** (1s interval) - Processes active spell ticks (applies heal/mana per tick, invalidates walk speed cache on spell expiry, expires finished spells)
+1. **Walker Queue** (1s interval) - Advances player movement along calculated paths
+2. **Health Queue** (1s interval) - Regenerates health (1% of max HP) and mana for players, territories, superbosses
+3. **Spell Queue** (1s interval) - Processes active spell ticks (applies heal/mana/damage per tick, invalidates walk speed cache on spell expiry, expires finished spells)
 4. **Time Queue** (10s interval) - Updates ingame time (24h cycle per real hour)
-5. **Territory Queue** (15s interval) - Syncs ownership from external API
+5. **Territory Queue** (10s interval) - Syncs ownership from external API
+6. **Spawn Queue** (5s interval) - Checks and respawns collectable items
 
 ## Project Structure
 
@@ -85,8 +86,14 @@ api-node/
 │   ├── services/        # Dijkstra pathfinding
 │   ├── queues/          # Bull queue workers
 │   ├── sockets/         # Socket.io event handlers
-│   │   ├── index.js     # Main socket handlers (movement, inventory, etc.)
-│   │   └── shoutbox.js  # Chat/shoutbox handlers
+│   │   ├── index.js     # Socket orchestrator & shared state
+│   │   ├── shoutbox.js  # Chat/shoutbox handlers
+│   │   ├── inventoryHandler.js  # Inventory, equipment, items
+│   │   ├── movementHandler.js   # Position updates, pathfinding
+│   │   ├── collectableHandler.js # Spawned item collection
+│   │   ├── editorHandler.js     # Region/path/wall/water CRUD
+│   │   ├── logHandler.js        # Player log retrieval
+│   │   └── spellHandler.js      # Spell casting & active spell queries
 │   └── server.js        # Main application entry
 ├── gameData/            # Paths and regions JSON
 ├── logs/                # Winston log files

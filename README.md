@@ -9,7 +9,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Core Gameplay
 - **Forum Authentication**: Login with cor-forum.de credentials via JWT tokens
 - **Three Realms**: Choose between Syrtis (Elves), Alsius (Dwarves), or Ignis (Humans) - permanent choice
-- **Real-time Movement**: Click-to-move pathfinding with animated walking between waypoints (2s updates)
+- **Real-time Movement**: Click-to-move pathfinding with animated walking between waypoints (1s updates)
 - **Live Multiplayer**: See other players in real-time via WebSocket (98% reduction in HTTP requests)
 - **Character Progression**: Level 1-60 with XP-based advancement system
 - **Combat System**: Engage territories and superbosses with dynamic health/mana management
@@ -17,7 +17,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Advanced Systems
 - **Inventory & Equipment**: 10 equipment slots (head, body, hands, shoulders, legs, weapons, rings, amulet)
 - **Item System**: Weapons, armor, consumables with rarity tiers (common, uncommon, rare, epic, legendary)
-- **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed), with active spell UI
+- **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed, damage potions deal damage over time), with active spell UI, cast bar, and stacking rules (parallel/sequential)
 - **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution
 - **Territory Control**: Realm-owned forts and castles with health and vulnerability mechanics
 - **World Bosses**: Superbosses with spawn timers and respawn mechanics
@@ -28,7 +28,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 ### Technical Features
 - **WebSocket Real-Time**: Socket.io for instant updates with auto-reconnection
 - **Session Management**: JWT-based 24-hour sessions with Redis storage
-- **Background Workers**: Bull queue system for health regen, spell processing, time sync, walking processor, territory updates
+- **Background Workers**: Bull queue system for health regen, spell processing, time sync, walking processor, territory updates, collectable spawning
 - **MariaDB Database**: Persistent storage for players, items, territories, sessions
 - **Redis Pub/Sub**: Real-time event broadcasting across workers
 - **RESTful API**: Node.js/Express backend with comprehensive endpoints
@@ -130,6 +130,8 @@ regnum-nostalgia/
 │       ├── context-menu.js           # Right-click map context menu
 │       ├── audio.js                  # Music/SFX playback & volume
 │       ├── socket-client.js          # WebSocket client & event handlers
+│       ├── castbar.js                 # Cast bar UI for spell casting
+│       ├── spells.js                  # Active spell UI & tooltip display
 │       ├── init.js                   # Game bootstrap, auto-login, partial loaders
 │       └── styles/
 │           └── main.css              # All game CSS (extracted from HTML)
@@ -183,7 +185,7 @@ regnum-nostalgia/
 │   └── Dockerfile
 ├── nginx/
 │   └── default.conf                  # Proxy: Vite + API + assets
-├── docker-compose.yml                # Container orchestration (6 services)
+├── docker-compose.yml                # Container orchestration (7 services)
 ├── Makefile                          # Dev shortcuts
 └── README.md                         # This file
 ```
@@ -226,7 +228,7 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - **territory_captures**: Historical ownership changes
 - **superbosses**: World bosses with spawn mechanics
 - **walkers**: Active player movement queues with paths
-- **active_spells**: Currently active spell buffs on players (spell_key, heal/mana per tick, walk_speed, duration, remaining)
+- **active_spells**: Currently active spell buffs on players (spell_key, icon_name, heal/mana/damage per tick, walk_speed, stack_mode, duration, remaining, started_at)
 - **server_time**: Synchronized in-game clock
 
 ### Redis Keys
@@ -247,7 +249,7 @@ The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded thro
 - `cache:shoutbox:last_id` - Last polled shoutbox entry ID (persists across restarts)
 - `cache:walkers:active` - Hash of walkerId → walker state JSON (active walkers)
 - `cache:walkers:user:{userId}` - Current active walkerId for a user
-- `cache:walk_speed:{userId}` - Cached total walk_speed from equipped items (TTL: 60s)
+- `cache:walk_speed:{userId}` - Cached total walk_speed from equipped items and active spell buffs (TTL: 60s)
 - `cache:spells:active:{userId}` - Active spells JSON array for a user (TTL: 300s, updated on cast/tick/expire)
 
 #### Queue System
@@ -271,7 +273,7 @@ The API uses Redis as a comprehensive caching layer (see `api/src/config/cache.j
 | **Shoutbox Messages** | Redis list (newest at head) | N/A | New messages pushed on send/poll, trimmed to 50 |
 | **Shoutbox Last ID** | Persisted in Redis | Permanent | Updated on each poll/send |
 | **Active Walkers** | Redis hash (walker state per tick) | N/A | Added on create, removed on complete/interrupt |
-| **Walk Speed** | Lazy-load + TTL | 60s | Invalidated on equip/unequip |
+| **Walk Speed** | Lazy-load + TTL | 60s | Invalidated on equip/unequip and spell expiry |
 | **Active Spells** | Updated on cast/tick | 300s | Updated every spell tick, cleared on expire |
 
 ## 🔌 API Endpoints
@@ -332,10 +334,12 @@ Connected via Socket.io to `ws://localhost/socket.io/`
 - `position:update` - Manual position change `{ x, y }`
 - `move:request` - Initiate pathfinding `{ destinationX, destinationY }`
 - `shoutbox:send` - Post chat message `{ message }` (supports GM commands: `/item <template_key> <user_id|username> [qty]`, `/itemrem`)
+- `spell:cast` - Cast a consumable spell from inventory `{ inventoryId, templateKey }`
+- `spell:active` - Request all active spells for current user
 
 ### Server → Client (Listen)
 - `player:state` - Initial sync on connection
-- `players:online` - All active players (every 2s)
+- `players:online` - All active players (every 1s)
 - `player:connected` - Player joined `{ userId, username, realm }`
 - `player:disconnected` - Player left `{ userId }`
 - `walker:step` - Movement progress `{ userId, x, y, remaining }`
@@ -343,12 +347,15 @@ Connected via Socket.io to `ws://localhost/socket.io/`
 - `move:started` - Server confirmed movement `{ path, estimatedTime }`
 - `territories:list` - Initial territory data
 - `territories:update` - Health changes (every 1s)
-- `territories:capture` - Ownership changes (every 15s)
+- `territories:capture` - Ownership changes (every 10s)
 - `superbosses:list` - Initial superboss data
 - `superbosses:health` - Health updates (every 1s)
 - `time:current` - Initial ingame time
 - `time:update` - Time sync (every 10s) `{ ingameHour, ingameMinute }`
 - `shoutbox:message` - Real-time chat `{ username, message, timestamp }`
+- `spell:started` - Spell cast notification with spell details
+- `spell:update` - Active spells array update (every tick)
+- `spell:expired` - Spell expired notification
 
 ### Connection Management
 - Auto-reconnection with exponential backoff (1s → 5s)
@@ -388,7 +395,8 @@ Ignis: [5000, 618]    // Red/Humans
 
 ### Background Workers
 - **walkerQueue**: Every 1 second - Advances players along paths
-- **healthQueue**: Every 1 second - Regenerates HP/mana
+- **healthQueue**: Every 1 second - Regenerates 1% of max HP per tick, fixed mana regen
+- **spellQueue**: Every 1 second - Processes active spell ticks (heal/mana/damage per tick, walk speed buffs)
 - **timeQueue**: Every 10 seconds - Updates ingame time (150s = 1 hour)
 - **territoryQueue**: Every 10 seconds - Fetches territory ownership from external API
 - **spawnQueue**: Every 5 seconds - Checks and respawns collectable items
@@ -404,7 +412,7 @@ Ignis: [5000, 618]    // Red/Humans
 ### Combat
 - Damage: `Strength × 0.5 + Intelligence × 0.3 + Item Bonuses`
 - Armor: `Constitution × 0.5 + Dexterity × 0.3 + Item Bonuses`
-- Health regen: Automated via healthQueue (1s tick)
+- Health regen: 1% of max health per second via healthQueue (1s tick)
 - Targets: Territories and Superbosses
 
 ### Equipment System
@@ -415,7 +423,7 @@ Ignis: [5000, 618]    // Red/Humans
 
 ### Movement
 - Click-to-move with server-side pathfinding
-- Automated waypoint walking (2s tick via walkerQueue)
+- Automated waypoint walking (1s tick via walkerQueue)
 - Real-time position broadcast via WebSocket
 - Path visualization with polylines on map
 
@@ -471,10 +479,12 @@ On first launch, add a connection with host `redis`, port `6379`. Browse all cac
 open http://localhost/admin/queues
 ```
 View queue status:
-- walkerQueue - Processing every 2s
+- walkerQueue - Processing every 1s
 - healthQueue - Processing every 1s
+- spellQueue - Processing every 1s
 - timeQueue - Processing every 10s
-- territoryQueue - Processing every 15s
+- territoryQueue - Processing every 10s
+- spawnQueue - Processing every 5s
 
 **Check Jobs**
 - Active: Currently processing
@@ -634,15 +644,15 @@ Edit `api/gameData/levels.json` - changes take effect on restart.
 2. Right-click map → "Walk Here"
 3. Watch for events:
    - `move:started` - Server confirms path
-   - `walker:step` - Position updates every 2s
+   - `walker:step` - Position updates every 1s
    - `walker:completed` - Arrival at destination
 4. Verify path polyline renders
 
 ### Scenario 2: Multi-Player Sync
 1. Open game in 2 browser tabs (different accounts)
 2. Move player in tab 1
-3. Tab 2 should show player 1 moving in real-time (2s updates)
-4. Check `players:online` event every 2s
+3. Tab 2 should show player 1 moving in real-time (1s updates)
+4. Check `players:online` event every 1s
 5. Close tab 1 → tab 2 receives `player:disconnected`
 
 ### Scenario 3: Territory Updates
@@ -650,7 +660,7 @@ Edit `api/gameData/levels.json` - changes take effect on restart.
 2. Watch territory health bars
 3. Should regenerate every 1s (healthQueue)
 4. Check `territories:update` events in console
-5. Ownership changes appear every 15s (territoryQueue)
+5. Ownership changes appear every 10s (territoryQueue)
 
 ### Scenario 4: Real-Time Chat
 1. Open shoutbox
