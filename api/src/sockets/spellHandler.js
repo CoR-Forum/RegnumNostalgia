@@ -77,14 +77,15 @@ function registerSpellHandlers(socket, user, io, deps) {
       const duration = stats.duration || 10;
       const stackMode = stats.spell_stack_mode || 'parallel';
       const [insertResult] = await gameDb.query(
-        `INSERT INTO active_spells (user_id, spell_key, icon_name, heal_per_tick, mana_per_tick, walk_speed, stack_mode, duration, remaining, started_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO active_spells (user_id, spell_key, icon_name, heal_per_tick, mana_per_tick, damage_per_tick, walk_speed, stack_mode, duration, remaining, started_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           user.userId,
           stats.spell,
           invItem.icon_name || null,
           stats.heal_per_tick || 0,
           stats.mana_per_tick || 0,
+          stats.damage_per_tick || 0,
           stats.walk_speed || 0,
           stackMode,
           duration,
@@ -102,6 +103,7 @@ function registerSpellHandlers(socket, user, io, deps) {
         iconName: invItem.icon_name || null,
         healPerTick: stats.heal_per_tick || 0,
         manaPerTick: stats.mana_per_tick || 0,
+        damagePerTick: stats.damage_per_tick || 0,
         walkSpeed: stats.walk_speed || 0,
         stackMode,
         duration,
@@ -142,7 +144,7 @@ function registerSpellHandlers(socket, user, io, deps) {
       if (spells === null) {
         // Fallback to DB
         const [rows] = await gameDb.query(
-          `SELECT spell_id, spell_key, icon_name, heal_per_tick, mana_per_tick, walk_speed, stack_mode, duration, remaining
+          `SELECT spell_id, spell_key, icon_name, heal_per_tick, mana_per_tick, damage_per_tick, walk_speed, stack_mode, duration, remaining
            FROM active_spells
            WHERE user_id = ? AND remaining > 0
            ORDER BY spell_id ASC`,
@@ -154,6 +156,7 @@ function registerSpellHandlers(socket, user, io, deps) {
           iconName: r.icon_name,
           healPerTick: r.heal_per_tick,
           manaPerTick: r.mana_per_tick,
+          damagePerTick: r.damage_per_tick,
           walkSpeed: r.walk_speed,
           stackMode: r.stack_mode,
           duration: r.duration,

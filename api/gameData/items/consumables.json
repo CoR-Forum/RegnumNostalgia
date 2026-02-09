@@ -34,5 +34,17 @@
     "level": 1,
     "equipment_slot": null,
     "icon_name": "gm-potion.png"
+  },
+  {
+    "template_key": "gm_damage_potion_5",
+    "name": "Damage Potion (+5)",
+    "type": "consumable",
+    "description": "Deals 5 damage per second to yourself for 10 seconds",
+    "stats": { "spell": "damage_potion", "damage_per_tick": 5, "duration": 10, "max_spell_stack": 1, "spell_stack_mode": "sequential", "cast_time": 0.1 },
+    "rarity": "common",
+    "stackable": 1,
+    "level": 1,
+    "equipment_slot": null,
+    "icon_name": "gm-potion.png"
   }
 ]

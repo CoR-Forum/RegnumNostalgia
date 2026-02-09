@@ -26,7 +26,7 @@ spellQueue.process('process-spells', async (job) => {
   try {
     // Get all active spells from DB (ordered by spell_id so sequential spells tick in order)
     const [activeSpells] = await gameDb.query(
-      `SELECT spell_id, user_id, spell_key, icon_name, heal_per_tick, mana_per_tick, walk_speed, stack_mode, duration, remaining
+      `SELECT spell_id, user_id, spell_key, icon_name, heal_per_tick, mana_per_tick, damage_per_tick, walk_speed, stack_mode, duration, remaining
        FROM active_spells
        WHERE remaining > 0
        ORDER BY spell_id ASC`
@@ -50,6 +50,7 @@ spellQueue.process('process-spells', async (job) => {
       const userId = parseInt(userIdStr, 10);
       let totalHeal = 0;
       let totalMana = 0;
+      let totalDamage = 0;
       let hasWalkSpeedBuff = false;
       const userExpired = [];
       const userActive = [];
@@ -73,6 +74,7 @@ spellQueue.process('process-spells', async (job) => {
 
         totalHeal += spell.heal_per_tick || 0;
         totalMana += spell.mana_per_tick || 0;
+        totalDamage += spell.damage_per_tick || 0;
         if (spell.walk_speed > 0) hasWalkSpeedBuff = true;
         spell.remaining -= 1;
 
@@ -84,14 +86,14 @@ spellQueue.process('process-spells', async (job) => {
         }
       }
 
-      // Apply heal/mana to player
-      if (totalHeal > 0 || totalMana > 0) {
+      // Apply heal/mana/damage to player
+      if (totalHeal > 0 || totalMana > 0 || totalDamage > 0) {
         await gameDb.query(
           `UPDATE players
-           SET health = LEAST(health + ?, max_health),
+           SET health = GREATEST(0, LEAST(health + ? - ?, max_health)),
                mana = LEAST(mana + ?, max_mana)
            WHERE user_id = ?`,
-          [totalHeal, totalMana, userId]
+          [totalHeal, totalDamage, totalMana, userId]
         );
       }
 
@@ -110,6 +112,7 @@ spellQueue.process('process-spells', async (job) => {
         iconName: s.icon_name,
         healPerTick: s.heal_per_tick,
         manaPerTick: s.mana_per_tick,
+        damagePerTick: s.damage_per_tick,
         walkSpeed: s.walk_speed,
         stackMode: s.stack_mode,
         duration: s.duration,

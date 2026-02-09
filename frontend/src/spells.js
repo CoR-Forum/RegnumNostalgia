@@ -15,7 +15,8 @@ let localTickInterval = null;
 const SPELL_NAMES = {
   health_potion: 'Health Potion',
   mana_potion: 'Mana Potion',
-  speed_potion: 'Speed Potion'
+  speed_potion: 'Speed Potion',
+  damage_potion: 'Damage Potion'
 };
 
 /**
@@ -49,6 +50,7 @@ function renderActiveSpells() {
     const parts = [];
     if (spell.healPerTick) parts.push(`+${spell.healPerTick} HP/s`);
     if (spell.manaPerTick) parts.push(`+${spell.manaPerTick} MP/s`);
+    if (spell.damagePerTick) parts.push(`-${spell.damagePerTick} HP/s`);
     if (spell.walkSpeed) parts.push(`+${spell.walkSpeed} Speed`);
     const desc = parts.join(', ');
     const name = SPELL_NAMES[spell.spellKey] || spell.spellKey;
