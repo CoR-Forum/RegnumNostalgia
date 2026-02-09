@@ -21,6 +21,9 @@ let _autoLoginFallback = null;
  */
 export async function initGame() {
   try {
+    // Initialize the Leaflet map now (deferred until after login)
+    await import('./map-init.js').then((mod) => mod.initMap());
+
     const map = getMap();
     const totalH = getTotalH();
     const totalW = getTotalW();
@@ -334,8 +337,7 @@ export function bootstrap() {
   // Set up inventory drag-drop zone
   initInventoryDropZone();
 
-  // Start map probe (async in background)
-  import('./map-init.js').then((mod) => mod.initMap()).catch((err) => console.error('Map init failed:', err));
+  // Map initialization is deferred until after login (inside initGame)
 
   // Load shoutbox partial
   loadShoutbox();

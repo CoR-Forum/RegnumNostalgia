@@ -16,9 +16,9 @@
     }
 
     /* Prevent the page from scrolling; map handles panning */
-    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: url('/assets/background.jpg') center center / cover no-repeat; }
     /* Map fills the viewport */
-    #map { width: 100vw; height: 100vh; margin: 0; padding: 0; background: url('/assets/background.jpg') center center / cover no-repeat; }
+    #map { width: 100vw; height: 100vh; margin: 0; padding: 0; background: transparent; }
       #coords {
         .ui-hud-btn{
           width: 39px;
@@ -108,8 +108,8 @@
     }
     #modal-overlay.hidden{ display: none; }
 
-    /* Hide all UI elements until the user is authenticated. Keep the modal overlay, background map, and mini info window visible. */
-    body:not(.authenticated) > :not(#modal-overlay):not(#map):not(#mini-info-window):not(script):not(style) {
+    /* Hide all UI elements until the user is authenticated. Keep the modal overlay and mini info window visible. */
+    body:not(.authenticated) > :not(#modal-overlay):not(#mini-info-window):not(script):not(style) {
       display: none !important;
     }
 
