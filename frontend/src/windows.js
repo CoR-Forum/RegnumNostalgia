@@ -53,6 +53,10 @@ export function setHudPressed(action, pressed) {
 
 // ── Drag support ──
 
+// Store the user's intended (pre-clamp) position per window so we can
+// restore it when the viewport grows large enough again.
+const _intendedPositions = new Map();
+
 export function makeDraggable(winEl, handleEl) {
   if (!winEl || !handleEl) return;
   let isDragging = false;
@@ -103,7 +107,11 @@ export function makeDraggable(winEl, handleEl) {
     try {
       const left = parseInt(winEl.style.left, 10);
       const top = parseInt(winEl.style.top, 10);
-      if (!isNaN(left) && !isNaN(top)) saveWindowState(winEl.id, { left, top });
+      if (!isNaN(left) && !isNaN(top)) {
+        saveWindowState(winEl.id, { left, top });
+        // Update the intended position so resize clamping can restore to this spot
+        _intendedPositions.set(winEl.id, { left, top });
+      }
     } catch (e) {}
   };
 
@@ -228,6 +236,65 @@ export function initWindows() {
 
 // Expose globally for non-module scripts
 window.initWindows = initWindows;
+
+// ── Viewport resize clamping ──
+
+/** Clamp all visible .ui-window elements so they stay within the viewport on resize. */
+function clampWindowsToViewport() {
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const windows = document.querySelectorAll('.ui-window');
+  windows.forEach((win) => {
+    if (!win.id) return;
+    if (win.style.display === 'none' || win.offsetParent === null) return;
+    const rect = win.getBoundingClientRect();
+
+    // Capture the intended position if we haven't yet (first time, or after a drag)
+    if (!_intendedPositions.has(win.id)) {
+      _intendedPositions.set(win.id, { left: rect.left, top: rect.top });
+    }
+
+    const intended = _intendedPositions.get(win.id);
+
+    // Start from the intended position — this lets windows move back when viewport grows
+    let left = intended.left;
+    let top = intended.top;
+
+    // Clamp so the window stays fully within the viewport
+    if (left + rect.width > viewportW) left = Math.max(0, viewportW - rect.width);
+    if (top + rect.height > viewportH) top = Math.max(0, viewportH - rect.height);
+    if (left < 0) left = 0;
+    if (top < 0) top = 0;
+
+    const currentLeft = Math.round(rect.left);
+    const currentTop = Math.round(rect.top);
+    const newLeft = Math.round(left);
+    const newTop = Math.round(top);
+
+    if (newLeft !== currentLeft || newTop !== currentTop) {
+      // Clear right/bottom anchoring so left/top take effect
+      if (win.style.right && win.style.right !== 'auto') win.style.right = 'auto';
+      if (win.style.bottom && win.style.bottom !== 'auto') win.style.bottom = 'auto';
+      win.style.transform = '';
+      win.style.left = newLeft + 'px';
+      win.style.top = newTop + 'px';
+      try { saveWindowState(win.id, { left: newLeft, top: newTop }); } catch (e) {}
+    }
+  });
+}
+
+/**
+ * Record the intended position for a window (call after user drags a window).
+ * This ensures the resize handler knows where the user actually wants the window.
+ */
+export function setIntendedPosition(winId, left, top) {
+  _intendedPositions.set(winId, { left, top });
+}
+
+// Expose for legacy non-module scripts
+window.setIntendedPosition = setIntendedPosition;
+
+window.addEventListener('resize', clampWindowsToViewport);
 
 // ── Normalize window id ──
 

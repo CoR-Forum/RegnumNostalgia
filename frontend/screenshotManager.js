@@ -62,7 +62,10 @@
       try {
         const left = parseInt(modal.style.left, 10);
         const top = parseInt(modal.style.top, 10);
-        if (!isNaN(left) && !isNaN(top) && window.saveWindowState) saveWindowState('screenshots-window', { left, top });
+        if (!isNaN(left) && !isNaN(top)) {
+          if (window.saveWindowState) saveWindowState('screenshots-window', { left, top });
+          if (window.setIntendedPosition) window.setIntendedPosition('screenshots-window', left, top);
+        }
       } catch (e) {}
     });
   }
