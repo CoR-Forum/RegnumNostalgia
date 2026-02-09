@@ -8,6 +8,7 @@ const logger = require('../config/logger');
  *   quickbar:load   — Load all quickbar slots for the current user
  *   quickbar:set    — Assign an item to a quickbar slot
  *   quickbar:clear  — Remove an item from a quickbar slot
+ *   quickbar:move   — Move/swap items between quickbar slots
  */
 function registerQuickbarHandlers(socket, user) {
 
@@ -124,6 +125,67 @@ function registerQuickbarHandlers(socket, user) {
     } catch (error) {
       logger.error('quickbar:clear error', { userId: user.userId, error: error.message });
       if (callback) callback({ success: false, error: 'Failed to clear quickbar slot' });
+    }
+  });
+
+  // ── Move/swap quickbar slots ──
+  socket.on('quickbar:move', async (data, callback) => {
+    try {
+      const { sourceRow, sourceSlot, targetRow, targetSlot } = data || {};
+      if (sourceRow == null || sourceSlot == null || targetRow == null || targetSlot == null) {
+        return callback({ success: false, error: 'Missing source or target indices' });
+      }
+
+      // Get both slots
+      const [sourceRows] = await gameDb.query(
+        'SELECT item_id, template_key FROM quickbars WHERE user_id = ? AND row_index = ? AND slot_index = ?',
+        [user.userId, sourceRow, sourceSlot]
+      );
+      const [targetRows] = await gameDb.query(
+        'SELECT item_id, template_key FROM quickbars WHERE user_id = ? AND row_index = ? AND slot_index = ?',
+        [user.userId, targetRow, targetSlot]
+      );
+
+      const sourceItem = sourceRows[0] || null;
+      const targetItem = targetRows[0] || null;
+
+      if (!sourceItem) {
+        return callback({ success: false, error: 'Source slot is empty' });
+      }
+
+      // Perform the swap/move in a transaction
+      await gameDb.query('START TRANSACTION');
+
+      try {
+        // Clear both slots first
+        await gameDb.query(
+          'DELETE FROM quickbars WHERE user_id = ? AND ((row_index = ? AND slot_index = ?) OR (row_index = ? AND slot_index = ?))',
+          [user.userId, sourceRow, sourceSlot, targetRow, targetSlot]
+        );
+
+        // Move source to target
+        await gameDb.query(
+          'INSERT INTO quickbars (user_id, row_index, slot_index, item_id, template_key) VALUES (?, ?, ?, ?, ?)',
+          [user.userId, targetRow, targetSlot, sourceItem.item_id, sourceItem.template_key]
+        );
+
+        // If target had an item, move it to source
+        if (targetItem) {
+          await gameDb.query(
+            'INSERT INTO quickbars (user_id, row_index, slot_index, item_id, template_key) VALUES (?, ?, ?, ?, ?)',
+            [user.userId, sourceRow, sourceSlot, targetItem.item_id, targetItem.template_key]
+          );
+        }
+
+        await gameDb.query('COMMIT');
+        callback({ success: true });
+      } catch (error) {
+        await gameDb.query('ROLLBACK');
+        throw error;
+      }
+    } catch (error) {
+      logger.error('quickbar:move error', { userId: user.userId, error: error.message });
+      if (callback) callback({ success: false, error: 'Failed to move quickbar item' });
     }
   });
 }

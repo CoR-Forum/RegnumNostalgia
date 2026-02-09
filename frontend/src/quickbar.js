@@ -2,8 +2,8 @@
  * Quickbar — 5 rows × 10 slots at the bottom-left, next to the HUD buttons.
  * Players drag items from inventory onto quickbar slots for quick use.
  * Left-click a filled slot to use/cast the item.
- * Right-click a filled slot to remove it.
- * Scroll (mouse wheel or up/down arrows) to switch between the 5 rows.
+ * Drag items between slots to move/swap them, or drag outside to remove.
+ * Scroll (mouse wheel or arrow buttons) to switch between the 5 rows.
  */
 
 import { isCasting, startCasting } from './castbar.js';
@@ -40,11 +40,25 @@ function buildQuickbarDOM() {
   const container = document.getElementById('quickbar');
   if (!container) return;
 
+  // Arrow up button
+  const arrowUp = document.createElement('div');
+  arrowUp.id = 'quickbar-arrow-up';
+  arrowUp.className = 'quickbar-arrow';
+  arrowUp.addEventListener('click', () => setActiveRow((activeRow - 1 + ROWS) % ROWS));
+  container.appendChild(arrowUp);
+
   // Row indicator
   const rowIndicator = document.createElement('div');
   rowIndicator.id = 'quickbar-row-indicator';
   rowIndicator.textContent = `${activeRow + 1}`;
   container.appendChild(rowIndicator);
+
+  // Arrow down button
+  const arrowDown = document.createElement('div');
+  arrowDown.id = 'quickbar-arrow-down';
+  arrowDown.className = 'quickbar-arrow';
+  arrowDown.addEventListener('click', () => setActiveRow((activeRow + 1) % ROWS));
+  container.appendChild(arrowDown);
 
   // Slots container
   const slotsContainer = document.createElement('div');
@@ -53,7 +67,6 @@ function buildQuickbarDOM() {
     const slot = document.createElement('div');
     slot.className = 'quickbar-slot';
     slot.dataset.slot = i;
-    slot.innerHTML = `<span class="quickbar-slot-key">${i === 9 ? 0 : i + 1}</span>`;
 
     // Drop target
     slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drag-over'); });
@@ -63,8 +76,8 @@ function buildQuickbarDOM() {
     // Left-click = use
     slot.addEventListener('click', () => onSlotClick(i));
 
-    // Right-click = clear
-    slot.addEventListener('contextmenu', (e) => { e.preventDefault(); onSlotClear(i); });
+    // Prevent context menu
+    slot.addEventListener('contextmenu', (e) => e.preventDefault());
 
     slotsContainer.appendChild(slot);
   }
@@ -118,17 +131,56 @@ function renderActiveRow() {
 }
 
 function renderSlot(el, slotIndex, data) {
-  // Clear existing content except the key label
-  el.innerHTML = `<span class="quickbar-slot-key">${slotIndex === 9 ? 0 : slotIndex + 1}</span>`;
+  // Clear existing content
+  el.innerHTML = '';
+  el.draggable = false;
+  el.classList.remove('filled');
 
   if (!data) {
-    el.classList.remove('filled');
     el.title = '';
     return;
   }
 
   el.classList.add('filled');
   el.title = data.name || data.templateKey;
+  el.draggable = true;
+
+  // Dragstart: set data for moving within quickbar
+  el.ondragstart = (e) => {
+    const payload = {
+      fromQuickbar: true,
+      row: activeRow,
+      slot: slotIndex,
+      itemId: data.itemId,
+      templateKey: data.templateKey,
+      name: data.name,
+      iconName: data.iconName
+    };
+    e.dataTransfer.setData('application/json', JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  // Dragend: if dropped outside quickbar, remove item
+  el.ondragend = (e) => {
+    if (e.dataTransfer.dropEffect === 'none') {
+      // Dragged outside any valid drop target - remove from quickbar
+      const socket = window.socket || (window.getSocket && window.getSocket());
+      if (socket && socket.connected) {
+        socket.emit('quickbar:clear', { row: activeRow, slot: slotIndex }, (resp) => {
+          if (resp && resp.success) {
+            quickbarData[activeRow][slotIndex] = null;
+            renderActiveRow();
+          }
+        });
+      }
+    }
+  };
+
+  // Add slot number
+  const keyLabel = document.createElement('span');
+  keyLabel.className = 'quickbar-slot-key';
+  keyLabel.textContent = slotIndex === 9 ? '0' : `${slotIndex + 1}`;
+  el.appendChild(keyLabel);
 
   if (data.iconName) {
     const img = document.createElement('img');
@@ -195,20 +247,49 @@ function onSlotDrop(e, slotIndex) {
     payload = JSON.parse(raw);
   } catch { return; }
 
-  // We need itemId to store in quickbar
-  const itemId = payload.itemId;
-  if (!itemId) return;
-
-  // Save to server
   const socket = window.socket || (window.getSocket && window.getSocket());
   if (!socket || !socket.connected) return;
 
-  socket.emit('quickbar:set', { row: activeRow, slot: slotIndex, itemId }, (resp) => {
-    if (resp && resp.success && resp.slot) {
-      quickbarData[activeRow][slotIndex] = resp.slot;
-      renderActiveRow();
-    }
-  });
+  // Check if dragging from another quickbar slot
+  if (payload.fromQuickbar) {
+    const sourceRow = payload.row;
+    const sourceSlot = payload.slot;
+    const targetRow = activeRow;
+    const targetSlot = slotIndex;
+
+    // Don't do anything if dropping on the same slot
+    if (sourceRow === targetRow && sourceSlot === targetSlot) return;
+
+    // Move/swap items
+    socket.emit('quickbar:move', { 
+      sourceRow, 
+      sourceSlot, 
+      targetRow, 
+      targetSlot 
+    }, (resp) => {
+      if (resp && resp.success) {
+        // Update local data
+        const sourceData = quickbarData[sourceRow][sourceSlot];
+        const targetData = quickbarData[targetRow][targetSlot];
+        
+        quickbarData[targetRow][targetSlot] = sourceData;
+        quickbarData[sourceRow][sourceSlot] = targetData;
+        
+        renderActiveRow();
+      }
+    });
+  } else {
+    // Dragging from inventory - add to quickbar
+    const itemId = payload.itemId;
+    if (!itemId) return;
+
+    socket.emit('quickbar:set', { row: activeRow, slot: slotIndex, itemId }, (resp) => {
+      if (resp && resp.success && resp.slot) {
+        quickbarData[activeRow][slotIndex] = resp.slot;
+        renderActiveRow();
+      }
+    });
+  }
 }
 
 // ── Slot Click (Use) ──
@@ -332,23 +413,6 @@ async function refreshWindows() {
     if (document.getElementById('character-window')?.style.display !== 'none') await openWindow('character-window');
     if (document.getElementById('inventory-window')?.style.display !== 'none') await openWindow('inventory-window');
   } catch (e) { /* ignore */ }
-}
-
-// ── Slot Clear (Right-click) ──
-
-function onSlotClear(slotIndex) {
-  const data = quickbarData[activeRow][slotIndex];
-  if (!data) return;
-
-  const socket = window.socket || (window.getSocket && window.getSocket());
-  if (!socket || !socket.connected) return;
-
-  socket.emit('quickbar:clear', { row: activeRow, slot: slotIndex }, (resp) => {
-    if (resp && resp.success) {
-      quickbarData[activeRow][slotIndex] = null;
-      renderActiveRow();
-    }
-  });
 }
 
 // ── Server Load ──

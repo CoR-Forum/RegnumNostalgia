@@ -45,6 +45,7 @@ Node.js implementation of the Regnum Nostalgia MMORPG backend, replacing PHP pol
 - `quickbar:load` - Load all quickbar slots for current user
 - `quickbar:set` - Assign an item to a quickbar slot
 - `quickbar:clear` - Remove an item from a quickbar slot
+- `quickbar:move` - Move/swap items between quickbar slots
 
 ### GM Commands (Shoutbox)
 

@@ -904,6 +904,39 @@
       background: none;
       border: none;
     }
+    .quickbar-arrow{
+      position: absolute;
+      right: 350px;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      pointer-events: auto;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      user-select: none;
+      z-index: 2;
+    }
+    #quickbar-arrow-up{
+      bottom: 25.5px;
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-up-base.png');
+    }
+    #quickbar-arrow-up:hover{
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-up-hover.png');
+    }
+    #quickbar-arrow-up:active{
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-up-pressed.png');
+    }
+    #quickbar-arrow-down{
+      bottom: 3.5px;
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-down-base.png');
+    }
+    #quickbar-arrow-down:hover{
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-down-hover.png');
+    }
+    #quickbar-arrow-down:active{
+      background-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-down-pressed.png');
+    }
     #quickbar-slots{
       position: absolute;
       top: 0;
@@ -915,8 +948,8 @@
     .quickbar-slot{
       position: absolute;
       bottom: 4px;
-      width: 38px;
-      height: 38px;
+      width: 39px;
+      height: 39px;
       cursor: pointer;
       overflow: hidden;
       display: flex;
@@ -940,8 +973,8 @@
       background: none;
     }
     .quickbar-slot img{
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       display: block;
       image-rendering: auto;
       pointer-events: none;
@@ -978,16 +1011,16 @@
       text-shadow: 0 1px 2px rgba(0,0,0,0.9);
     }
     /* Position each quickbar slot — matching HUD button positioning pattern */
-    .quickbar-slot[data-slot="0"]{ right: 770px; }
-    .quickbar-slot[data-slot="1"]{ right: 727px; }
-    .quickbar-slot[data-slot="2"]{ right: 684px; }
-    .quickbar-slot[data-slot="3"]{ right: 641px; }
-    .quickbar-slot[data-slot="4"]{ right: 598px; }
-    .quickbar-slot[data-slot="5"]{ right: 555px; }
-    .quickbar-slot[data-slot="6"]{ right: 512px; }
-    .quickbar-slot[data-slot="7"]{ right: 469px; }
-    .quickbar-slot[data-slot="8"]{ right: 426px; }
-    .quickbar-slot[data-slot="9"]{ right: 383px; }
+    .quickbar-slot[data-slot="0"]{ right: 776px; }
+    .quickbar-slot[data-slot="1"]{ right: 732px; }
+    .quickbar-slot[data-slot="2"]{ right: 689px; }
+    .quickbar-slot[data-slot="3"]{ right: 646px; }
+    .quickbar-slot[data-slot="4"]{ right: 603px; }
+    .quickbar-slot[data-slot="5"]{ right: 560px; }
+    .quickbar-slot[data-slot="6"]{ right: 517px; }
+    .quickbar-slot[data-slot="7"]{ right: 474px; }
+    .quickbar-slot[data-slot="8"]{ right: 431px; }
+    .quickbar-slot[data-slot="9"]{ right: 388px; }
 
     /* Cast bar (bottom-center during spell casting) */
     #cast-bar{

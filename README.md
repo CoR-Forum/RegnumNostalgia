@@ -18,7 +18,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 - **Inventory & Equipment**: 10 equipment slots (head, body, hands, shoulders, legs, weapons, rings, amulet)
 - **Item System**: Weapons, armor, consumables with rarity tiers (common, uncommon, rare, epic, legendary)
 - **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed, damage potions deal damage over time), with active spell UI, cast bar, stacking rules (parallel/sequential), and per-spell cooldowns
-- **Quickbar**: 5 rows × 10 slots for quick item use; drag items from inventory, scroll between rows, keyboard shortcuts (1-0), right-click to clear; persisted in database
+- **Quickbar**: 5 rows × 10 slots for quick item use; drag items from inventory to add, drag between slots to move/swap, drag outside to remove; scroll between rows with mouse wheel or arrow buttons, keyboard shortcuts (1-0); persisted in database
 - **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution
 - **Territory Control**: Realm-owned forts and castles with health and vulnerability mechanics
 - **World Bosses**: Superbosses with spawn timers and respawn mechanics
