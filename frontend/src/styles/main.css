@@ -887,22 +887,17 @@
     }
     #quickbar-row-indicator{
       position: absolute;
-      bottom: 6px;
-      right: 348px;
-      width: 16px;
-      height: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: rgba(255,210,122,0.6);
-      font-size: 10px;
-      font-weight: 700;
+      bottom: -12px;
+      right: 374px;
+      width: 9.066px;
+      height: 9.066px;
       cursor: default;
       user-select: none;
       pointer-events: auto;
       z-index: 2;
-      background: none;
-      border: none;
+      display: block;
+      image-rendering: auto;
+      object-fit: contain;
     }
     .quickbar-arrow{
       position: absolute;

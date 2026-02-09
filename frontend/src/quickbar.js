@@ -48,9 +48,10 @@ function buildQuickbarDOM() {
   container.appendChild(arrowUp);
 
   // Row indicator
-  const rowIndicator = document.createElement('div');
+  const rowIndicator = document.createElement('img');
   rowIndicator.id = 'quickbar-row-indicator';
-  rowIndicator.textContent = `${activeRow + 1}`;
+  rowIndicator.src = `https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-pos${activeRow + 1}.png`;
+  rowIndicator.draggable = false;
   container.appendChild(rowIndicator);
 
   // Arrow down button
@@ -110,7 +111,7 @@ function buildQuickbarDOM() {
 function setActiveRow(row) {
   activeRow = row;
   const indicator = document.getElementById('quickbar-row-indicator');
-  if (indicator) indicator.textContent = `${activeRow + 1}`;
+  if (indicator) indicator.src = `https://cor-forum.de/regnum/RegnumNostalgia/ui/quickbar-pos${activeRow + 1}.png`;
   renderActiveRow();
 }
 
