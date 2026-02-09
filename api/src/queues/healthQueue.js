@@ -36,13 +36,13 @@ healthQueue.process('regenerate-health', async (job) => {
       return { playersRegenerated: 0, territoriesRegenerated: 0 };
     }
 
-    // Regenerate player health and mana (only for players who need it)
+    // Regenerate player health (1% of max_health) and mana (fixed rate)
     await gameDb.query(
       `UPDATE players 
-       SET health = LEAST(health + ?, max_health),
+       SET health = LEAST(health + CEIL(max_health * 0.01), max_health),
            mana = LEAST(mana + ?, max_mana)
        WHERE health < max_health OR mana < max_mana`,
-      [REGEN_RATES.PLAYER_HEALTH, REGEN_RATES.PLAYER_MANA]
+      [REGEN_RATES.PLAYER_MANA]
     );
 
     // Get updated values for players who were regenerated
