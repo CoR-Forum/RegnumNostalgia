@@ -292,25 +292,19 @@ The API uses Redis as a comprehensive caching layer (see `api/src/config/cache.j
 Base URL: `http://localhost/api/`
 
 ### Authentication
-- `POST /auth/login` - Authenticate with forum credentials
-  - Body: `{ username, password }`
-  - Returns: `{ token, userId, username, realm, needsRealmSelection }`
-- `POST /auth/realm` - Set player's realm (one-time)
-  - Headers: `Authorization: Bearer <token>`
-  - Body: `{ realm: 'syrtis'|'alsius'|'ignis' }`
-  - Returns: `{ realm, position: { x, y } }`
+- `POST /login` - Authenticate with forum credentials
+  - Body: `username, password` (form-urlencoded)
+  - Returns: `{ sessionToken, userId, username, realm, needsRealmSelection }`
+- `GET /login/validate` - Validate existing session token
+  - Headers: `X-Session-Token: <jwt>`
+  - Returns: `{ userId, username, realm }`
+- `POST /realm/select` - Set player's realm (one-time)
+  - Headers: `X-Session-Token: <jwt>`
+  - Body: `realm` (form-urlencoded, one of `syrtis`, `alsius`, `ignis`)
+  - Returns: `{ success, sessionToken, realm, spawnX, spawnY }`
 
-### Player
-- `GET /player/position` - Get current player state
-  - Headers: `Authorization: Bearer <token>`
-  - Returns: `{ position: { x, y }, realm, health, mana, xp, level }`
-- `POST /player/position` - Manual position update
-  - Headers: `Authorization: Bearer <token>`
-  - Body: `{ x, y }`
-- `GET /player/stats` - Detailed character statistics
-- `POST /player/move` - Request pathfinding + walker creation
-  - Body: `{ destinationX, destinationY }`
-  - Returns: `{ walkerId, path: [[x,y], ...], estimatedSteps }`
+### Player (via WebSocket)
+- `player:stats:get` - Get current player state (position, health, mana, xp, level, etc.)
 
 ### Multiplayer
 - `GET /players/online` - All active players (last 5s)

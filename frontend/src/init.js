@@ -159,10 +159,8 @@ async function initGame(progress) {
 
     // Verify session via HTTP (fallback)
     progress('Verifying session...', 75);
-    let httpPlayerData = null;
     try {
-      httpPlayerData = await apiCall('/player/position');
-      if (!(data && data.position)) data = httpPlayerData;
+      await apiCall('/login/validate');
     } catch (httpErr) {
       const msg = String(httpErr && httpErr.message ? httpErr.message : '');
       const status = httpErr && typeof httpErr.status !== 'undefined' ? httpErr.status : null;

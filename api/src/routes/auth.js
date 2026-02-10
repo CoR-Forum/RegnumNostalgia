@@ -255,4 +255,43 @@ router.post('/select', async (req, res) => {
   }
 });
 
+/**
+ * GET /login/validate
+ * Validate an existing session token and return player info
+ */
+router.get('/validate', async (req, res) => {
+  const token = req.headers['x-session-token'];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    const [player] = await gameDb.query(
+      'SELECT user_id, username, realm FROM players WHERE user_id = ?',
+      [decoded.userId]
+    );
+
+    if (player.length === 0) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    bufferLastActive(decoded.userId);
+
+    res.json({
+      userId: decoded.userId,
+      username: player[0].username,
+      realm: player[0].realm || ''
+    });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(403).json({ error: 'Invalid or expired token' });
+    }
+    logger.error('Session validation failed', { error: error.message });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;

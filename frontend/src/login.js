@@ -265,7 +265,7 @@ async function checkSession() {
   loginForm.style.display = 'none';
 
   try {
-    const data = await loginApiCall('/player/position');
+    const data = await loginApiCall('/login/validate');
 
     // Valid session but no realm selected
     if (!data.realm || data.realm === '') {
