@@ -187,12 +187,12 @@ export function initWindow({ id, headerId, closeId, onClose, draggable = true })
           win.style.transform = '';
         }
       }
-      if (saved.open) {
+      if (saved.open === false) {
+        win.style.display = 'none';
+      } else if (saved.open) {
         win.style.display = saved.display || 'flex';
         try { if (id === 'inventory-window') setHudPressed('inventory', true); if (id === 'character-window') setHudPressed('character', true); } catch (e) {}
         tryRestoreOpen(id, saved);
-      } else {
-        win.style.display = 'none';
       }
     }
   } catch (e) { /* ignore */ }
