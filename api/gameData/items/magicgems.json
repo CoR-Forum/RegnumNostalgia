@@ -1,25 +1,57 @@
 [
   {
-    "template_key": "minor_achroite",
-    "name": "Minor Achroite",
+    "template_key": "minor_achroite_2",
+    "name": "Minor Achroite (+2)",
     "type": "magic_gem",
     "description": "A minor magical gem that enhances slash damage",
-    "stats": { "slash_damage": "2-5" },
+    "stats": { "slash_damage": "2" },
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
     "icon_name": "gem-magic/gem-magic-slash-minor.png"
   },
   {
-    "template_key": "major_achroite",
-    "name": "Major Achroite",
+    "template_key": "minor_achroite_3",
+    "name": "Minor Achroite (+3)",
+    "type": "magic_gem",
+    "description": "A minor magical gem that enhances slash damage",
+    "stats": { "slash_damage": "3" },
+    "rarity": "common",
+    "stackable": 1,
+    "equipment_slot": null,
+    "icon_name": "gem-magic/gem-magic-slash-minor.png"
+  },
+  { "template_key": "minor_achroite_4",
+    "name": "Minor Achroite (+4)",
+    "type": "magic_gem",
+    "description": "A minor magical gem that enhances slash damage",
+    "stats": { "slash_damage": "4" },
+    "rarity": "common",
+    "stackable": 1,
+    "equipment_slot": null,
+    "icon_name": "gem-magic/gem-magic-slash-minor.png"
+  },
+  {
+    "template_key": "minor_achroite_5",
+    "name": "Minor Achroite (+5)",
+    "type": "magic_gem",
+    "description": "A minor magical gem that enhances slash damage",
+    "stats": { "slash_damage": "5" },
+    "rarity": "common",
+    "stackable": 1,
+    "equipment_slot": null,
+    "icon_name": "gem-magic/gem-magic-slash-minor.png"
+  },
+  {
+    "template_key": "major_achroite_6",
+    "name": "Major Achroite (+6)",
     "type": "magic_gem",
     "description": "A major magical gem that enhances slash damage",
     "stats": { "slash_damage": "6-9" },
     "rarity": "common",
     "stackable": 1,
     "equipment_slot": null,
-    "icon_name": "gem-magic/gem-magic-slash-mayor.png"
+    "icon_name": "gem-magic/gem-magic-slash-major.png"
   },
   {
     "template_key": "great_achroite",
