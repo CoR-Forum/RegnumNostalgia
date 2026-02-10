@@ -27,6 +27,9 @@
   <link rel="icon" href="/assets/favicon.png" sizes="32x32">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
 
+  <!-- Prevent FOUC: hide body until login.css loads via the module -->
+  <style>body { visibility: hidden; }</style>
+
   <!-- Login entry point — lightweight, loads NO game assets until authenticated -->
   <script type="module" src="/src/login.js"></script>
 </head>
