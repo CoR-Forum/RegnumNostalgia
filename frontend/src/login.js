@@ -127,19 +127,20 @@ async function startGameLoading() {
     updateLoadingProgress('Loading game modules...', 25);
     const { loadGame } = await import('./main.js');
 
-    // 4. Run game initialization with progress reporting
-    await loadGame(
-      { sessionToken, userId, username, realm },
-      updateLoadingProgress
-    );
-
-    // 5. Load non-module game scripts (regions, screenshots, paths)
-    updateLoadingProgress('Loading world data...', 92);
+    // 4. Load non-module game scripts (regions, screenshots, paths)
+    //    Must load BEFORE game init so globals like initRegionDisplay are available
+    updateLoadingProgress('Loading world data...', 30);
     await Promise.all([
       loadScript('/regions.js'),
       loadScript('/screenshotManager.js'),
       loadScript('/build-path.js'),
     ]);
+
+    // 5. Run game initialization with progress reporting
+    await loadGame(
+      { sessionToken, userId, username, realm },
+      updateLoadingProgress
+    );
 
     // Done
     updateLoadingProgress('Ready!', 100);
