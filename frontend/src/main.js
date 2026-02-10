@@ -71,6 +71,9 @@ export async function loadGame(sessionData, progressCallback) {
     if (sessionData.realm) gameState.realm = sessionData.realm;
   }
 
+  // Mark body as authenticated so shoutbox and other UI partials can initialize
+  document.body.classList.add('authenticated');
+
   progress('Initializing game...', 35);
 
   // Run game bootstrap (map, websocket, player data, UI)

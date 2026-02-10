@@ -292,8 +292,8 @@ export async function bootstrap(progressCallback) {
   progress('Loading interface...', 38);
   await loadHtmlPartials();
 
-  // Load shoutbox (non-blocking)
-  loadShoutbox();
+  // Load shoutbox (must complete before WebSocket init to avoid race condition)
+  await loadShoutbox();
 
   // Initialize game world (map, websocket, player data)
   await initGame(progress);
