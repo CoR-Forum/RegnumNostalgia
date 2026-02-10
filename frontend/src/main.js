@@ -1,8 +1,8 @@
 /**
- * Regnum Nostalgia — Frontend Entry Point
+ * Regnum Nostalgia — Game Entry Point
  *
- * This module is loaded via <script type="module"> in index.html.
- * It imports all decomposed ES modules and bootstraps the application.
+ * This module is loaded DYNAMICALLY by login.js after successful authentication.
+ * It imports all game modules and exports loadGame() for the login flow to call.
  */
 
 // ── Styles ──
@@ -49,8 +49,31 @@ import './quickbar.js';       // initQuickbar → bottom-bar quick-cast slots
 // ── Socket client (registers all event handlers) ──
 import './socket-client.js';  // initializeWebSocket, getSocket → window.*
 
-// ── Map initialization + game bootstrap ──
+// ── Game bootstrap ──
+import { gameState } from './state.js';
 import { bootstrap } from './init.js';
 
-// ── Start the application ──
-bootstrap();
+/**
+ * Load and initialize the game.
+ * Called by login.js after successful authentication.
+ *
+ * @param {object} sessionData - Auth data from login (sessionToken, userId, username, realm)
+ * @param {(message: string, percent: number) => void} progressCallback - Loading screen update function
+ */
+export async function loadGame(sessionData, progressCallback) {
+  const progress = progressCallback || (() => {});
+
+  // Transfer session data to gameState
+  if (sessionData) {
+    if (sessionData.sessionToken) gameState.sessionToken = sessionData.sessionToken;
+    if (sessionData.userId) gameState.userId = sessionData.userId;
+    if (sessionData.username) gameState.username = sessionData.username;
+    if (sessionData.realm) gameState.realm = sessionData.realm;
+  }
+
+  progress('Initializing game...', 35);
+
+  // Run game bootstrap (map, websocket, player data, UI)
+  await bootstrap(progress);
+}
+

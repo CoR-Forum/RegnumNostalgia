@@ -96,9 +96,8 @@ Open http://localhost/game in your browser
 ```
 regnum-nostalgia/
 ├── frontend/                         # Vite-powered frontend
-│   ├── index.html                    # Main game client (entry point)
-│   ├── login.html                    # Login page
-│   ├── character.html                # Character creation
+│   ├── index.html                    # Single-page app (login + loading + game)
+│   ├── character.html                # Character stats window
 │   ├── settings.html                 # User settings page
 │   ├── shoutbox.html                 # Chat/shoutbox page
 │   ├── info-box.html                 # Info overlay
@@ -109,7 +108,8 @@ regnum-nostalgia/
 │   ├── package.json                  # Vite dependency
 │   ├── vite.config.js                # Vite dev/build config
 │   └── src/
-│       ├── main.js                   # ES module entry point (imports all modules)
+│       ├── login.js                  # Login entry point (session check, auth, realm selection)
+│       ├── main.js                   # Game entry point (loaded dynamically after login)
 │       ├── state.js                  # Reactive state store (subscribe, batchUpdate)
 │       ├── utils.js                  # escapeHtml, formatDurationSeconds, getErrorMessage
 │       ├── items.js                  # getItemName, getItemTypeLabel
@@ -134,9 +134,10 @@ regnum-nostalgia/
 │       ├── castbar.js                 # Cast bar UI for spell casting
 │       ├── spells.js                  # Active spell UI & tooltip display
 │       ├── quickbar.js                # Quickbar (5×10 quick-cast slots)
-│       ├── init.js                   # Game bootstrap, auto-login, partial loaders
+│       ├── init.js                   # Game bootstrap, HTML partial loaders
 │       └── styles/
-│           └── main.css              # All game CSS (extracted from HTML)
+│           ├── login.css             # Login & loading screen styles
+│           └── main.css              # Game UI styles
 ├── public/                           # Static assets (served by nginx + Vite)
 │   └── assets/
 │       ├── tiles-v1/, tiles-v2/      # Map tile layers
@@ -196,7 +197,12 @@ regnum-nostalgia/
 ## 🏗️ Architecture
 
 ### Frontend Module System
-The frontend is decomposed into 22 ES modules under `frontend/src/`, loaded through a single entry point (`main.js`). Key patterns:
+The frontend uses a two-phase loading architecture to keep the login lightweight:
+
+1. **Login Phase** (`login.js`): Loaded as the sole entry point. Handles session validation, login form, and realm selection with zero game dependencies. Only imports `login.css`.
+2. **Game Phase** (`main.js`): Dynamically imported by `login.js` after successful authentication. Loads all game modules, CDN scripts (Leaflet, Socket.IO), and non-module scripts. A loading screen with progress bar is shown during this phase.
+
+The frontend is decomposed into 23 ES modules under `frontend/src/`. Key patterns:
 
 - **Reactive State Store** (`state.js`): Zero-dependency pub/sub with `subscribe(keys, callback)`, `setState(key, value)`, and `batchUpdate(updates)` — UI elements auto-update when state changes
 - **Lazy Imports**: Circular dependencies between `windows.js` ↔ `inventory.js`/`equipment.js` are resolved via `await import()` at call sites

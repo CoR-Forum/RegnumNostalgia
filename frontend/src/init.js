@@ -1,5 +1,8 @@
 /**
- * Game Init — initGame(), checkAutoLogin(), HTML-partial loaders.
+ * Game Init — bootstrap(), initGame(), HTML-partial loaders.
+ *
+ * Called by main.js loadGame() AFTER successful authentication.
+ * No login/auth logic lives here — that is handled by login.js.
  */
 
 import { gameState, batchUpdate } from './state.js';
@@ -14,21 +17,91 @@ import { initInventoryDropZone } from './inventory.js';
 import { initSpellsUI } from './spells.js';
 import { initQuickbar } from './quickbar.js';
 
-let _autoLoginFallback = null;
+/**
+ * Load an HTML partial into a container element.
+ * Injects non-script nodes, then executes inline/external scripts.
+ */
+function loadPartial(url, containerId) {
+  return fetch(url)
+    .then((r) => r.text())
+    .then((html) => {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+
+      // Move non-script nodes into the container
+      Array.from(tmp.childNodes).forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
+        container.appendChild(node);
+      });
+
+      // Execute inline/external scripts (skip Vite dev injections)
+      const scripts = tmp.querySelectorAll('script');
+      scripts.forEach((s) => {
+        if (s.src && (s.src.includes('@vite') || s.src.includes('vite/client'))) return;
+        const ns = document.createElement('script');
+        if (s.type) ns.type = s.type;
+        if (s.src) ns.src = s.src;
+        else ns.textContent = s.textContent;
+        document.body.appendChild(ns);
+      });
+    })
+    .catch((err) => console.error(`Failed to load ${url}:`, err));
+}
 
 /**
- * Initialize the game after successful login / realm selection.
+ * Load all HTML partials (character, settings, info-box, shoutbox).
  */
-export async function initGame() {
+async function loadHtmlPartials() {
+  // Load character, settings, info-box in parallel
+  await Promise.all([
+    loadPartial('character.html', 'character-include'),
+    loadPartial('settings.html', 'settings-include'),
+    loadPartial('info-box.html', 'mini-info-include'),
+  ]);
+
+  // Re-initialize windows after partials are loaded
+  try { initWindows(); } catch (e) { /* ignore */ }
+}
+
+/**
+ * Load shoutbox partial and initialize its window.
+ */
+function loadShoutbox() {
+  loadPartial('shoutbox.html', 'shoutbox-include').then(() => {
+    try {
+      const shoutboxWin = document.getElementById('shoutbox-window');
+      if (shoutboxWin) {
+        const shoutboxState = getWindowState('shoutbox-window');
+        if (!shoutboxState || typeof shoutboxState.open === 'undefined') {
+          saveWindowState('shoutbox-window', { open: true, display: 'flex' });
+          shoutboxWin.style.display = 'flex';
+        }
+      }
+      initWindow({ id: 'shoutbox-window', headerId: 'shoutbox-header', closeId: 'shoutbox-close-btn' });
+    } catch (e) { console.error('Failed to initialize shoutbox window:', e); }
+  });
+}
+
+/**
+ * Initialize the game world (map, websocket, player state, UI).
+ * Called by bootstrap() with progress reporting.
+ *
+ * @param {(message: string, percent: number) => void} progress
+ */
+async function initGame(progress) {
   try {
-    // Initialize the Leaflet map now (deferred until after login)
+    // Initialize the Leaflet map
+    progress('Initializing map...', 40);
     await import('./map-init.js').then((mod) => mod.initMap());
 
     const map = getMap();
     const totalH = getTotalH();
     const totalW = getTotalW();
 
-    // Connect WebSocket first so we can request state through it
+    // Connect WebSocket
+    progress('Connecting to server...', 55);
     initializeWebSocket();
 
     // Wait for socket to connect (or timeout)
@@ -49,6 +122,7 @@ export async function initGame() {
     });
 
     // Request initial player state via WebSocket
+    progress('Loading player data...', 65);
     let data = null;
     const requestPlayerState = () => new Promise((resolve) => {
       if (window.socket && window.socket.connected) {
@@ -83,7 +157,8 @@ export async function initGame() {
       console.warn('No initial player state received via WebSocket; waiting for server emission');
     }
 
-    // Validate session: prefer socket-provided state, verify via HTTP
+    // Verify session via HTTP (fallback)
+    progress('Verifying session...', 75);
     let httpPlayerData = null;
     try {
       httpPlayerData = await apiCall('/player/position');
@@ -96,14 +171,7 @@ export async function initGame() {
       if (authFailure || playerNotFound) throw httpErr;
     }
 
-    // Check if realm is selected
-    if (data && (!data.realm || data.realm === null || data.realm === '')) {
-      if (typeof window.showRealmSelection === 'function') {
-        window.showRealmSelection();
-        return;
-      }
-    }
-
+    // Use gameState as fallback if no data received
     if (!(data && data.position)) {
       if (gameState && gameState.position && typeof gameState.position.x === 'number' && typeof gameState.position.y === 'number') {
         data = {
@@ -126,7 +194,8 @@ export async function initGame() {
       }
     }
 
-    document.body.classList.add('authenticated');
+    // Prepare game world
+    progress('Preparing game world...', 82);
 
     // Allow layout to settle, then invalidate Leaflet size
     try {
@@ -147,7 +216,6 @@ export async function initGame() {
       }, 250);
     } catch (e) {}
 
-    hideModal();
     showPlayerInfo();
     createPlayerMarker(gameState.position.x, gameState.position.y);
 
@@ -183,8 +251,11 @@ export async function initGame() {
 
     // Initialize quickbar
     try { initQuickbar(); } catch (e) { console.debug('initQuickbar failed', e); }
+
   } catch (error) {
-    console.debug('initGame failed, returning to login:', error && error.message ? error.message : error);
+    console.error('[InitGame] Failed:', error && error.message ? error.message : error);
+
+    // Clear auth on session errors so login.js will show login on reload
     try {
       const msg = String((error && error.message) ? error.message : '');
       const status = (error && typeof error.status !== 'undefined') ? error.status : null;
@@ -197,151 +268,36 @@ export async function initGame() {
       }
     } catch (e) {}
 
-    try {
-      const loginForm = document.getElementById('login-form');
-      const autoLoginLoading = document.getElementById('auto-login-loading');
-      if (loginForm) loginForm.style.display = 'block';
-      if (autoLoginLoading) autoLoginLoading.classList.add('hidden');
-      document.body.classList.remove('authenticated');
-      const overlay = document.getElementById('modal-overlay');
-      if (overlay) overlay.classList.remove('hidden');
-      try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
-    } catch (e) {
-      console.error('[InitGame] Error resetting UI:', e);
-    }
     throw error;
   }
 }
 
-function hideModal() {
-  try {
-    const overlay = document.getElementById('modal-overlay');
-    if (overlay) overlay.classList.add('hidden');
-  } catch (e) {}
-}
-
+// Expose initGame globally for backward compatibility
 window.initGame = initGame;
 
 /**
- * Auto-login or show login form.
+ * Bootstrap the game: init UI, load partials, then run initGame.
+ * Called by main.js loadGame() with a progress callback.
+ *
+ * @param {(message: string, percent: number) => void} progressCallback
  */
-export function checkAutoLogin() {
-  let overlay = document.getElementById('modal-overlay');
-  if (!overlay) {
-    if (typeof window.loadLoginForm === 'function') {
-      window.loadLoginForm().then(() => { setTimeout(checkAutoLogin, 50); }).catch(() => { setTimeout(checkAutoLogin, 250); });
-      return;
-    }
-    setTimeout(checkAutoLogin, 50);
-    return;
-  }
+export async function bootstrap(progressCallback) {
+  const progress = progressCallback || (() => {});
 
-  if (gameState.sessionToken) {
-    try {
-      const loginForm = document.getElementById('login-form');
-      const autoLoginLoading = document.getElementById('auto-login-loading');
-      if (loginForm) loginForm.style.display = 'none';
-      if (autoLoginLoading) autoLoginLoading.classList.remove('hidden');
-      try { if (_autoLoginFallback) clearTimeout(_autoLoginFallback); } catch (e) {}
-      _autoLoginFallback = setTimeout(() => {
-        try {
-          const lf = document.getElementById('login-form');
-          const al = document.getElementById('auto-login-loading');
-          const ov = document.getElementById('modal-overlay');
-          if (lf) lf.style.display = 'block';
-          if (al) al.classList.add('hidden');
-          if (ov) ov.classList.remove('hidden');
-          try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
-        } catch (e) {}
-      }, 5000);
-    } catch (e) {}
-
-    setTimeout(() => {
-      initGame().then(() => {
-        try { if (_autoLoginFallback) { clearTimeout(_autoLoginFallback); _autoLoginFallback = null; } } catch (e) {}
-      }).catch((err) => {
-        console.debug('[Auto-login] Failed:', err);
-        try {
-          const loginForm = document.getElementById('login-form');
-          const autoLoginLoading = document.getElementById('auto-login-loading');
-          if (loginForm) loginForm.style.display = 'block';
-          if (autoLoginLoading) autoLoginLoading.classList.add('hidden');
-          try { if (_autoLoginFallback) { clearTimeout(_autoLoginFallback); _autoLoginFallback = null; } } catch (e) {}
-          document.body.classList.remove('authenticated');
-          const ov = document.getElementById('modal-overlay');
-          if (ov) ov.classList.remove('hidden');
-          try { document.getElementById('step-login').classList.add('active'); document.getElementById('step-realm').classList.remove('active'); } catch (e) {}
-        } catch (e) { console.error('[Auto-login] Error showing login form:', e); }
-      });
-    }, 500);
-  } else {
-    try {
-      const ov = document.getElementById('modal-overlay');
-      if (ov) ov.classList.remove('hidden');
-      document.getElementById('step-login').classList.add('active');
-      document.getElementById('step-realm').classList.remove('active');
-    } catch (e) {}
-  }
-}
-
-/**
- * Load HTML partials (shoutbox, etc.) and initialize their windows.
- */
-export function loadShoutbox() {
-  fetch('shoutbox.html').then((r) => r.text()).then((html) => {
-    const container = document.getElementById('shoutbox-include');
-    if (!container) return;
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-
-    Array.from(tmp.childNodes).forEach((node) => {
-      if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
-      container.appendChild(node);
-    });
-
-    const scripts = tmp.querySelectorAll('script');
-    scripts.forEach((s) => {
-      // Filter out Vite client injections
-      if (s.src && (s.src.includes('@vite') || s.src.includes('vite/client'))) return;
-      const ns = document.createElement('script');
-      if (s.src) ns.src = s.src;
-      else ns.textContent = s.textContent;
-      if (s.type) ns.type = s.type;
-      document.body.appendChild(ns);
-    });
-
-    try {
-      const shoutboxWin = document.getElementById('shoutbox-window');
-      if (shoutboxWin) {
-        const shoutboxState = getWindowState('shoutbox-window');
-        if (!shoutboxState || typeof shoutboxState.open === 'undefined') {
-          saveWindowState('shoutbox-window', { open: true, display: 'flex' });
-          shoutboxWin.style.display = 'flex';
-        }
-      }
-      initWindow({ id: 'shoutbox-window', headerId: 'shoutbox-header', closeId: 'shoutbox-close-btn' });
-    } catch (e) { console.error('Failed to initialize shoutbox window:', e); }
-  }).catch((err) => console.error('Failed to load shoutbox:', err));
-}
-
-/**
- * Bootstrap the application: init windows, map, inventory drop zone, then check auto-login.
- */
-export function bootstrap() {
   // Initialize draggable/closable windows
+  progress('Setting up interface...', 36);
   initWindows();
-
-  // Set up HUD button click handlers
   initHudButtons();
-
-  // Set up inventory drag-drop zone
   initInventoryDropZone();
 
-  // Map initialization is deferred until after login (inside initGame)
+  // Load HTML partials (character, settings, info-box)
+  progress('Loading interface...', 38);
+  await loadHtmlPartials();
 
-  // Load shoutbox partial
+  // Load shoutbox (non-blocking)
   loadShoutbox();
 
-  // Check auto-login
-  checkAutoLogin();
+  // Initialize game world (map, websocket, player data)
+  await initGame(progress);
 }
+

@@ -1,0 +1,255 @@
+/* ==========================================================================
+   Regnum Nostalgia – Login & Loading Screen Styles
+   Lightweight stylesheet loaded before any game assets.
+   ========================================================================== */
+
+/* ── Base ── */
+.hidden { display: none !important; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: url('/assets/background.jpg') center center / cover no-repeat;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOGIN SCREEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#login-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* ── Modal / Window ── */
+.modal-content {
+  background: transparent;
+  border: none;
+  padding: 0;
+  max-width: 252px;
+  width: 90%;
+  position: relative;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+.modal-content::before { display: none; }
+.modal-logo { text-align: center; padding-bottom: 8px; pointer-events: none; }
+
+.modal-step { display: none; }
+.modal-step.active { display: block; }
+
+/* ── 9-slice window theming (shared with game) ── */
+.ui-window { /* pure image-based */ }
+.ui-window-titlebar {
+  height: 16px;
+  padding: 0 4px;
+  position: relative;
+  z-index: 1;
+  border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-title-bar.png') 0 59 0 59 fill / 0 59px 0 59px / 0 repeat;
+}
+.ui-window-body {
+  margin-top: -16px;
+  padding-top: 16px;
+  border-image: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/ui-window-main.png') 49 59 78 59 fill / 49px 59px 78px 59px / 0 repeat repeat;
+  background: rgba(0,0,0,0.3);
+}
+
+.modal-title { /* uses ui-window-titlebar */ }
+.modal-body {
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-bottom: 16px;
+}
+
+/* ── Form ── */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block;
+  color: #e0e0e0;
+  font-size: 11px;
+  margin-bottom: 4px;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+}
+.form-input {
+  width: 100%;
+  padding: 3px 8px;
+  border: 1px solid #444;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  font-size: 11px;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  box-sizing: border-box;
+  transition: none;
+}
+.form-input:focus {
+  outline: 1px solid #0d6efd;
+  outline-offset: 0;
+  border-color: #0d6efd;
+}
+
+.btn {
+  width: 100%;
+  padding: 4px 12px;
+  border: 1px solid #444;
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+.btn-primary {
+  background: #4a4a4a;
+  color: #ffffff;
+  border-color: #4a4a4a;
+}
+.btn-primary:hover { background: #5a5a5a; }
+.btn-primary:active { background: #3a3a3a; }
+.btn-primary:disabled {
+  background: #2a2a2a;
+  color: #666;
+  cursor: not-allowed;
+  border-color: #333;
+}
+
+/* ── Error message ── */
+.error-message {
+  background: #3a1a1a;
+  color: #ff6b6b;
+  padding: 8px;
+  margin-bottom: 12px;
+  font-size: 11px;
+  border: 1px solid #661a1a;
+}
+.error-message.hidden { display: none; }
+
+/* ── Loading spinner ── */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Realm cards ── */
+.realm-cards {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 12px;
+}
+.realm-card {
+  padding: 8px;
+  border: 1px solid #444;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  flex: 1;
+  text-align: center;
+}
+.realm-card:hover { background: #333; border-color: #555; }
+.realm-card:active { background: #1a1a1a; }
+.realm-card.syrtis,
+.realm-card.alsius,
+.realm-card.ignis { background: #2a2a2a; color: #e0e0e0; }
+
+.realm-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+.realm-icon img { width: 100%; height: 100%; object-fit: contain; }
+.realm-info h3 { margin: 0 0 2px 0; font-size: 11px; font-weight: 700; }
+.realm-info p { margin: 0; font-size: 11px; opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LOADING SCREEN
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50000;
+  flex-direction: column;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 360px;
+  width: 90%;
+}
+
+.loading-content > img {
+  max-width: 240px;
+  height: auto;
+  pointer-events: none;
+}
+
+.loading-bar-container {
+  width: 100%;
+  height: 18px;
+  background: #1a1a1a;
+  border: 1px solid #444;
+  position: relative;
+  overflow: hidden;
+}
+
+#loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(180deg, #4a7c2e 0%, #3a6822 50%, #2e5a1a 100%);
+  border-right: 1px solid #5a9a35;
+  transition: width 0.4s ease;
+}
+
+#loading-status {
+  color: #c0c0c0;
+  font-size: 11px;
+  font-family: 'MS Sans Serif', Arial, sans-serif;
+  text-align: center;
+  min-height: 16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   GAME CONTAINER (hidden until game is ready)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#game-container {
+  display: none;
+  width: 100%;
+  height: 100%;
+}

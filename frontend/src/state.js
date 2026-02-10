@@ -153,7 +153,7 @@ export const gameState = {
   buildMode: 'path',
 };
 
-// Expose on window for legacy non-module scripts (login.html, character.html, etc.)
+// Expose on window for legacy non-module scripts (character.html, settings.html, etc.)
 window.gameState = gameState;
 
 /** Returns the hex color for a realm name. */

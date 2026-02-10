@@ -47,7 +47,7 @@ export async function apiCall(endpoint, options = {}) {
   return data;
 }
 
-// Expose globally for non-module scripts (login.html, character.html, etc.)
+// Expose globally for non-module scripts (character.html, settings.html, etc.)
 window.apiCall = apiCall;
 
 /**

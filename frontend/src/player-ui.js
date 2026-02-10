@@ -170,6 +170,13 @@ export function initHudButtons() {
     } catch (err) { console.error('HUD button action failed', err); }
   });
 
+  // Logout button — clear session and reload to show login screen
+  const _logoutBtn = document.getElementById('logout-btn');
+  if (_logoutBtn) _logoutBtn.addEventListener('click', () => {
+    try { localStorage.removeItem('sessionToken'); } catch (e) {}
+    window.location.reload();
+  });
+
   // Legacy header character button
   const _characterBtn = document.getElementById('character-btn');
   if (_characterBtn) _characterBtn.addEventListener('click', () => {
