@@ -43,6 +43,7 @@ const CACHE_KEYS = {
 
   // Shoutbox
   SHOUTBOX_MESSAGES: 'cache:shoutbox:messages',  // list of JSON message objects (newest at head)
+  SHOUTBOX_MESSAGE_IDS: 'cache:shoutbox:message_ids',  // set of entryIds to track uniqueness
   SHOUTBOX_LAST_ID: 'cache:shoutbox:last_id',   // last polled entryID
 
   // Walker
@@ -692,14 +693,17 @@ async function getCachedShoutboxMessages() {
  * Initialize shoutbox cache with an array of messages (oldest first / chronological order).
  * Stores in Redis list with newest at head (LPUSH) so LRANGE 0..49 returns newest first.
  * We reverse to push oldest first so newest ends up at head.
+ * Also builds a set of entryIds to track uniqueness.
  */
 async function setShoutboxMessages(messages) {
   try {
     const pipeline = redis.pipeline();
     pipeline.del(CACHE_KEYS.SHOUTBOX_MESSAGES);
+    pipeline.del(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS);
     // Push in reverse order so newest is at index 0
     for (let i = messages.length - 1; i >= 0; i--) {
       pipeline.lpush(CACHE_KEYS.SHOUTBOX_MESSAGES, JSON.stringify(messages[i]));
+      pipeline.sadd(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS, String(messages[i].entryId));
     }
     pipeline.ltrim(CACHE_KEYS.SHOUTBOX_MESSAGES, 0, SHOUTBOX_MAX_MESSAGES - 1);
     await pipeline.exec();
@@ -710,13 +714,54 @@ async function setShoutboxMessages(messages) {
 
 /**
  * Add a new shoutbox message to the cache (pushes to head, trims to max).
+ * Checks for duplicates by entryId before adding.
+ * Returns true if added, false if duplicate detected.
  */
 async function addShoutboxMessage(message) {
   try {
-    await redis.lpush(CACHE_KEYS.SHOUTBOX_MESSAGES, JSON.stringify(message));
-    await redis.ltrim(CACHE_KEYS.SHOUTBOX_MESSAGES, 0, SHOUTBOX_MAX_MESSAGES - 1);
+    // Check if this entryId already exists in the set
+    const exists = await redis.sismember(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS, String(message.entryId));
+    if (exists) {
+      logger.debug('Skipping duplicate shoutbox message', { entryId: message.entryId });
+      return false;
+    }
+    
+    // Get current list size to determine if trimming will happen
+    const listSize = await redis.llen(CACHE_KEYS.SHOUTBOX_MESSAGES);
+    
+    // Get the messages that will be trimmed off (if list will exceed max)
+    let trimmedIds = [];
+    if (listSize >= SHOUTBOX_MAX_MESSAGES) {
+      const messagesToTrim = await redis.lrange(
+        CACHE_KEYS.SHOUTBOX_MESSAGES, 
+        SHOUTBOX_MAX_MESSAGES - 1,  // Will be at index SHOUTBOX_MAX_MESSAGES after lpush
+        -1
+      );
+      trimmedIds = messagesToTrim.map(m => {
+        try {
+          return String(JSON.parse(m).entryId);
+        } catch (e) {
+          return null;
+        }
+      }).filter(id => id !== null);
+    }
+    
+    // Add the message, track its ID, trim list, and remove trimmed IDs from set
+    const pipeline = redis.pipeline();
+    pipeline.lpush(CACHE_KEYS.SHOUTBOX_MESSAGES, JSON.stringify(message));
+    pipeline.sadd(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS, String(message.entryId));
+    pipeline.ltrim(CACHE_KEYS.SHOUTBOX_MESSAGES, 0, SHOUTBOX_MAX_MESSAGES - 1);
+    
+    if (trimmedIds.length > 0) {
+      pipeline.srem(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS, ...trimmedIds);
+    }
+    
+    await pipeline.exec();
+    
+    return true;
   } catch (e) {
     logger.error('Redis push failed (shoutbox message)', { error: e.message });
+    return false;
   }
 }
 

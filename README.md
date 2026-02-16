@@ -255,6 +255,7 @@ The frontend is decomposed into 23 ES modules under `frontend/src/`. Key pattern
 - `cache:player:{userId}` - Player position/realm JSON (TTL: 10s)
 - `cache:last_active` - Sorted set of userId → timestamp, batch-flushed to DB every 5s
 - `cache:shoutbox:messages` - List of recent shoutbox messages (newest at head, max 50)
+- `cache:shoutbox:message_ids` - Set of entryIds to prevent duplicate messages
 - `cache:shoutbox:last_id` - Last polled shoutbox entry ID (persists across restarts)
 - `cache:walkers:active` - Hash of walkerId → walker state JSON (active walkers)
 - `cache:walkers:user:{userId}` - Current active walkerId for a user
