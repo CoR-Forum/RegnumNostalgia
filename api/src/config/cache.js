@@ -716,6 +716,10 @@ async function setShoutboxMessages(messages) {
  * Add a new shoutbox message to the cache (pushes to head, trims to max).
  * Checks for duplicates by entryId before adding.
  * Returns true if added, false if duplicate detected.
+ * 
+ * Note: This function performs multiple Redis operations sequentially before the pipeline.
+ * While a Lua script could improve atomicity and reduce round trips, the current implementation
+ * is simpler to maintain and the performance impact is minimal for this use case.
  */
 async function addShoutboxMessage(message) {
   try {
@@ -741,6 +745,11 @@ async function addShoutboxMessage(message) {
         try {
           return String(JSON.parse(m).entryId);
         } catch (e) {
+          // Log parse errors to help identify data corruption issues
+          logger.warn('Failed to parse shoutbox message during trim', { 
+            error: e.message, 
+            rawMessage: m 
+          });
           return null;
         }
       }).filter(id => id !== null);
