@@ -720,6 +720,8 @@ async function setShoutboxMessages(messages) {
  * Note: This function performs multiple Redis operations sequentially before the pipeline.
  * While a Lua script could improve atomicity and reduce round trips, the current implementation
  * is simpler to maintain and the performance impact is minimal for this use case.
+ * In the rare case of race conditions causing duplicates, they will be naturally filtered
+ * when messages are retrieved and displayed.
  */
 async function addShoutboxMessage(message) {
   try {
@@ -767,10 +769,48 @@ async function addShoutboxMessage(message) {
     
     await pipeline.exec();
     
+    // Safeguard: If ID set grows too large (e.g., due to parse errors or desync),
+    // reconcile it with the actual message list. This prevents unbounded growth.
+    const setSize = await redis.scard(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS);
+    if (setSize > SHOUTBOX_MAX_MESSAGES * 2) {
+      logger.warn('Shoutbox ID set is too large, reconciling', { setSize, maxExpected: SHOUTBOX_MAX_MESSAGES });
+      await reconcileShoutboxIds();
+    }
+    
     return true;
   } catch (e) {
     logger.error('Redis push failed (shoutbox message)', { error: e.message });
     return false;
+  }
+}
+
+/**
+ * Reconcile the shoutbox ID set with the actual message list.
+ * This is a safeguard to prevent the ID set from growing unbounded due to
+ * parse errors, crashes, or other edge cases.
+ */
+async function reconcileShoutboxIds() {
+  try {
+    const messages = await redis.lrange(CACHE_KEYS.SHOUTBOX_MESSAGES, 0, SHOUTBOX_MAX_MESSAGES - 1);
+    const validIds = messages.map(m => {
+      try {
+        return String(JSON.parse(m).entryId);
+      } catch (e) {
+        return null;
+      }
+    }).filter(id => id !== null);
+    
+    // Rebuild the ID set
+    const pipeline = redis.pipeline();
+    pipeline.del(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS);
+    if (validIds.length > 0) {
+      pipeline.sadd(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS, ...validIds);
+    }
+    await pipeline.exec();
+    
+    logger.info('Reconciled shoutbox ID set', { idCount: validIds.length });
+  } catch (e) {
+    logger.error('Failed to reconcile shoutbox ID set', { error: e.message });
   }
 }
 
