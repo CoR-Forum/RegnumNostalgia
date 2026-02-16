@@ -700,7 +700,7 @@ This project uses [Dependabot](https://docs.github.com/en/code-security/dependab
 - **Schedule**: Daily checks at 03:00 UTC
 - **Frontend**: Monitors `/frontend/package.json` (Vite and related npm packages)
 - **Backend API**: Monitors `/api/package.json` (Node.js/Express and related npm packages)
-- **Pull Requests**: Automatically creates PRs for outdated dependencies with labels and assignees
+- **Pull Requests**: Automatically creates PRs for outdated dependencies with appropriate labels
 - **Security**: Prioritizes security updates for vulnerable dependencies
 
 ## 📄 License
