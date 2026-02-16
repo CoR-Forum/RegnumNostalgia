@@ -674,6 +674,10 @@ async function invalidateWalkSpeed(userId) {
 
 const SHOUTBOX_MAX_MESSAGES = 50;
 
+// Track when we last reconciled the ID set to avoid checking too frequently
+let lastReconcileCheck = 0;
+const RECONCILE_CHECK_INTERVAL = 60000; // Check at most once per minute
+
 /**
  * Get cached shoutbox messages. Returns array of message objects or null if cache miss.
  */
@@ -769,12 +773,16 @@ async function addShoutboxMessage(message) {
     
     await pipeline.exec();
     
-    // Safeguard: If ID set grows too large (e.g., due to parse errors or desync),
-    // reconcile it with the actual message list. This prevents unbounded growth.
-    const setSize = await redis.scard(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS);
-    if (setSize > SHOUTBOX_MAX_MESSAGES * 2) {
-      logger.warn('Shoutbox ID set is too large, reconciling', { setSize, maxExpected: SHOUTBOX_MAX_MESSAGES });
-      await reconcileShoutboxIds();
+    // Safeguard: Periodically check if ID set grows too large (e.g., due to parse errors or desync).
+    // This prevents unbounded growth without adding overhead on every message add.
+    const now = Date.now();
+    if (now - lastReconcileCheck > RECONCILE_CHECK_INTERVAL) {
+      lastReconcileCheck = now;
+      const setSize = await redis.scard(CACHE_KEYS.SHOUTBOX_MESSAGE_IDS);
+      if (setSize > SHOUTBOX_MAX_MESSAGES * 2) {
+        logger.warn('Shoutbox ID set is too large, reconciling', { setSize, maxExpected: SHOUTBOX_MAX_MESSAGES });
+        await reconcileShoutboxIds();
+      }
     }
     
     return true;
