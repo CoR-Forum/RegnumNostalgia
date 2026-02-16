@@ -14,10 +14,6 @@ updates:
     commit-message:
       prefix: "frontend"
       include: "scope"
-    reviewers:
-      - "CoR-Forum/maintainers"
-    assignees:
-      - "CoR-Forum/maintainers"
 
   # Backend API dependencies (Node.js/Express)
   - package-ecosystem: "npm"
@@ -33,7 +29,3 @@ updates:
     commit-message:
       prefix: "api"
       include: "scope"
-    reviewers:
-      - "CoR-Forum/maintainers"
-    assignees:
-      - "CoR-Forum/maintainers"
