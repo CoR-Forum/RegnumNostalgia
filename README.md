@@ -692,6 +692,17 @@ Contributions welcome! This is a nostalgic passion project recreating the classi
 4. Push to branch: `git push origin feature/amazing-feature`
 5. Open Pull Request
 
+### Dependency Management
+
+This project uses [Dependabot](https://docs.github.com/en/code-security/dependabot) to automatically keep dependencies up-to-date and secure.
+
+**Configuration**: `.github/dependabot.yml`
+- **Schedule**: Daily checks at 03:00 UTC
+- **Frontend**: Monitors `/frontend/package.json` (Vite and related npm packages)
+- **Backend API**: Monitors `/api/package.json` (Node.js/Express and related npm packages)
+- **Pull Requests**: Automatically creates PRs for outdated dependencies with labels and assignees
+- **Security**: Prioritizes security updates for vulnerable dependencies
+
 ## 📄 License
 
 This project is for educational and nostalgic purposes. Regnum Online/Champions of Regnum is property of NGD Studios.

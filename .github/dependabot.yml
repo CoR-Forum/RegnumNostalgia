@@ -1,0 +1,39 @@
+version: 2
+updates:
+  # Frontend dependencies (Vite)
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "frontend"
+      include: "scope"
+    reviewers:
+      - "CoR-Forum/maintainers"
+    assignees:
+      - "CoR-Forum/maintainers"
+
+  # Backend API dependencies (Node.js/Express)
+  - package-ecosystem: "npm"
+    directory: "/api"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+    commit-message:
+      prefix: "api"
+      include: "scope"
+    reviewers:
+      - "CoR-Forum/maintainers"
+    assignees:
+      - "CoR-Forum/maintainers"
