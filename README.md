@@ -115,8 +115,9 @@ regnum-nostalgia/
 │       ├── items.js                  # getItemName, getItemTypeLabel
 │       ├── api.js                    # apiCall, emitOrApi (HTTP + WebSocket)
 │       ├── server-time.js            # In-game time display & fetch
-│       ├── map-state.js              # Map instance accessors (map, totalH, totalW)
-│       ├── map-init.js               # Leaflet map creation & tile loading
+│       ├── map-state.js              # Map instance accessors (map, totalH, totalW, gameToLatLng, latLngToGame)
+│       ├── map-init.js               # Leaflet map creation & tile loading (v1: rastercoords + L.tileLayer, v2: L.imageOverlay)
+│       ├── rastercoords.js           # leaflet-rastercoords plugin for v1 tile coordinate mapping
 │       ├── tooltip.js                # Item/equipment hover tooltips
 │       ├── windows.js                # Draggable/closable window system, z-index stacking
 │       ├── player-ui.js              # HUD buttons, stats display
@@ -140,7 +141,8 @@ regnum-nostalgia/
 │           └── main.css              # Game UI styles
 ├── public/                           # Static assets (served by nginx + Vite)
 │   └── assets/
-│       ├── tiles-v1/, tiles-v2/      # Map tile layers
+│       ├── tiles-v1/                 # V1 map: proper Leaflet tiles ({z}/{x}/{y}.png) served from CDN
+│       ├── tiles-v2/                 # V2 map: 3×3 image overlay grid (legacy format)
 │       ├── markers/                  # Map marker icons
 │       ├── markers.json              # Marker definitions
 │       ├── ingame-maps/              # Mini-maps
@@ -223,7 +225,9 @@ The frontend is decomposed into 23 ES modules under `frontend/src/`. Key pattern
 - **Queue System**: Bull (Redis-backed job queues)
 - **Web Server**: Nginx (Alpine) with WebSocket proxy
 - **Containerization**: Docker & Docker Compose
-- **Map Coordinates**: 6144×6144 coordinate system with 3×3 tiled layout
+- **Map Coordinates**: 6144×6144 coordinate system
+- **Map Tiles**: V1 uses leaflet-rastercoords + `L.tileLayer` (gdal2tiles-leaflet, zoom 0-5), V2 uses 9 `L.imageOverlay` images
+- **Coordinate Helpers**: `gameToLatLng(x, y)` / `latLngToGame(latLng)` in map-state.js abstract over v1 (rastercoords) and v2 (legacy) coordinate systems
 
 ## 📊 Database Schema
 

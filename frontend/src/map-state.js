@@ -12,6 +12,8 @@ let _map = null;
 let _totalH = 0;
 let _totalW = 0;
 let _territoryIcons = {};
+let _rasterCoords = null;                 // set when v1 rastercoords is active
+const GAME_SIZE = 6144;
 
 export function setMapState(map, totalH, totalW) {
   _map = map;
@@ -22,6 +24,13 @@ export function setMapState(map, totalH, totalW) {
   window.totalH = totalH;
   window.totalW = totalW;
 }
+
+export function setRasterCoords(rc) {
+  _rasterCoords = rc;
+  window.rasterCoords = rc;
+}
+
+export function getRasterCoords() { return _rasterCoords; }
 
 export function setTerritoryIcons(icons) {
   _territoryIcons = icons;
@@ -48,6 +57,55 @@ export function getMapState() {
 }
 
 /**
+ * Convert game coordinates to a Leaflet LatLng.
+ *
+ * Game coords: x → east (0-6144), y → south (0 at north, 6144 at south).
+ * When rastercoords is active (v1 tiles) this uses L.RasterCoords.unproject.
+ * Otherwise falls back to the legacy CRS.Simple mapping [totalH - y, x].
+ *
+ * @param {number} x - game X coordinate
+ * @param {number} y - game Y coordinate
+ * @returns {L.LatLng|number[]}
+ */
+export function gameToLatLng(x, y) {
+  if (_rasterCoords) {
+    return _rasterCoords.unproject([x, y]);
+  }
+  return [_totalH - y, x];
+}
+
+/**
+ * Convert a Leaflet LatLng back to game coordinates.
+ *
+ * @param {L.LatLng|number[]} latLng
+ * @returns {{ x: number, y: number }}
+ */
+export function latLngToGame(latLng) {
+  if (_rasterCoords) {
+    const p = _rasterCoords.project(latLng);
+    return { x: p.x, y: p.y };
+  }
+  const lat = typeof latLng.lat === 'number' ? latLng.lat : latLng[0];
+  const lng = typeof latLng.lng === 'number' ? latLng.lng : latLng[1];
+  return { x: lng, y: _totalH - lat };
+}
+
+/**
+ * Return the Leaflet LatLng for the centre of the game map.
+ */
+export function getMapCenter() {
+  return gameToLatLng(GAME_SIZE / 2, GAME_SIZE / 2);
+}
+
+/**
+ * Return a suitable "default" zoom level for initial / reset views.
+ * v1 (rastercoords): zoom 3.  v2 (legacy): zoom -2.
+ */
+export function getDefaultZoom() {
+  return _rasterCoords ? 3 : -2;
+}
+
+/**
  * Convert an array of [x,y] or {x,y} positions to Leaflet LatLng objects.
  */
 export function positionsToLatLngs(positions) {
@@ -55,9 +113,11 @@ export function positionsToLatLngs(positions) {
   return positions.map(p => {
     const x = Array.isArray(p) ? p[0] : p.x;
     const y = Array.isArray(p) ? p[1] : p.y;
-    return [_totalH - y, x];
+    return gameToLatLng(x, y);
   });
 }
 
 // Expose for legacy non-module scripts (build-path.js)
 window.positionsToLatLngs = positionsToLatLngs;
+window.gameToLatLng = gameToLatLng;
+window.latLngToGame = latLngToGame;

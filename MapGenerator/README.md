@@ -9,8 +9,10 @@ The Regnum Online map uses a specific coordinate system based on the original ga
 ### Coordinate Specifications
 - **Map dimensions:** 6144 × 6144 game units
 - **Chunk system:** 48 × 48 chunks, each 128 × 128 units (48 × 128 = 6144)
-- **Image dimensions:** 18432 × 18432 pixels (3× resolution for better zoom detail)
-- **Scale factor:** 3.0 (image pixels / game coordinates)
+- **Original-map image dimensions:** 18432 × 18432 pixels (3× resolution for better zoom detail)
+- **V1-map image dimensions:** 6144 × 6144 pixels (1:1 with game coords, upscaled from 3072×3072)
+- **Scale factor (original-map):** 3.0 (image pixels / game coordinates)
+- **Scale factor (v1-map):** 1.0 (image pixels = game coordinates)
 
 ### Original Map Source
 - **Original tiles:** 18 × 18 grid of 1024×1024 tiles (from original game)
@@ -29,9 +31,39 @@ The Regnum Online map uses a specific coordinate system based on the original ga
 ### Prerequisites
 - Docker installed on your system
 - Source map image or original tiles
-- ImageMagick (for image processing)
+- Python 3 with Pillow (for assembly scripts)
 
-### Map Assembly from Original Tiles
+### V1 Map Assembly from Ingame Tiles (3×3 Grid)
+
+The v1 ingame map consists of 9 PNG tiles in a 3×3 grid (each 1024×1024). The assembly
+script stitches them into a single image and upscales to 6144×6144 (1:1 with game coords).
+
+1. **Ensure tiles are in place:** `public/assets/tiles-v1/1-1.png` through `3-3.png`
+
+2. **Build and run everything in Docker:**
+   ```bash
+   cd MapGenerator
+   docker build -t regnum-tile-generator .
+   docker run --rm \
+     -v "$(pwd)/../public/assets/tiles-v1:/app/tiles-v1-source:ro" \
+     -v "$(pwd)/tiles-v1:/app/tiles" \
+     -v "$(pwd)/tiles-v1-compressed:/app/tiles-compressed" \
+     -e TILE_DIR=/app/tiles-v1-source \
+     -e OUTPUT_DIR=/app \
+     -e ZOOM_RANGE=0-5 \
+     regnum-tile-generator bash -c \
+       "python3 assemble-v1-map.py && ln -sf v1-map-6144x6144.png source-map.png && ./generate-tiles.sh"
+   ```
+   This assembles the 3×3 grid → upscales to 6144×6144 → generates ~770 tiles (zoom 0-5) in two variants:
+   - `tiles-v1/` — original quality PNGs
+   - `tiles-v1-compressed/` — lossy-compressed PNGs (pngquant, 65-80% quality)
+
+3. **Upload to CDN** at `https://cor-forum.de/regnum/RegnumNostalgia/map/tiles-v1/`
+   Use the compressed version for better load times, or the original for maximum quality.
+
+The frontend uses `leaflet-rastercoords` + `L.tileLayer` with URL pattern `tiles-v1/{z}/{x}/{y}.png`.
+
+### Map Assembly from Original Tiles (18×18 Grid)
 
 If you have the original 18×18 grid of tiles:
 
@@ -78,21 +110,26 @@ If you need to resize an existing map:
      regnum-tile-generator
    ```
 
+   Use `-e ZOOM_RANGE=0-5` to override the default zoom range (0-9) for smaller source images.
+
 3. **That's it!** The script will:
-   - Process the 18432×18432 source map
-   - Generate zoom levels 0-9 (10 total levels)
-   - Save ~110,000+ tiles to the `./tiles` directory
+   - Process the source map
+   - Generate tiles for the specified zoom levels (default 0-9 for 18432×18432)
+   - Save tiles to the `./tiles` directory
 
 ## 📋 Map Files Overview
 
 ### Source Files
 - `original-map/` - Directory with 322 original 1024×1024 tiles (75879.jpg - 76202.jpg)
-- `assemble-original-map.py` - Python script to reconstruct full map from tiles
-- `original-map-18432x18432.png` - Full assembled map (230 MB)
+- `assemble-original-map.py` - Python script to reconstruct full 18432×18432 map from original tiles
+- `assemble-v1-map.py` - Python script to stitch 3×3 v1 tiles and upscale to 6144×6144
+- `original-map-18432x18432.png` - Full assembled original map (230 MB)
+- `v1-map-6144x6144.png` - Assembled v1 ingame map (~70 MB)
 - `source-map.png` - Symlink pointing to the active source map
 
 ### Generated Files
-- `tiles/` - Directory containing all generated Leaflet tiles
+- `tiles/` - Directory containing all generated Leaflet tiles (original map)
+- `tiles-v1/` - Directory containing v1 Leaflet tiles (zoom 0-5)
 - `tiles/{z}/{x}/{y}.png` - Individual tile files organized by zoom level
 
 ## 🛠️ Manual Docker Commands
@@ -122,9 +159,10 @@ docker run --rm -it \
 The Docker setup includes these files:
 
 - `Dockerfile` - Docker image definition with GDAL and Python
-- `generate-tiles.sh` - Main tile generation script
+- `generate-tiles.sh` - Main tile generation script (supports configurable `ZOOM_RANGE`)
 - `gdal2tiles.py` - GDAL tool for tile generation (Leaflet-optimized)
-- `assemble-original-map.py` - Script to reconstruct map from original tiles
+- `assemble-original-map.py` - Script to reconstruct 18432×18432 map from 322 original tiles
+- `assemble-v1-map.py` - Script to stitch 3×3 v1 ingame tiles and upscale to 6144×6144
 - `.dockerignore` - Optimizes Docker build process
 
 ## 🔧 Technical Details
@@ -143,20 +181,29 @@ The Docker setup includes these files:
 ### Environment Variables
 - `GDAL_ALLOW_LARGE_LIBJPEG_MEM_ALLOC=1` - Enable large JPEG processing
 - `GDAL_CACHEMAX=512` - Set GDAL memory cache to 512 MB
+- `ZOOM_RANGE` - Override tile generation zoom levels (default: `0-9`). Use `0-5` for 6144×6144 images.
 
 ### Tile Generation Settings
-- **Zoom levels:** 0-9 (10 total levels)
+- **Zoom levels:** Configurable via `ZOOM_RANGE` env var (default 0-9)
+  - 18432×18432 source: use `0-9` (10 levels, ~110k tiles)
+  - 6144×6144 source: use `0-5` (6 levels, ~700 tiles)
 - **Tile size:** 256×256 pixels (Leaflet standard)
 - **Profile:** Raster (simple image tiles, not geographic projection)
 - **Format:** PNG with optimization
 
 ## 🚀 Performance Details
 
-### Map Processing
+### Original Map Processing (18432×18432)
 - **Input:** 18432×18432 PNG (230 MB)
 - **Output:** ~110,604 tile files across 10 zoom levels
 - **Generation time:** ~15-20 minutes (depending on system)
 - **Disk space:** ~500 MB for all tiles
+
+### V1 Map Processing (6144×6144)
+- **Input:** 6144×6144 PNG (~70 MB)
+- **Output:** ~700 tile files across 6 zoom levels (0-5)
+- **Generation time:** ~1-2 minutes
+- **Disk space:** ~30 MB for all tiles
 
 ### Zoom Level Breakdown
 - **Zoom 0:** 1 tile (full map view)

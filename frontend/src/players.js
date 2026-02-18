@@ -3,12 +3,11 @@
  */
 
 import { gameState, getRealmColor } from './state.js';
-import { getMap, getTotalH } from './map-state.js';
+import { getMap, gameToLatLng } from './map-state.js';
 import { escapeHtml } from './utils.js';
 
 export function updateOtherPlayers(players) {
   const map = getMap();
-  const totalH = getTotalH();
   if (!map) return;
 
   // Remove any marker for the current user that ended up in otherPlayers
@@ -29,7 +28,7 @@ export function updateOtherPlayers(players) {
 
     currentPlayerIds.add(pid);
 
-    const latLng = [totalH - player.y, player.x];
+    const latLng = gameToLatLng(player.x, player.y);
     const healthPercent = Math.max(0, Math.min(100, Math.round(((Number(player.health) || 0) / (Number(player.maxHealth) || 1)) * 100)));
     const playerRealm = (player.realm || '').toString().toLowerCase();
 

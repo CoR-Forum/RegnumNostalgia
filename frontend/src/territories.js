@@ -3,11 +3,10 @@
  */
 
 import { gameState } from './state.js';
-import { getMap, getTotalH } from './map-state.js';
+import { getMap, gameToLatLng } from './map-state.js';
 
 export function updateTerritories(territories) {
   const map = getMap();
-  const totalH = getTotalH();
   if (!map) return;
 
   const currentTerritoryIds = new Set();
@@ -20,7 +19,7 @@ export function updateTerritories(territories) {
 
     currentTerritoryIds.add(territoryId);
 
-    const latLng = [totalH - territory.y, territory.x];
+    const latLng = gameToLatLng(territory.x, territory.y);
     const isContested = territory.contested;
 
     const iconUrl = isContested

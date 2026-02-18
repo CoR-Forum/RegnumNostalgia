@@ -3,7 +3,7 @@
  */
 
 import { gameState, batchUpdate } from './state.js';
-import { getMap, getTotalH, getTotalW } from './map-state.js';
+import { getMap, getTotalH, getTotalW, gameToLatLng } from './map-state.js';
 import { escapeHtml } from './utils.js';
 import { apiCall } from './api.js';
 import { updatePlayerFromState } from './player.js';
@@ -63,7 +63,7 @@ function createCollectableMarker(item) {
     return;
   }
 
-  const latLng = [totalH - item.y, item.x];
+  const latLng = gameToLatLng(item.x, item.y);
   const isCollecting = gameState.collectingSpawnIds.has(item.spawnId);
 
   const iconHtml = `
@@ -222,18 +222,17 @@ export function initializeWebSocket() {
   });
 
   socket.on('players:position', (data) => {
-    const totalH = getTotalH();
     if (data && Array.isArray(data)) {
       data.forEach((player) => {
         if (player.userId === gameState.userId) {
           gameState.position.x = player.x;
           gameState.position.y = player.y;
-          if (gameState.playerMarker) gameState.playerMarker.setLatLng([totalH - player.y, player.x]);
+          if (gameState.playerMarker) gameState.playerMarker.setLatLng(gameToLatLng(player.x, player.y));
           updatePlayerCoords(player.x, player.y);
         } else {
           const pid = String(player.userId);
           if (gameState.otherPlayers.has(pid)) {
-            gameState.otherPlayers.get(pid).setLatLng([totalH - player.y, player.x]);
+            gameState.otherPlayers.get(pid).setLatLng(gameToLatLng(player.x, player.y));
           }
         }
       });
@@ -257,9 +256,8 @@ export function initializeWebSocket() {
   socket.on('walker:step', (data) => {
     if (data.userId !== gameState.userId) return;
     const map = getMap();
-    const totalH = getTotalH();
     gameState.position = data.position;
-    if (gameState.playerMarker) gameState.playerMarker.setLatLng([totalH - data.position.y, data.position.x]);
+    if (gameState.playerMarker) gameState.playerMarker.setLatLng(gameToLatLng(data.position.x, data.position.y));
     updatePlayerCoords(data.position.x, data.position.y);
 
     if (typeof data.currentIndex === 'number' && window.buildPath && typeof window.buildPath.updateWalkerCurrentIndex === 'function') {
@@ -284,13 +282,13 @@ export function initializeWebSocket() {
 
   socket.on('move:started', (data) => {
     const map = getMap();
-    const totalH = getTotalH();
     if (data.destination) {
       const [dx, dy] = data.destination;
+      const destLatLng = gameToLatLng(dx, dy);
       if (!gameState.walkDestinationMarker) {
-        gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
+        gameState.walkDestinationMarker = L.marker(destLatLng, { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
       } else {
-        gameState.walkDestinationMarker.setLatLng([totalH - dy, dx]);
+        gameState.walkDestinationMarker.setLatLng(destLatLng);
       }
       gameState.walkingTarget = { x: dx, y: dy };
       if (data.positions && window.buildPath && typeof window.buildPath.setWalkerPositions === 'function') {
@@ -302,13 +300,13 @@ export function initializeWebSocket() {
 
   socket.on('walker:restore', (data) => {
     const map = getMap();
-    const totalH = getTotalH();
     if (data.destination) {
       const [dx, dy] = data.destination;
+      const destLatLng = gameToLatLng(dx, dy);
       if (!gameState.walkDestinationMarker) {
-        gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
+        gameState.walkDestinationMarker = L.marker(destLatLng, { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
       } else {
-        gameState.walkDestinationMarker.setLatLng([totalH - dy, dx]);
+        gameState.walkDestinationMarker.setLatLng(destLatLng);
       }
       gameState.walkingTarget = { x: dx, y: dy };
       if (data.positions && window.buildPath && typeof window.buildPath.setWalkerPositions === 'function') {

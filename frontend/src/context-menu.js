@@ -2,7 +2,7 @@
  * Context Menu — map right-click menu with "Walk here", "Copy Coords", "Screenshots", "Region Editor".
  */
 
-import { getMap, getTotalH } from './map-state.js';
+import { getMap, latLngToGame } from './map-state.js';
 import { performWalkAtLatLng } from './walking.js';
 
 let __lastContextLatLng = null;
@@ -12,7 +12,6 @@ let __lastContextAllowed = null;
 export function setLastContextAllowed(v) { __lastContextAllowed = v; }
 
 export function createMapContextMenu() {
-  const totalH = getTotalH();
 
   __mapContextMenuEl = document.createElement('div');
   __mapContextMenuEl.id = 'map-contextmenu';
@@ -39,8 +38,9 @@ export function createMapContextMenu() {
   __mapContextMenuEl.querySelector('#map-copy-coords').addEventListener('click', async (ev) => {
     ev.stopPropagation();
     if (!__lastContextLatLng) return hideMapContextMenu();
-    const x = Math.round(__lastContextLatLng.lng);
-    const y = Math.round(totalH - __lastContextLatLng.lat);
+    const game = latLngToGame(__lastContextLatLng);
+    const x = Math.round(game.x);
+    const y = Math.round(game.y);
     const text = `[${x}, ${y}]`;
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -85,8 +85,9 @@ export function createMapContextMenu() {
     const ll = __lastContextLatLng;
     hideMapContextMenu();
     if (ll && window.screenshotManager && typeof window.screenshotManager.openModal === 'function') {
-      const x = Math.round(ll.lng);
-      const y = Math.round(totalH - ll.lat);
+      const game = latLngToGame(ll);
+      const x = Math.round(game.x);
+      const y = Math.round(game.y);
       window.screenshotManager.openModal(x, y);
     }
   });

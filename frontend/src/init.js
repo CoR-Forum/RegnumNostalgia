@@ -7,7 +7,7 @@
 
 import { gameState, batchUpdate } from './state.js';
 import { apiCall } from './api.js';
-import { getMap, getTotalH, getTotalW } from './map-state.js';
+import { getMap, getTotalH, getTotalW, gameToLatLng, getMapCenter, getDefaultZoom } from './map-state.js';
 import { initializeWebSocket } from './socket-client.js';
 import { showPlayerInfo, updatePlayerCoords, initHudButtons } from './player-ui.js';
 import { createPlayerMarker } from './player.js';
@@ -201,7 +201,7 @@ async function initGame(progress) {
         try {
           if (map && typeof map.invalidateSize === 'function') {
             map.invalidateSize();
-            map.setView([totalH / 2, totalW / 2], -2);
+            map.setView(getMapCenter(), getDefaultZoom());
           }
         } catch (e) {}
       }, 100);
@@ -233,7 +233,7 @@ async function initGame(progress) {
         if (gameState.walkDestinationMarker) {
           try { map.removeLayer(gameState.walkDestinationMarker); } catch (e) {}
         }
-        gameState.walkDestinationMarker = L.marker([totalH - dy, dx], { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
+        gameState.walkDestinationMarker = L.marker(gameToLatLng(dx, dy), { icon: buildGoHereIcon(), riseOnHover: true }).addTo(map);
         gameState.walkingTarget = { x: dx, y: dy };
       }
     } catch (e) { console.debug('init: set walkDestinationMarker failed', e); }

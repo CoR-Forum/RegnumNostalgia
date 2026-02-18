@@ -3,12 +3,11 @@
  */
 
 import { gameState } from './state.js';
-import { getMap, getTotalH } from './map-state.js';
+import { getMap, gameToLatLng } from './map-state.js';
 import { formatDurationSeconds } from './utils.js';
 
 export function updateSuperbosses(bosses) {
   const map = getMap();
-  const totalH = getTotalH();
   if (!map) return;
 
   const currentBossIds = new Set();
@@ -20,7 +19,7 @@ export function updateSuperbosses(bosses) {
 
     currentBossIds.add(bossId);
 
-    const latLng = [totalH - boss.y, boss.x];
+    const latLng = gameToLatLng(boss.x, boss.y);
     const healthPercent = Math.max(0, Math.min(100, Math.round(((Number(boss.health) || 0) / (Number(maxHealth) || 1)) * 100)));
 
     const iconUrl = boss.iconUrl || (iconName ? `https://cor-forum.de/regnum/RegnumNostalgia/markers/${iconName}` : null);

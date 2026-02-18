@@ -181,7 +181,7 @@
     try {
       if (typeof map === 'undefined' || !map) return;
       const gp = (typeof gameState !== 'undefined' && gameState && gameState.buildPathPoints) ? gameState.buildPathPoints : [];
-      const pts = gp.map(p => [ totalH - p[1], p[0] ]);
+      const pts = gp.map(p => typeof window.gameToLatLng === 'function' ? window.gameToLatLng(p[0], p[1]) : [ totalH - p[1], p[0] ]);
       if (typeof gameState !== 'undefined' && gameState && gameState.buildPathPolyline) {
         try { map.removeLayer(gameState.buildPathPolyline); } catch(e){}
         gameState.buildPathPolyline = null;
@@ -226,8 +226,9 @@
         const pos = p.positions || [];
         console.debug('loadAndRenderPaths: path', p.name, 'raw positions', pos);
         const latlngs = (typeof positionsToLatLngs === 'function') ? positionsToLatLngs(pos) : (pos||[]).map(p => {
-          if (Array.isArray(p)) return [ totalH - p[1], p[0] ];
-          return [ totalH - (p.y ?? p[1] ?? 0), (p.x ?? p[0] ?? 0) ];
+          const px = Array.isArray(p) ? p[0] : (p.x ?? p[0] ?? 0);
+          const py = Array.isArray(p) ? p[1] : (p.y ?? p[1] ?? 0);
+          return typeof window.gameToLatLng === 'function' ? window.gameToLatLng(px, py) : [ totalH - py, px ];
         });
         console.debug('loadAndRenderPaths: latlngs', latlngs);
         if (!latlngs || latlngs.length === 0) continue;
@@ -265,7 +266,7 @@
       if (typeof gameState.walkerCurrentIndex === 'undefined' || gameState.walkerCurrentIndex === null) gameState.walkerCurrentIndex = 0;
 
       const remaining = (gameState.walkerPositions || []).slice(gameState.walkerCurrentIndex || 0);
-      const latlngs = (typeof positionsToLatLngs === 'function') ? positionsToLatLngs(remaining || []) : remaining.map(p => [ totalH - p[1], p[0] ]);
+      const latlngs = (typeof positionsToLatLngs === 'function') ? positionsToLatLngs(remaining || []) : remaining.map(p => typeof window.gameToLatLng === 'function' ? window.gameToLatLng(p[0], p[1]) : [ totalH - p[1], p[0] ]);
 
       if (!latlngs || latlngs.length === 0) {
         if (gameState.walkPathPolyline) { try { map.removeLayer(gameState.walkPathPolyline); } catch (e) {} gameState.walkPathPolyline = null; }
@@ -301,8 +302,9 @@
     try {
       const panel = document.getElementById('build-path-panel');
       if (!panel || panel.style.display === 'none') return;
-      const x = Math.round(e.latlng.lng);
-      const y = Math.round(totalH - e.latlng.lat);
+      const game = typeof window.latLngToGame === 'function' ? window.latLngToGame(e.latlng) : { x: Math.round(e.latlng.lng), y: Math.round(totalH - e.latlng.lat) };
+      const x = Math.round(game.x);
+      const y = Math.round(game.y);
       const ta = document.getElementById('build-path-textarea');
       gameState.buildPathPoints = gameState.buildPathPoints || [];
       gameState.buildPathPoints.push([x,y]);
@@ -806,7 +808,7 @@
     
     points.forEach((point, index) => {
       const [x, y] = point;
-      const latlng = [totalH - y, x];
+      const latlng = typeof window.gameToLatLng === 'function' ? window.gameToLatLng(x, y) : [totalH - y, x];
       
       // Create a custom icon for the marker
       const customIcon = L.divIcon({
@@ -856,8 +858,9 @@
       // Handle drag events
       marker.on('drag', function(e) {
         const newLatLng = e.target.getLatLng();
-        const newX = Math.round(newLatLng.lng);
-        const newY = Math.round(totalH - newLatLng.lat);
+        const newGame = typeof window.latLngToGame === 'function' ? window.latLngToGame(newLatLng) : { x: Math.round(newLatLng.lng), y: Math.round(totalH - newLatLng.lat) };
+        const newX = Math.round(newGame.x);
+        const newY = Math.round(newGame.y);
         
         // Update the point in buildPathPoints
         gameState.buildPathPoints[this.pointIndex] = [newX, newY];
@@ -868,8 +871,9 @@
 
       marker.on('dragend', function(e) {
         const newLatLng = e.target.getLatLng();
-        const newX = Math.round(newLatLng.lng);
-        const newY = Math.round(totalH - newLatLng.lat);
+        const newGame = typeof window.latLngToGame === 'function' ? window.latLngToGame(newLatLng) : { x: Math.round(newLatLng.lng), y: Math.round(totalH - newLatLng.lat) };
+        const newX = Math.round(newGame.x);
+        const newY = Math.round(newGame.y);
         
         // Final update
         gameState.buildPathPoints[this.pointIndex] = [newX, newY];
@@ -890,7 +894,7 @@
         // Recreate markers for all points
         gameState.buildPathPoints.forEach((point, idx) => {
           const [px, py] = point;
-          const platlng = [totalH - py, px];
+          const platlng = typeof window.gameToLatLng === 'function' ? window.gameToLatLng(px, py) : [totalH - py, px];
           
           const pIcon = L.divIcon({
             className: 'edit-point-marker',
@@ -909,8 +913,9 @@
           // Re-attach drag handlers
           pMarker.on('drag', function(ev) {
             const nl = ev.target.getLatLng();
-            const nx = Math.round(nl.lng);
-            const ny = Math.round(totalH - nl.lat);
+            const ngame = typeof window.latLngToGame === 'function' ? window.latLngToGame(nl) : { x: Math.round(nl.lng), y: Math.round(totalH - nl.lat) };
+            const nx = Math.round(ngame.x);
+            const ny = Math.round(ngame.y);
             gameState.buildPathPoints[this.pointIndex] = [nx, ny];
             updateBuildPathPolyline();
           });

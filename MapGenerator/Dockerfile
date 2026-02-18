@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     gdal-bin \
     libgdal-dev \
     curl \
+    pngquant \
+    && pip3 install --no-cache-dir Pillow \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -26,12 +28,13 @@ WORKDIR /app
 # Copy the generation scripts (source-map.png will be mounted at runtime)
 COPY generate-tiles.sh .
 COPY gdal2tiles.py .
+COPY assemble-v1-map.py .
 
 # Make the script executable
 RUN chmod +x generate-tiles.sh
 
-# Create tiles directory
-RUN mkdir -p tiles
+# Create tiles directories
+RUN mkdir -p tiles tiles-compressed
 
 # Default command
 CMD ["./generate-tiles.sh"]

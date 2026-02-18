@@ -4,7 +4,7 @@
 
 import { gameState, batchUpdate, getRealmColor } from './state.js';
 import { escapeHtml } from './utils.js';
-import { getMap, getTotalH, getTotalW } from './map-state.js';
+import { getMap, gameToLatLng, getMapCenter, getDefaultZoom } from './map-state.js';
 import { updatePlayerCoords } from './player-ui.js';
 
 /**
@@ -54,7 +54,7 @@ export function updatePlayerFromState(data) {
 
   // Update player marker position if coordinates changed
   if (positionChanged && gameState.playerMarker) {
-    const latLng = [getTotalH() - gameState.position.y, gameState.position.x];
+    const latLng = gameToLatLng(gameState.position.x, gameState.position.y);
     gameState.playerMarker.setLatLng(latLng);
     updatePlayerCoords(gameState.position.x, gameState.position.y);
   }
@@ -65,14 +65,12 @@ export function updatePlayerFromState(data) {
  */
 export function createPlayerMarker(x, y) {
   const map = getMap();
-  const totalH = getTotalH();
-  const totalW = getTotalW();
 
   if (gameState.playerMarker) {
     map.removeLayer(gameState.playerMarker);
   }
 
-  const latLng = [totalH - y, x];
+  const latLng = gameToLatLng(x, y);
   const myColor = getRealmColor(gameState.realm);
 
   gameState.playerMarker = L.circleMarker(latLng, {
@@ -108,6 +106,5 @@ export function createPlayerMarker(x, y) {
   } catch (e) {}
 
   // Center on middle of map
-  const centerLatLng = [totalH / 2, totalW / 2];
-  map.setView(centerLatLng, -2);
+  map.setView(getMapCenter(), getDefaultZoom());
 }

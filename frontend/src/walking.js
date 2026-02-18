@@ -3,7 +3,7 @@
  */
 
 import { gameState } from './state.js';
-import { getMap, getTotalH } from './map-state.js';
+import { getMap, latLngToGame } from './map-state.js';
 import { showMapContextMenuAt, hideMapContextMenu, setLastContextAllowed } from './context-menu.js';
 import { cancelCasting } from './castbar.js';
 
@@ -24,9 +24,9 @@ export async function performWalkAtLatLng(latlng) {
   // Cancel any active spell cast when starting to move
   cancelCasting();
 
-  const totalH = getTotalH();
-  const x = Math.round(latlng.lng);
-  const y = Math.round(totalH - latlng.lat);
+  const game = latLngToGame(latlng);
+  const x = Math.round(game.x);
+  const y = Math.round(game.y);
 
   if (x < 0 || x > 6144 || y < 0 || y > 6144) return;
 

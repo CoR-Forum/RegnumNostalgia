@@ -191,8 +191,9 @@
 
   function isLatLngWalkAllowed(latlng) {
     try {
-      const x = Math.round(latlng.lng);
-      const y = Math.round((typeof window.totalH !== 'undefined' ? window.totalH : 6144) - latlng.lat);
+      const game = typeof window.latLngToGame === 'function' ? window.latLngToGame(latlng) : { x: Math.round(latlng.lng), y: Math.round((typeof window.totalH !== 'undefined' ? window.totalH : 6144) - latlng.lat) };
+      const x = Math.round(game.x);
+      const y = Math.round(game.y);
       if (x < 0 || x > 6144 || y < 0 || y > 6144) return false;
       const regions = (gameStateRef && gameStateRef.regionsData) ? gameStateRef.regionsData : [];
       for (const r of regions) {
@@ -226,8 +227,9 @@
       if (!mapRef) return;
       const mapX = e.latlng.lng;
       const mapY = e.latlng.lat;
-      const rx = Math.round(mapX);
-      const ry = Math.round((typeof window.totalH !== 'undefined' ? window.totalH : 6144) - mapY);
+      const gameCoords = typeof window.latLngToGame === 'function' ? window.latLngToGame(e.latlng) : { x: mapX, y: Math.round((typeof window.totalH !== 'undefined' ? window.totalH : 6144) - mapY) };
+      const rx = Math.round(gameCoords.x);
+      const ry = Math.round(gameCoords.y);
       let allowed = false;
       let foundRegion = null;
       const regions = (gameStateRef && gameStateRef.regionsData) ? gameStateRef.regionsData : [];

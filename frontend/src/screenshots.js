@@ -3,7 +3,7 @@
  */
 
 import { gameState } from './state.js';
-import { getMap, getTotalH } from './map-state.js';
+import { getMap, gameToLatLng } from './map-state.js';
 
 export async function loadAndDisplayScreenshots() {
   try {
@@ -28,7 +28,6 @@ export async function loadAndDisplayScreenshots() {
 
 export function displayScreenshotMarkers(screenshots) {
   const map = getMap();
-  const totalH = getTotalH();
   if (!map) return;
 
   if (!gameState.screenshots) {
@@ -39,7 +38,7 @@ export function displayScreenshotMarkers(screenshots) {
 
   screenshots.forEach(screenshot => {
     currentIds.add(screenshot.id);
-    const latLng = [totalH - screenshot.y, screenshot.x];
+    const latLng = gameToLatLng(screenshot.x, screenshot.y);
 
     const dotIcon = L.divIcon({
       className: 'screenshot-marker',
