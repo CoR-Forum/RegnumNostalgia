@@ -246,7 +246,7 @@ async function getCachedUserSettings(gameDb, userId) {
     captureSoundsVolume: typeof rows[0].capture_sounds_volume === 'number' ? rows[0].capture_sounds_volume : parseFloat(rows[0].capture_sounds_volume) || 1.0,
     collectionSoundsEnabled: rows[0].collection_sounds_enabled === 1 ? 1 : 0,
     collectionSoundsVolume: typeof rows[0].collection_sounds_volume === 'number' ? rows[0].collection_sounds_volume : parseFloat(rows[0].collection_sounds_volume) || 1.0,
-    mapVersion: rows[0].map_version || 'v1',
+    mapVersion: rows[0].map_version || 'v1-compressed',
     quickbarTooltipsEnabled: rows[0].quickbar_tooltips_enabled === 1 ? 1 : 0
   } : null;
 

@@ -20,7 +20,7 @@ router.get('/', authenticateJWT, async (req, res) => {
         captureSoundsVolume: typeof row.captureSoundsVolume === 'number' ? row.captureSoundsVolume : (typeof row.capture_sounds_volume === 'number' ? row.capture_sounds_volume : parseFloat(row.capture_sounds_volume || row.captureSoundsVolume) || 1.0),
         collectionSoundsEnabled: row.collectionSoundsEnabled != null ? (row.collectionSoundsEnabled ? 1 : 0) : (row.collection_sounds_enabled === 1 ? 1 : 0),
         collectionSoundsVolume: typeof row.collectionSoundsVolume === 'number' ? row.collectionSoundsVolume : (typeof row.collection_sounds_volume === 'number' ? row.collection_sounds_volume : parseFloat(row.collection_sounds_volume || row.collectionSoundsVolume) || 1.0),
-        mapVersion: row.mapVersion || row.map_version || 'v1',
+        mapVersion: row.mapVersion || row.map_version || 'v1-compressed',
         quickbarTooltipsEnabled: row.quickbarTooltipsEnabled != null ? (row.quickbarTooltipsEnabled ? 1 : 0) : (row.quickbar_tooltips_enabled === 1 ? 1 : 0)
       }});
     }
@@ -34,7 +34,7 @@ router.get('/', authenticateJWT, async (req, res) => {
       captureSoundsVolume: 1.0,
       collectionSoundsEnabled: 1,
       collectionSoundsVolume: 1.0,
-      mapVersion: 'v1',
+      mapVersion: 'v1-compressed',
       quickbarTooltipsEnabled: 1
     }});
   } catch (err) {
@@ -57,7 +57,7 @@ router.post('/', authenticateJWT, async (req, res) => {
     const capture_sounds_volume = typeof body.captureSoundsVolume === 'number' ? body.captureSoundsVolume : parseFloat(body.captureSoundsVolume) || 1.0;
     const collection_sounds_enabled = body.collectionSoundsEnabled ? 1 : 0;
     const collection_sounds_volume = typeof body.collectionSoundsVolume === 'number' ? body.collectionSoundsVolume : parseFloat(body.collectionSoundsVolume) || 1.0;
-    const map_version = typeof body.mapVersion === 'string' ? body.mapVersion : (body.mapVersion || 'v1');
+    const map_version = typeof body.mapVersion === 'string' ? body.mapVersion : (body.mapVersion || 'v1-compressed');
     const quickbar_tooltips_enabled = body.quickbarTooltipsEnabled ? 1 : 0;
     const updatedAt = Math.floor(Date.now() / 1000);
 

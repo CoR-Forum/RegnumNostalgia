@@ -159,7 +159,7 @@ function registerSettingsHandler(socket, user, io) {
       if (typeof data.captureSoundsVolume !== 'undefined') s.settings.captureSoundsVolume = typeof data.captureSoundsVolume === 'number' ? data.captureSoundsVolume : parseFloat(data.captureSoundsVolume) || 1.0;
       if (typeof data.collectionSoundsEnabled !== 'undefined') s.settings.collectionSoundsEnabled = data.collectionSoundsEnabled ? 1 : 0;
       if (typeof data.collectionSoundsVolume !== 'undefined') s.settings.collectionSoundsVolume = typeof data.collectionSoundsVolume === 'number' ? data.collectionSoundsVolume : parseFloat(data.collectionSoundsVolume) || 1.0;
-      if (typeof data.mapVersion !== 'undefined') s.settings.mapVersion = ('' + data.mapVersion) || 'v1';
+      if (typeof data.mapVersion !== 'undefined') s.settings.mapVersion = ('' + data.mapVersion) || 'v1-compressed';
       if (typeof data.quickbarTooltipsEnabled !== 'undefined') s.settings.quickbarTooltipsEnabled = data.quickbarTooltipsEnabled ? 1 : 0;
       socket.user = s;
 
@@ -175,7 +175,7 @@ function registerSettingsHandler(socket, user, io) {
           const capture_sounds_volume = typeof s.settings.captureSoundsVolume === 'number' ? s.settings.captureSoundsVolume : parseFloat(s.settings.captureSoundsVolume) || 1.0;
           const collection_sounds_enabled = s.settings.collectionSoundsEnabled ? 1 : 0;
           const collection_sounds_volume = typeof s.settings.collectionSoundsVolume === 'number' ? s.settings.collectionSoundsVolume : parseFloat(s.settings.collectionSoundsVolume) || 1.0;
-          const map_version = typeof s.settings.mapVersion === 'string' ? s.settings.mapVersion : (s.settings.mapVersion || 'v1');
+          const map_version = typeof s.settings.mapVersion === 'string' ? s.settings.mapVersion : (s.settings.mapVersion || 'v1-compressed');
           const quickbar_tooltips_enabled = s.settings.quickbarTooltipsEnabled ? 1 : 0;
           const updatedAt = Math.floor(Date.now() / 1000);
           await gameDb.query(

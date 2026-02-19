@@ -19,7 +19,7 @@ const GAME_SIZE = 6144;
 const V2_ROWS = 3;
 const V2_COLS = 3;
 
-let currentTileVersion = localStorage.getItem('tileVersion') || 'v1';
+let currentTileVersion = localStorage.getItem('tileVersion') || 'v1-compressed';
 // Expose on window so settings.html can read/update it
 window.currentTileVersion = currentTileVersion;
 
@@ -30,7 +30,7 @@ window.currentTileVersion = currentTileVersion;
  */
 export function initMap() {
   return new Promise((resolve, reject) => {
-    if (currentTileVersion === 'v1') {
+    if (currentTileVersion === 'v1' || currentTileVersion === 'v1-compressed') {
       initV1TiledMap(resolve, reject);
     } else {
       initV2OverlayMap(resolve, reject);
@@ -69,18 +69,18 @@ function initV1TiledMap(resolve, reject) {
   let tileOverlays = [];
 
   function loadTiles() {
-    currentTileVersion = window.currentTileVersion || localStorage.getItem('tileVersion') || 'v1';
+    currentTileVersion = window.currentTileVersion || localStorage.getItem('tileVersion') || 'v1-compressed';
 
     tileOverlays.forEach((o) => map.removeLayer(o));
     tileOverlays = [];
     if (tileLayer) { map.removeLayer(tileLayer); tileLayer = null; }
 
-    if (currentTileVersion === 'v1') {
+    if (currentTileVersion === 'v1' || currentTileVersion === 'v1-compressed') {
       // Constrain tile loading to the image extent so Leaflet never requests
       // negative or out-of-range tile coordinates.
       const southWest = rc.unproject([0, imgDims[1]]);
       const northEast = rc.unproject([imgDims[0], 0]);
-      tileLayer = L.tileLayer(`${CDN_BASE}/tiles-v1-compressed/{z}/{x}/{y}.png`, {
+      tileLayer = L.tileLayer(`${CDN_BASE}/tiles-${currentTileVersion}/{z}/{x}/{y}.png`, {
         noWrap: true,
         bounds: L.latLngBounds(southWest, northEast),
         maxNativeZoom: rc.zoomLevel(), // 5

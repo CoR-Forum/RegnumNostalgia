@@ -57,6 +57,7 @@
       <div style="display:flex;align-items:center;gap:8px;">
         <select id="setting-map-version" style="background:rgba(0,0,0,0.4); color:#e0e0e0; border:1px solid #2a3f5f; padding:4px; font-size:11px;">
           <option value="v1">v1</option>
+          <option value="v1-compressed">v1 (compressed)</option>
           <option value="v2">v2</option>
         </select>
       </div>
@@ -67,7 +68,7 @@
     </div>
   </div>
   <div id="settings-footer" style="padding:8px 12px 12px 12px; font-size:11px; color:#bfcbdc; border-top:1px solid rgba(255,255,255,0.02); display:flex; justify-content:center; align-items:center;">
-    <span id="settings-map-version-display">Map: v1</span>
+    <span id="settings-map-version-display">Map: v1-compressed</span>
   </div>
 </div>
 
@@ -90,7 +91,7 @@
         document.getElementById('setting-capture-volume').value = (typeof r.settings.captureSoundsVolume === 'number' ? r.settings.captureSoundsVolume : parseFloat(r.settings.captureSoundsVolume)) || 1.0;
         document.getElementById('setting-collection-enabled').checked = !!r.settings.collectionSoundsEnabled;
         document.getElementById('setting-collection-volume').value = (typeof r.settings.collectionSoundsVolume === 'number' ? r.settings.collectionSoundsVolume : parseFloat(r.settings.collectionSoundsVolume)) || 1.0;
-        document.getElementById('setting-map-version').value = r.settings.mapVersion || 'v1';
+        document.getElementById('setting-map-version').value = r.settings.mapVersion || 'v1-compressed';
         document.getElementById('setting-quickbar-tooltips').checked = r.settings.quickbarTooltipsEnabled !== 0;
         // Apply quickbar tooltips setting immediately
         try { if (window.setQuickbarTooltipsEnabled) window.setQuickbarTooltipsEnabled(r.settings.quickbarTooltipsEnabled !== 0); } catch (e) {}
@@ -102,14 +103,14 @@
         try { window.AudioManager && window.AudioManager.setCaptureSoundVolume(parseFloat(r.settings.captureSoundsVolume) || 1.0); } catch (e) {}
         // Apply map version immediately (update tiles)
         try {
-          const v = r.settings.mapVersion || 'v1';
+          const v = r.settings.mapVersion || 'v1-compressed';
           try { localStorage.setItem('tileVersion', v); } catch (e) {}
           if (typeof currentTileVersion !== 'undefined') {
             currentTileVersion = v;
             try { if (typeof loadTiles === 'function') loadTiles(); } catch (e) {}
           }
         } catch (e) {}
-          try { const d = document.getElementById('settings-map-version-display'); if (d) d.textContent = `Map: ${r.settings.mapVersion || 'v1'}`; } catch (e) {}
+            try { const d = document.getElementById('settings-map-version-display'); if (d) d.textContent = `Map: ${r.settings.mapVersion || 'v1-compressed'}`; } catch (e) {}
       }
     } catch (e) { console.debug('Failed to load settings', e); }
   }
@@ -139,7 +140,7 @@
           captureSoundsVolume: parseFloat(document.getElementById('setting-capture-volume').value),
           collectionSoundsEnabled: document.getElementById('setting-collection-enabled').checked ? 1 : 0,
           collectionSoundsVolume: parseFloat(document.getElementById('setting-collection-volume').value),
-          mapVersion: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1',
+          mapVersion: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1-compressed',
           quickbarTooltipsEnabled: document.getElementById('setting-quickbar-tooltips').checked ? 1 : 0
         };
         if (window.socket && window.socket.emit) window.socket.emit('user:settings:update', payload);

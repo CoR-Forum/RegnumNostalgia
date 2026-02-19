@@ -64,7 +64,7 @@ async function authenticateSocket(socket, next) {
       captureSoundsVolume: 1.0,
       collectionSoundsEnabled: 1,
       collectionSoundsVolume: 1.0,
-      mapVersion: 'v1'
+      mapVersion: 'v1-compressed'
     };
 
     try {

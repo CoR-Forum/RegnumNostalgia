@@ -116,7 +116,7 @@ regnum-nostalgia/
 │       ├── api.js                    # apiCall, emitOrApi (HTTP + WebSocket)
 │       ├── server-time.js            # In-game time display & fetch
 │       ├── map-state.js              # Map instance accessors (map, totalH, totalW, gameToLatLng, latLngToGame)
-│       ├── map-init.js               # Leaflet map creation & tile loading (v1: rastercoords + L.tileLayer, v2: L.imageOverlay)
+│       ├── map-init.js               # Leaflet map creation & tile loading (v1/v1-compressed: rastercoords + L.tileLayer, v2: L.imageOverlay)
 │       ├── rastercoords.js           # leaflet-rastercoords plugin for v1 tile coordinate mapping
 │       ├── tooltip.js                # Item/equipment hover tooltips
 │       ├── windows.js                # Draggable/closable window system, z-index stacking
@@ -142,6 +142,7 @@ regnum-nostalgia/
 ├── public/                           # Static assets (served by nginx + Vite)
 │   └── assets/
 │       ├── tiles-v1/                 # V1 map: proper Leaflet tiles ({z}/{x}/{y}.png) served from CDN
+│       ├── tiles-v1-compressed/      # V1 compressed map: pngquant-compressed tiles (default for new players)
 │       ├── tiles-v2/                 # V2 map: 3×3 image overlay grid (legacy format)
 │       ├── markers/                  # Map marker icons
 │       ├── markers.json              # Marker definitions
@@ -226,7 +227,7 @@ The frontend is decomposed into 23 ES modules under `frontend/src/`. Key pattern
 - **Web Server**: Nginx (Alpine) with WebSocket proxy
 - **Containerization**: Docker & Docker Compose
 - **Map Coordinates**: 6144×6144 coordinate system
-- **Map Tiles**: V1 uses leaflet-rastercoords + `L.tileLayer` (gdal2tiles-leaflet, zoom 0-5), V2 uses 9 `L.imageOverlay` images
+- **Map Tiles**: V1 / V1-compressed use leaflet-rastercoords + `L.tileLayer` (gdal2tiles-leaflet, zoom 0-5), V2 uses 9 `L.imageOverlay` images; players can switch between all three in Settings (default: v1-compressed)
 - **Coordinate Helpers**: `gameToLatLng(x, y)` / `latLngToGame(latLng)` in map-state.js abstract over v1 (rastercoords) and v2 (legacy) coordinate systems
 
 ## 📊 Database Schema
