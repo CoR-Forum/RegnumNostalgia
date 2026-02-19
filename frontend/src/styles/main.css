@@ -17,8 +17,10 @@
 
     /* Prevent the page from scrolling; map handles panning */
     html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: url('/assets/background.jpg') center center / cover no-repeat; }
-    /* Map fills the viewport */
-    #map { width: 100vw; height: 100vh; margin: 0; padding: 0; background: transparent; }
+    /* Map fills the full viewport. The HUD overlay (z-index 20000) paints on top of the
+       bottom 73px — no gap possible, and the HUD fully covers any map tiles beneath it. */
+    :root { --hud-height: 73px; }
+    #map { position: fixed; top: 0; left: 0; right: 0; bottom: 0; margin: 0; padding: 0; background: transparent; }
       #coords {
         .ui-hud-btn{
           width: 39px;
@@ -537,7 +539,7 @@
       bottom: 0;
       left: 0;
       right: 0;
-      height: 73px; /* scaled up ~30% */
+      height: 73px; /* native bar PNG height scaled ~30%; ResizeObserver in init.js syncs --hud-height */
       z-index: 20000;
       pointer-events: none;
       display: flex;

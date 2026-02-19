@@ -274,6 +274,23 @@ async function initGame(progress) {
 window.initGame = initGame;
 
 /**
+ * Sync the --hud-height CSS variable to the actual rendered height of the
+ * bottom HUD bar image so the map always ends exactly where the HUD begins.
+ */
+function syncHudHeight() {
+  const overlay = document.getElementById('ui-image-overlay');
+  if (!overlay) return;
+  const apply = () => {
+    // Prefer the bar image height; fall back to the overlay element height
+    const img = overlay.querySelector('.ui-bar-right img');
+    const h = img ? img.getBoundingClientRect().height : overlay.getBoundingClientRect().height;
+    if (h > 0) document.documentElement.style.setProperty('--hud-height', h + 'px');
+  };
+  apply();
+  new ResizeObserver(apply).observe(overlay);
+}
+
+/**
  * Bootstrap the game: init UI, load partials, then run initGame.
  * Called by main.js loadGame() with a progress callback.
  *
@@ -281,6 +298,9 @@ window.initGame = initGame;
  */
 export async function bootstrap(progressCallback) {
   const progress = progressCallback || (() => {});
+
+  // Sync HUD height CSS variable for map layout
+  syncHudHeight();
 
   // Initialize draggable/closable windows
   progress('Setting up interface...', 36);
