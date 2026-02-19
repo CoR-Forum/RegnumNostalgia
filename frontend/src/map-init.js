@@ -296,6 +296,82 @@ function setupMapExtras(map, totalH, totalW, resolve) {
     }
   }).catch((err) => console.error('Failed to load markers.json', err));
 
+  // Keyboard pan (WASD / arrow keys) — smooth, continuous, like dragging
+  {
+    const PAN_SPEED = 10; // screen pixels per animation frame (~600 px/s at 60 fps)
+    const keysDown = new Set();
+
+    const KEY_MAP = {
+      ArrowUp: [0, -1], w: [0, -1], W: [0, -1],
+      ArrowDown: [0, 1], s: [0, 1], S: [0, 1],
+      ArrowLeft: [-1, 0], a: [-1, 0], A: [-1, 0],
+      ArrowRight: [1, 0], d: [1, 0], D: [1, 0],
+    };
+
+    function isInputFocused() {
+      const el = document.activeElement;
+      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    }
+
+    function onKeyDown(e) {
+      if (isInputFocused()) return;
+      if (KEY_MAP[e.key]) {
+        e.preventDefault();
+        keysDown.add(e.key);
+      }
+    }
+
+    function onKeyUp(e) {
+      keysDown.delete(e.key);
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    let rafId = null;
+    function panLoop() {
+      if (keysDown.size > 0) {
+        let dx = 0, dy = 0;
+        for (const key of keysDown) {
+          const dir = KEY_MAP[key];
+          if (dir) { dx += dir[0]; dy += dir[1]; }
+        }
+        if (dx !== 0 || dy !== 0) {
+          // Normalise diagonal movement
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const px = dx / len * PAN_SPEED;
+          const py = dy / len * PAN_SPEED;
+
+          // Compute new center in screen-pixel space, then convert back to LatLng.
+          // Using setView instead of panBy bypasses maxBoundsViscosity so the
+          // map never slows down or feels elastic at the edges.
+          const centerPx = map.latLngToContainerPoint(map.getCenter());
+          let newCenter = map.containerPointToLatLng(centerPx.add([px, py]));
+
+          // Hard-clamp to max bounds (no viscosity)
+          const mb = map.options.maxBounds ? L.latLngBounds(map.options.maxBounds) : null;
+          if (mb) {
+            newCenter = L.latLng(
+              Math.max(mb.getSouth(), Math.min(mb.getNorth(), newCenter.lat)),
+              Math.max(mb.getWest(),  Math.min(mb.getEast(),  newCenter.lng))
+            );
+          }
+
+          map.setView(newCenter, map.getZoom(), { animate: false });
+        }
+      }
+      rafId = requestAnimationFrame(panLoop);
+    }
+    rafId = requestAnimationFrame(panLoop);
+
+    // Clean up if the map is removed
+    map.on('remove', () => {
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    });
+  }
+
   // Flush pending collectables
   if (gameState.pendingCollectables && gameState.pendingCollectables.length > 0) {
     console.debug('Processing', gameState.pendingCollectables.length, 'pending collectables');
