@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@bull-board/api": "^5.14.0",
-    "@bull-board/express": "^5.14.0",
+    "@bull-board/express": "^6.19.0",
     "axios": "^1.6.5",
     "bull": "^4.12.0",
     "cors": "^2.8.5",
