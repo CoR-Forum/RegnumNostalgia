@@ -1,6 +1,17 @@
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../config/logger');
+const { forumDb } = require('../config/database');
+const { getCachedGMStatus } = require('../config/cache');
+
+async function isGM(userId) {
+  try {
+    return await getCachedGMStatus(forumDb, userId);
+  } catch (error) {
+    logger.error('Failed to check GM status', { error: error.message, userId });
+    return false;
+  }
+}
 
 const DATA_FILES = {
   regions: path.join(__dirname, '../../gameData/regions.json'),
@@ -76,6 +87,10 @@ function registerEditorHandlers(socket, user, io) {
 
     // SAVE (create or update)
     socket.on(`editor:${singular}:save`, async (data, callback) => {
+      if (!(await isGM(user.userId))) {
+        logger.warn(`Unauthorized editor save attempt`, { userId: user.userId, entityType });
+        return callback({ success: false, error: 'Permission denied: GM access required' });
+      }
       try {
         const items = await readJsonFile(filePath);
         const { item, isNew } = data;
@@ -122,6 +137,10 @@ function registerEditorHandlers(socket, user, io) {
 
     // DELETE
     socket.on(`editor:${singular}:delete`, async (data, callback) => {
+      if (!(await isGM(user.userId))) {
+        logger.warn(`Unauthorized editor delete attempt`, { userId: user.userId, entityType });
+        return callback({ success: false, error: 'Permission denied: GM access required' });
+      }
       try {
         const items = await readJsonFile(filePath);
         const { id } = data;
