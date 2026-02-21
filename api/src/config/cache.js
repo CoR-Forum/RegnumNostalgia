@@ -453,12 +453,15 @@ async function flushLastActive(gameDb) {
     // entries = [userId1, score1, userId2, score2, ...]
     const updates = [];
     for (let i = 0; i < entries.length; i += 2) {
-      updates.push({ userId: Number(entries[i]), timestamp: Number(entries[i + 1]) });
+      const userId = parseInt(entries[i], 10);
+      const timestamp = parseInt(entries[i + 1], 10);
+      if (!Number.isFinite(userId) || !Number.isFinite(timestamp)) continue;
+      updates.push({ userId, timestamp });
     }
 
     if (updates.length === 0) return 0;
 
-    // Batch update using CASE statement
+    // Batch update using CASE statement — values are validated integers above
     const userIds = updates.map(u => u.userId);
     const cases = updates.map(u => `WHEN ${u.userId} THEN ${u.timestamp}`).join(' ');
     
