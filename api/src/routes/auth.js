@@ -82,7 +82,7 @@ router.post('/', async (req, res) => {
       await gameDb.query(
         `INSERT INTO players (user_id, username, realm, x, y, health, max_health, mana, max_mana, 
          xp, level, intelligence, dexterity, concentration, strength, constitution, last_active)
-         VALUES (?, ?, NULL, 0, 0, 100, 100, 50, 50, 0, 1, 10, 10, 10, 10, 10, UNIX_TIMESTAMP())`,
+         VALUES (?, ?, NULL, 0, 0, 600, 600, 200, 200, 0, 1, 20, 20, 20, 20, 20, UNIX_TIMESTAMP())`,
         [userId, username]
       );
 
