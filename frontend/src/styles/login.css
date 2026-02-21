@@ -197,7 +197,7 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.92);
+  background: url('https://cor-forum.de/regnum/RegnumNostalgia/ui/loading-screen.png') center center / cover no-repeat, #000;
   display: flex;
   align-items: center;
   justify-content: center;
