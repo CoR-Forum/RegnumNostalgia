@@ -54,7 +54,7 @@ cd regnum-nostalgia
 ```env
 COR_FORUM_API_KEY=your_api_key_here
 SCREENSHOTS_API_KEY=your_screenshots_api_key_here
-JWT_SECRET=your_secure_random_string_here
+JWT_SECRET=your_secure_random_string_here  # REQUIRED — generate with: openssl rand -hex 32
 NODE_ENV=development
 REDIS_HOST=redis
 GAME_DB_HOST=db

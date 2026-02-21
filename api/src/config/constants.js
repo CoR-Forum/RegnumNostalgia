@@ -9,7 +9,7 @@ module.exports = {
   WARSTATUS_API_URL: 'https://cort.thebus.top/api/var/warstatus.json',
   
   // Session/JWT Configuration
-  JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+  JWT_SECRET: process.env.JWT_SECRET || (() => { throw new Error('JWT_SECRET environment variable is required'); })(),
   JWT_EXPIRES_IN: '24h',
   SESSION_DURATION: 86400, // 24 hours in seconds
   
