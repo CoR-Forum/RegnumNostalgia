@@ -10,8 +10,17 @@ import './styles/login.css';
 
 const API_BASE = '/api';
 
+interface LoginApiOptions extends RequestInit {
+  headers?: Record<string, string>;
+  skipAuth?: boolean;
+}
+
+interface ApiError extends Error {
+  status?: number;
+}
+
 // ── Session token from localStorage ──
-function getSessionToken() {
+function getSessionToken(): string | null {
   try {
     const raw = localStorage.getItem('sessionToken');
     if (raw && raw !== 'null' && raw !== 'undefined' && String(raw).trim() !== '') return raw;
@@ -20,14 +29,14 @@ function getSessionToken() {
 }
 
 let sessionToken = getSessionToken();
-let userId = null;
-let username = null;
-let realm = null;
+let userId: number | null = null;
+let username: string | null = null;
+let realm: string | null = null;
 
 // ── Lightweight API helper (no game deps) ──
 
-async function loginApiCall(endpoint, options = {}) {
-  const headers = {
+async function loginApiCall(endpoint: string, options: LoginApiOptions = {}) {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/x-www-form-urlencoded',
     ...options.headers,
   };
@@ -39,15 +48,15 @@ async function loginApiCall(endpoint, options = {}) {
     ...options,
     headers,
   });
-  let data = null;
+  let data: any = null;
   try { data = await response.json(); } catch (e) { /* ignore */ }
   if (!response.ok) {
-    const err = new Error(data?.error || 'API call failed');
+    const err: ApiError = new Error(data?.error || 'API call failed');
     err.status = response.status;
     throw err;
   }
   if (data && data.success === false) {
-    const err = new Error(data.error || 'API call failed');
+    const err: ApiError = new Error(data.error || 'API call failed');
     err.status = response.status;
     throw err;
   }
@@ -56,10 +65,11 @@ async function loginApiCall(endpoint, options = {}) {
 
 // ── Screen management ──
 
-function showScreen(screen) {
+function showScreen(screen: 'login' | 'loading' | 'game') {
   const loginScreen = document.getElementById('login-screen');
   const loadingScreen = document.getElementById('loading-screen');
   const gameContainer = document.getElementById('game-container');
+  if (!loginScreen || !loadingScreen || !gameContainer) return;
 
   loginScreen.style.display = screen === 'login' ? 'flex' : 'none';
   loadingScreen.style.display = screen === 'loading' ? 'flex' : 'none';
@@ -76,7 +86,7 @@ function showScreen(screen) {
 
 // ── Loading progress ──
 
-function updateLoadingProgress(message, percent) {
+function updateLoadingProgress(message: string, percent: number) {
   const bar = document.getElementById('loading-bar-fill');
   const text = document.getElementById('loading-status');
   if (bar) bar.style.width = `${Math.min(100, Math.max(0, percent))}%`;
@@ -85,22 +95,22 @@ function updateLoadingProgress(message, percent) {
 
 // ── Dynamic script/CSS loaders ──
 
-function loadScript(src) {
+function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
     script.src = src;
-    script.onload = resolve;
+    script.onload = () => resolve();
     script.onerror = () => reject(new Error(`Failed to load: ${src}`));
     document.head.appendChild(script);
   });
 }
 
-function loadCSS(href) {
+function loadCSS(href: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = href;
-    link.onload = resolve;
+    link.onload = () => resolve();
     link.onerror = () => reject(new Error(`Failed to load: ${href}`));
     document.head.appendChild(link);
   });
@@ -158,23 +168,24 @@ async function startGameLoading() {
 // ── Realm selection ──
 
 function showRealmSelection() {
-  document.getElementById('step-login').classList.remove('active');
-  document.getElementById('step-realm').classList.add('active');
+  document.getElementById('step-login')?.classList.remove('active');
+  document.getElementById('step-realm')?.classList.add('active');
 }
 
 function initRealmSelection() {
-  document.querySelectorAll('.realm-card').forEach((card) => {
+  document.querySelectorAll<HTMLElement>('.realm-card').forEach((card) => {
     card.addEventListener('click', async () => {
       const selectedRealm = card.dataset.realm;
       const errorEl = document.getElementById('realm-error');
-      errorEl.classList.add('hidden');
+
+      errorEl?.classList.add('hidden');
 
       // Disable all cards during request
-      document.querySelectorAll('.realm-card').forEach((c) => (c.style.pointerEvents = 'none'));
+      document.querySelectorAll<HTMLElement>('.realm-card').forEach((c) => (c.style.pointerEvents = 'none'));
 
       try {
         const formData = new URLSearchParams();
-        formData.append('realm', selectedRealm);
+        formData.append('realm', selectedRealm ?? '');
 
         const data = await loginApiCall('/realm/select', {
           method: 'POST',
@@ -188,11 +199,13 @@ function initRealmSelection() {
         try { localStorage.setItem('sessionToken', data.sessionToken); } catch (e) { /* ignore */ }
 
         await startGameLoading();
-      } catch (err) {
+      } catch (err: any) {
         console.error('[Login] Realm selection failed:', err);
-        errorEl.textContent = err.message || 'Failed to select realm';
-        errorEl.classList.remove('hidden');
-        document.querySelectorAll('.realm-card').forEach((c) => (c.style.pointerEvents = ''));
+        if (errorEl) {
+          errorEl.textContent = err.message || 'Failed to select realm';
+          errorEl.classList.remove('hidden');
+        }
+        document.querySelectorAll<HTMLElement>('.realm-card').forEach((c) => (c.style.pointerEvents = ''));
       }
     });
   });
@@ -203,14 +216,16 @@ function initRealmSelection() {
 function initLoginForm() {
   const form = document.getElementById('login-form');
   const errorEl = document.getElementById('login-error');
+  if (!form) return;
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
-    const loginBtn = document.getElementById('login-btn');
+    const usernameInput = document.getElementById('username') as HTMLInputElement | null;
+    const passwordInput = document.getElementById('password') as HTMLInputElement | null;
+    const loginBtn = document.getElementById('login-btn') as HTMLButtonElement | null;
     const loginText = document.getElementById('login-text');
     const loginSpinner = document.getElementById('login-spinner');
+    if (!usernameInput || !passwordInput || !loginBtn || !loginText || !loginSpinner || !errorEl) return;
 
     loginBtn.disabled = true;
     loginText.style.display = 'none';
@@ -244,7 +259,7 @@ function initLoginForm() {
       } else {
         await startGameLoading();
       }
-    } catch (err) {
+    } catch (err: any) {
       errorEl.textContent = err.message;
       errorEl.classList.remove('hidden');
       loginBtn.disabled = false;
@@ -261,6 +276,7 @@ async function checkSession() {
 
   const autoLoginLoading = document.getElementById('auto-login-loading');
   const loginForm = document.getElementById('login-form');
+  if (!autoLoginLoading || !loginForm) return false;
 
   autoLoginLoading.classList.remove('hidden');
   loginForm.style.display = 'none';
