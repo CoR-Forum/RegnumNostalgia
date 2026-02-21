@@ -9,6 +9,7 @@
 import { isCasting, startCasting } from './castbar.js';
 import { isSpellOnCooldown, getActiveSpellCount, getSpellCooldownRemaining } from './spells.js';
 import { showTooltip, moveTooltip, hideTooltip } from './tooltip.js';
+import { ITEM_CDN_BASE } from './state.js';
 
 const ROWS = 4;
 const SLOTS = 10;
@@ -178,8 +179,8 @@ function renderSlot(el, slotIndex, data) {
   el.ondragend = (e) => {
     if (e.dataTransfer.dropEffect === 'none') {
       // Dragged outside any valid drop target - remove from quickbar
-      const socket = window.socket || (window.getSocket && window.getSocket());
-      if (socket && socket.connected) {
+      const socket = window.getConnectedSocket && window.getConnectedSocket();
+      if (socket) {
         socket.emit('quickbar:clear', { row: activeRow, slot: slotIndex }, (resp) => {
           if (resp && resp.success) {
             quickbarData[activeRow][slotIndex] = null;
@@ -198,7 +199,7 @@ function renderSlot(el, slotIndex, data) {
 
   if (data.iconName) {
     const img = document.createElement('img');
-    img.src = `https://cor-forum.de/regnum/RegnumNostalgia/items/${data.iconName}`;
+    img.src = `${ITEM_CDN_BASE}/${data.iconName}`;
     img.alt = data.name || '';
     img.draggable = false;
     el.appendChild(img);
@@ -276,8 +277,8 @@ function onSlotDrop(e, slotIndex) {
     payload = JSON.parse(raw);
   } catch { return; }
 
-  const socket = window.socket || (window.getSocket && window.getSocket());
-  if (!socket || !socket.connected) return;
+  const socket = window.getConnectedSocket && window.getConnectedSocket();
+  if (!socket) return;
 
   // Check if dragging from another quickbar slot
   if (payload.fromQuickbar) {
@@ -327,8 +328,8 @@ async function onSlotClick(slotIndex) {
   const data = quickbarData[activeRow][slotIndex];
   if (!data) return;
 
-  const socket = window.socket || (window.getSocket && window.getSocket());
-  if (!socket || !socket.connected) return;
+  const socket = window.getConnectedSocket && window.getConnectedSocket();
+  if (!socket) return;
 
   // Helper: find an inventory item matching this template_key
   const findInventoryItem = () => new Promise((resolve, reject) => {
@@ -447,8 +448,8 @@ async function refreshWindows() {
 // ── Server Load ──
 
 function loadFromServer() {
-  const socket = window.socket || (window.getSocket && window.getSocket());
-  if (!socket || !socket.connected) return;
+  const socket = window.getConnectedSocket && window.getConnectedSocket();
+  if (!socket) return;
 
   socket.emit('quickbar:load', {}, (resp) => {
     if (resp && resp.success && Array.isArray(resp.slots)) {

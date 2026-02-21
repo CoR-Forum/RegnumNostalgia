@@ -46,10 +46,6 @@ module.exports = {
     { template_key: 'tenax_amulet', quantity: 1 },
     { template_key: 'alasthor_amulet', quantity: 1 },
   ],
-
-  // GM Starter Items — currently identical to STARTER_ITEMS.
-  // Reference STARTER_ITEMS directly if no GM-specific items are needed.
-  GM_STARTER_ITEMS: null, // Set to an array to override, or use STARTER_ITEMS as fallback
   
   // Online Status
   ONLINE_THRESHOLD_SECONDS: 10, // Consider players online if active within the last 10 seconds

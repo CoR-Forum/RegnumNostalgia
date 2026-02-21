@@ -82,27 +82,7 @@ async function authenticateSocket(socket, next) {
   }
 }
 
-/**
- * Optional authentication - doesn't fail if no token
- */
-function optionalAuth(req, res, next) {
-  const token = req.headers['x-session-token'];
-
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-    } catch (error) {
-      // Token invalid, but we don't fail - just continue without user
-      logger.debug('Optional auth: Invalid token provided');
-    }
-  }
-
-  next();
-}
-
 module.exports = {
   authenticateJWT,
-  authenticateSocket,
-  optionalAuth
+  authenticateSocket
 };

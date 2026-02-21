@@ -3,7 +3,8 @@
  */
 
 import { gameState } from './state.js';
-import { getMap, gameToLatLng } from './map-state.js';
+import { gameToLatLng } from './map-state.js';
+import { updateMarkerCollection } from './marker-utils.js';
 
 export async function loadAndDisplayScreenshots() {
   try {
@@ -27,32 +28,19 @@ export async function loadAndDisplayScreenshots() {
 }
 
 export function displayScreenshotMarkers(screenshots) {
-  const map = getMap();
-  if (!map) return;
-
   if (!gameState.screenshots) {
     gameState.screenshots = new Map();
   }
 
-  const currentIds = new Set();
-
-  screenshots.forEach(screenshot => {
-    currentIds.add(screenshot.id);
+  updateMarkerCollection(gameState.screenshots, screenshots, s => s.id, (screenshot) => {
     const latLng = gameToLatLng(screenshot.x, screenshot.y);
 
-    const dotIcon = L.divIcon({
+    const icon = L.divIcon({
       className: 'screenshot-marker',
       html: '<div class="screenshot-dot"></div>',
       iconSize: [8, 8],
       iconAnchor: [4, 4]
     });
-
-    if (gameState.screenshots.has(screenshot.id)) {
-      const oldMarker = gameState.screenshots.get(screenshot.id);
-      map.removeLayer(oldMarker);
-    }
-
-    const marker = L.marker(latLng, { icon: dotIcon }).addTo(map);
 
     const name = screenshot.name?.en || screenshot.name?.de || screenshot.name?.es || 'Unnamed';
     const description = screenshot.description?.en || screenshot.description?.de || screenshot.description?.es || '';
@@ -71,20 +59,9 @@ export function displayScreenshotMarkers(screenshots) {
       </div>
     `;
 
-    marker.bindTooltip(tooltipHtml, {
-      className: 'screenshot-tooltip',
-      direction: 'top',
-      offset: [0, -4]
-    });
-
-    gameState.screenshots.set(screenshot.id, marker);
+    return {
+      marker: L.marker(latLng, { icon }),
+      tooltip: { content: tooltipHtml, options: { className: 'screenshot-tooltip', direction: 'top', offset: [0, -4] } }
+    };
   });
-
-  // Remove markers for deleted screenshots
-  for (const [id, marker] of gameState.screenshots.entries()) {
-    if (!currentIds.has(id)) {
-      map.removeLayer(marker);
-      gameState.screenshots.delete(id);
-    }
-  }
 }

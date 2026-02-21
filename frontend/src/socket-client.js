@@ -2,7 +2,7 @@
  * Socket Client — WebSocket connection, all server event handlers, collectable helpers.
  */
 
-import { gameState, batchUpdate } from './state.js';
+import { gameState, batchUpdate, MARKER_CDN_BASE } from './state.js';
 import { getMap, getTotalH, getTotalW, gameToLatLng } from './map-state.js';
 import { escapeHtml } from './utils.js';
 import { apiCall } from './api.js';
@@ -70,7 +70,7 @@ function createCollectableMarker(item) {
     <div style="
       width: 28px;
       height: 28px;
-      background: url('https://cor-forum.de/regnum/RegnumNostalgia/markers/${item.visualIcon}') center center / contain no-repeat;
+      background: url('${MARKER_CDN_BASE}/${item.visualIcon}') center center / contain no-repeat;
       ${isCollecting ? 'border: 3px solid #ff8800; border-radius: 50%;' : ''}
       cursor: pointer;
       filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));
@@ -470,3 +470,14 @@ export function initializeWebSocket() {
 // Expose on window for backward compat
 window.initializeWebSocket = initializeWebSocket;
 window.getSocket = getSocket;
+
+/**
+ * Returns the connected socket instance, or null if not available.
+ * Use this instead of `window.socket || (window.getSocket && window.getSocket())`.
+ */
+export function getConnectedSocket() {
+  if (socket && socket.connected) return socket;
+  return null;
+}
+
+window.getConnectedSocket = getConnectedSocket;

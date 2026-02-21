@@ -51,8 +51,8 @@ window.updateServerTimeUI = updateServerTimeUI;
  */
 export function fetchServerTime() {
   try {
-    const socket = window.getSocket && window.getSocket();
-    if (socket && socket.connected) {
+    const socket = window.getConnectedSocket && window.getConnectedSocket();
+    if (socket) {
       socket.emit('player:stats:get', (resp) => {
         if (resp && resp.success && resp.state) {
           updateServerTimeUI(resp.state);

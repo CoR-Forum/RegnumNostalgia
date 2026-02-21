@@ -8,6 +8,7 @@ import { emitOrApi } from './api.js';
 import { getErrorMessage } from './utils.js';
 import { startCasting, isCasting } from './castbar.js';
 import { getActiveSpellCount, isSpellOnCooldown, getSpellCooldownRemaining } from './spells.js';
+import { ITEM_CDN_BASE } from './state.js';
 
 /**
  * Render the inventory items list.
@@ -42,7 +43,7 @@ export function displayInventory(items) {
     itemDiv.className = 'inventory-item';
 
     const iconName = item.iconName;
-    const iconSrc = iconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${iconName}` : '';
+    const iconSrc = iconName ? `${ITEM_CDN_BASE}/${iconName}` : '';
     const iconHtml = iconSrc ? `<img src="${iconSrc}" alt="${getItemName(item)}">` : '';
     const rarityClass = item.rarity || 'common';
 

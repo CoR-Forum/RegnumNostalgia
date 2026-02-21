@@ -13,7 +13,7 @@ let _totalH = 0;
 let _totalW = 0;
 let _territoryIcons = {};
 let _rasterCoords = null;                 // set when v1 rastercoords is active
-const GAME_SIZE = 6144;
+export const GAME_SIZE = 6144;
 
 export function setMapState(map, totalH, totalW) {
   _map = map;
@@ -47,14 +47,6 @@ export function getTotalW() { return _totalW; }
 
 /** @returns {object} Territory icon definitions from markers.json */
 export function getTerritoryIcons() { return _territoryIcons; }
-
-/**
- * Convenience: return all map state in one call.
- * @returns {{ map: L.Map|null, totalH: number, totalW: number, territoryIcons: object }}
- */
-export function getMapState() {
-  return { map: _map, totalH: _totalH, totalW: _totalW, territoryIcons: _territoryIcons };
-}
 
 /**
  * Convert game coordinates to a Leaflet LatLng.

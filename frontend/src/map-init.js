@@ -9,11 +9,10 @@
  */
 
 import { gameState } from './state.js';
-import { setMapState, setTerritoryIcons, positionsToLatLngs, setRasterCoords, gameToLatLng, latLngToGame } from './map-state.js';
+import { setMapState, setTerritoryIcons, positionsToLatLngs, setRasterCoords, gameToLatLng, latLngToGame, GAME_SIZE } from './map-state.js';
 import './rastercoords.js'; // registers L.RasterCoords on the global L
 
 const CDN_BASE = 'https://cor-forum.de/regnum/RegnumNostalgia/map';
-const GAME_SIZE = 6144;
 
 // --- v2 image overlay config ---
 const V2_ROWS = 3;

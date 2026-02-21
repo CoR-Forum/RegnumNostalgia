@@ -10,10 +10,10 @@ const { setActiveWalker, removeActiveWalkerByUser } = require('../config/cache')
 const logger = require('../config/logger');
 const { pointInPolygon, distance } = require('../utils/geometry');
 
-// Local loaders matching the old `loadPaths()` / `loadRegions()` API
-async function loadPaths() { return pathsData; }
-async function loadRegions() { return regionsData; }
-async function loadWalls() { return wallsData; }
+// Local aliases matching the old `loadPaths()` / `loadRegions()` API
+const loadPaths = () => pathsData;
+const loadRegions = () => regionsData;
+const loadWalls = () => wallsData;
 
 const INF = Number.MAX_SAFE_INTEGER;
 const LINK_THRESHOLD = 20; // pixels - cross-path link threshold

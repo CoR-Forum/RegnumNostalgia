@@ -37,7 +37,7 @@ export async function performWalkAtLatLng(latlng) {
       if (!allowed) { try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch (e) { alert('Cannot walk to that region.'); } return; }
     } catch (e) { console.debug('region check before walk failed', e); try { if (window.addLogMessage) window.addLogMessage('Cannot walk to that region.', 'error'); else alert('Cannot walk to that region.'); } catch (ex) { alert('Cannot walk to that region.'); } return; }
 
-    const socket = window.getSocket && window.getSocket();
+    const socket = window.getConnectedSocket && window.getConnectedSocket();
     if (!socket || !socket.connected) {
       alert('WebSocket not connected');
       return;

@@ -9,8 +9,7 @@ const {
   JWT_SECRET, 
   JWT_EXPIRES_IN,
   SPAWN_COORDS,
-  STARTER_ITEMS,
-  GM_STARTER_ITEMS
+  STARTER_ITEMS
 } = require('../config/constants');
 const logger = require('../config/logger');
 const { getItemByTemplateKey, bufferLastActive } = require('../config/cache');
@@ -188,10 +187,8 @@ router.post('/select', async (req, res) => {
       [realmLower, spawnCoords.x, spawnCoords.y, decoded.userId]
     );
 
-    // Grant starter items (use GM set for specific test user)
-    const itemsToGrant = (decoded.userId === 146) ? GM_STARTER_ITEMS || STARTER_ITEMS : STARTER_ITEMS;
-
-    for (const starterItem of itemsToGrant) {
+    // Grant starter items
+    for (const starterItem of STARTER_ITEMS) {
       // Get item_id and stackable from cache
       const itemData = await getItemByTemplateKey(gameDb, starterItem.template_key);
 

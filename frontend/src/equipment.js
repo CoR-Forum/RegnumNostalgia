@@ -6,10 +6,11 @@ import { showTooltip, moveTooltip, hideTooltip, getCurrentTooltip } from './tool
 import { emitOrApi } from './api.js';
 import { getErrorMessage } from './utils.js';
 import { nextZIndex } from './windows.js';
+import { ITEM_CDN_BASE } from './state.js';
 
 function getEquipIconSrc(item) {
   const iconName = item.iconName;
-  return iconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${iconName}` : '';
+  return iconName ? `${ITEM_CDN_BASE}/${iconName}` : '';
 }
 
 /**

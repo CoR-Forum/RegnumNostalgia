@@ -3,6 +3,7 @@
  */
 
 import { getItemName, getItemTypeLabel } from './items.js';
+import { ITEM_CDN_BASE } from './state.js';
 
 // Tooltip state
 let currentTooltip = null;
@@ -50,7 +51,7 @@ export function showTooltip(event, item) {
 
   const anchorEl = event.currentTarget || event.target;
   const tooltipIconName = item.iconName;
-  const tooltipIconSrc = tooltipIconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${tooltipIconName}` : '';
+  const tooltipIconSrc = tooltipIconName ? `${ITEM_CDN_BASE}/${tooltipIconName}` : '';
   const rarityClass = (item.rarity || 'common');
 
   lastMouseX = event.clientX;
@@ -102,7 +103,7 @@ export function showTooltip(event, item) {
                 }
 
                 const newIconName = det.iconName || null;
-                const newIconSrc = newIconName ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${newIconName}` : (tooltipIconSrc || '');
+                const newIconSrc = newIconName ? `${ITEM_CDN_BASE}/${newIconName}` : (tooltipIconSrc || '');
                 const newRarity = det.rarity || rarityClass;
 
                 tooltip.innerHTML = `

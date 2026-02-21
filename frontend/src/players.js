@@ -5,6 +5,7 @@
 import { gameState, getRealmColor } from './state.js';
 import { getMap, gameToLatLng } from './map-state.js';
 import { escapeHtml } from './utils.js';
+import { updateMarkerCollection, buildHealthBar } from './marker-utils.js';
 
 export function updateOtherPlayers(players) {
   const map = getMap();
@@ -20,25 +21,15 @@ export function updateOtherPlayers(players) {
     }
   } catch (e) {}
 
-  const currentPlayerIds = new Set();
+  // Filter out self before passing to the shared utility
+  const filtered = players.filter(p => String(p.userId) !== String(gameState.userId));
 
-  players.forEach(player => {
-    const pid = String(player.userId);
-    if (pid === String(gameState.userId)) return;
-
-    currentPlayerIds.add(pid);
-
+  updateMarkerCollection(gameState.otherPlayers, filtered, p => String(p.userId), (player) => {
     const latLng = gameToLatLng(player.x, player.y);
-    const healthPercent = Math.max(0, Math.min(100, Math.round(((Number(player.health) || 0) / (Number(player.maxHealth) || 1)) * 100)));
+    const { html: healthBarHtml, percent: healthPercent } = buildHealthBar(player.health, player.maxHealth);
     const playerRealm = (player.realm || '').toString().toLowerCase();
 
-    // Remove old marker if exists (recreate with updated health)
-    if (gameState.otherPlayers.has(pid)) {
-      const oldMarker = gameState.otherPlayers.get(pid);
-      map.removeLayer(oldMarker);
-    }
-
-    const customIcon = L.divIcon({
+    const icon = L.divIcon({
       className: 'custom-player-marker',
       html: `
         <div style="text-align: center;">
@@ -52,7 +43,7 @@ export function updateOtherPlayers(players) {
       iconAnchor: [20, 10]
     });
 
-    const marker = L.marker(latLng, { icon: customIcon }).addTo(map);
+    const marker = L.marker(latLng, { icon });
     marker.bindPopup(`<b>${escapeHtml(player.username)}</b><br>Realm: ${escapeHtml(player.realm)}<br>Health: ${escapeHtml(player.health)}/${escapeHtml(player.maxHealth)}`);
 
     const playerName = escapeHtml(player.username || 'Unknown');
@@ -63,15 +54,10 @@ export function updateOtherPlayers(players) {
       <div class="tooltip-row"><strong>HP:</strong> ${escapeHtml(player.health)}/${escapeHtml(player.maxHealth)}</div>
       ${levelHtml}
     `;
-    marker.bindTooltip(ttHtml, { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] });
-    gameState.otherPlayers.set(pid, marker);
-  });
 
-  // Remove markers for players no longer online
-  for (const [userId, marker] of gameState.otherPlayers.entries()) {
-    if (!currentPlayerIds.has(String(userId))) {
-      map.removeLayer(marker);
-      gameState.otherPlayers.delete(userId);
-    }
-  }
+    return {
+      marker,
+      tooltip: { content: ttHtml, options: { permanent: false, direction: 'top', className: 'player-tooltip', offset: [0, -10] } }
+    };
+  });
 }

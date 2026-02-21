@@ -1,17 +1,7 @@
 const fs = require('fs').promises;
 const path = require('path');
 const logger = require('../config/logger');
-const { forumDb } = require('../config/database');
-const { getCachedGMStatus } = require('../config/cache');
-
-async function isGM(userId) {
-  try {
-    return await getCachedGMStatus(forumDb, userId);
-  } catch (error) {
-    logger.error('Failed to check GM status', { error: error.message, userId });
-    return false;
-  }
-}
+const { isGM } = require('../utils/permissions');
 
 const DATA_FILES = {
   regions: path.join(__dirname, '../../gameData/regions.json'),

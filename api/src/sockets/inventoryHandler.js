@@ -11,8 +11,12 @@ const slotToDb = {
   legs: 'legs',
   weaponRight: 'weapon_right',
   weaponLeft: 'weapon_left',
+  weapon_right: 'weapon_right',
+  weapon_left: 'weapon_left',
   ringRight: 'ring_right',
   ringLeft: 'ring_left',
+  ring_right: 'ring_right',
+  ring_left: 'ring_left',
   amulet: 'amulet'
 };
 const dbToSlot = {

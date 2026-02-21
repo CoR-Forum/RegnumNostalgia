@@ -66,8 +66,8 @@ export function startCasting({ name, castTime, inventoryId, iconName }) {
       hideCastBar();
 
       // Emit spell:cast to server
-      const socket = window.socket || (window.getSocket && window.getSocket());
-      if (socket && socket.connected) {
+      const socket = window.getConnectedSocket && window.getConnectedSocket();
+      if (socket) {
         socket.emit('spell:cast', { inventoryId }, (resp) => {
           if (resp && resp.success) {
             resolve({ success: true });

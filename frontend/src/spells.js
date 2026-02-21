@@ -5,7 +5,7 @@
  * Also tracks spell cooldowns — shown as overlay on inventory items.
  */
 
-import { gameState } from './state.js';
+import { gameState, ITEM_CDN_BASE } from './state.js';
 import { updateQuickbarCooldowns } from './quickbar.js';
 
 /** @type {Array<{spellId:number, spellKey:string, iconName:string, duration:number, remaining:number, healPerTick?:number, manaPerTick?:number, walkSpeed?:number, cooldown?:number}>} */
@@ -47,7 +47,7 @@ function renderActiveSpells() {
     el.dataset.spellId = spell.spellId;
 
     const iconSrc = spell.iconName
-      ? `https://cor-forum.de/regnum/RegnumNostalgia/items/${spell.iconName}`
+      ? `${ITEM_CDN_BASE}/${spell.iconName}`
       : '';
 
     const pct = spell.duration > 0 ? ((spell.duration - spell.remaining) / spell.duration) * 100 : 0;

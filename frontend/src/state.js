@@ -10,6 +10,10 @@ export const REALM_COLORS = {
   ignis: '#ef4444'
 };
 
+/** CDN base URLs for game assets */
+export const ITEM_CDN_BASE = 'https://cor-forum.de/regnum/RegnumNostalgia/items';
+export const MARKER_CDN_BASE = 'https://cor-forum.de/regnum/RegnumNostalgia/markers';
+
 /**
  * Sanitize the stored session token from localStorage.
  * Treats literal strings 'null'/'undefined' or empty values as no token.

@@ -1,21 +1,7 @@
 const { forumDb, gameDb } = require('../config/database');
 const logger = require('../config/logger');
-const { getCachedGMStatus, getItemByTemplateKey, getCachedShoutboxMessages, setShoutboxMessages, addShoutboxMessage, getLastShoutboxId, setLastShoutboxId } = require('../config/cache');
-
-/**
- * Check if a user has GM/Admin permissions
- * @param {number} userId - The user ID to check
- * @returns {Promise<boolean>} - True if user is GM/Admin
- */
-async function isGM(userId) {
-  try {
-    // Check GM status via Redis cache (falls back to forumDb)
-    return await getCachedGMStatus(forumDb, userId);
-  } catch (error) {
-    logger.error('Failed to check GM status', { error: error.message, userId });
-    return false;
-  }
-}
+const { getItemByTemplateKey, getCachedShoutboxMessages, setShoutboxMessages, addShoutboxMessage, getLastShoutboxId, setLastShoutboxId } = require('../config/cache');
+const { isGM } = require('../utils/permissions');
 
 /**
  * Resolve user ID from either user_id (number) or username (string)

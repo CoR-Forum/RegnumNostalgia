@@ -126,6 +126,7 @@ regnum-nostalgia/
 │       ├── territories.js            # Territory markers & health bars
 │       ├── superbosses.js            # World boss markers & respawn
 │       ├── screenshots.js            # Screenshot markers on map
+│       ├── marker-utils.js           # Shared marker lifecycle (create/update/remove-stale)
 │       ├── inventory.js              # Inventory display & drag-drop
 │       ├── equipment.js              # Equipment slots & rendering
 │       ├── walking.js                # Click-to-move & pathfinding
@@ -183,9 +184,11 @@ regnum-nostalgia/
 │   │   │   ├── territoryQueue.js     # Territory updates (10s)
 │   │   │   └── spawnQueue.js         # Collectable spawning (5s)
 │   │   ├── services/
-│   │   │   └── pathfinding.js        # Dijkstra pathfinding + wall detection
+│   │   │   ├── pathfinding.js        # Dijkstra pathfinding + wall detection
+│   │   │   └── settingsService.js    # Settings upsert (shared by routes + sockets)
 │   │   └── utils/
-│   │       └── geometry.js           # Shared point-in-polygon, distance
+│   │       ├── geometry.js           # Shared point-in-polygon, distance
+│   │       └── permissions.js        # Shared GM/admin permission check
 │   ├── gameData/                     # JSON game data (regions, paths, items)
 │   ├── scripts/                      # DB init, item import
 │   ├── package.json
