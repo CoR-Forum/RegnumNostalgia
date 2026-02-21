@@ -378,7 +378,7 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
-    // quickbars - player quickbar slot assignments (5 rows × 10 slots)
+    // quickbars - player quickbar slot assignments (4 rows × 10 slots)
     await gameDb.query(`
       CREATE TABLE IF NOT EXISTS quickbars (
         id INT AUTO_INCREMENT PRIMARY KEY,
