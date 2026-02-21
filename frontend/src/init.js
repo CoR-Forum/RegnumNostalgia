@@ -69,7 +69,7 @@ async function loadHtmlPartials() {
  * Load shoutbox partial and initialize its window.
  */
 function loadShoutbox() {
-  loadPartial('shoutbox.html', 'shoutbox-include').then(() => {
+  return loadPartial('shoutbox.html', 'shoutbox-include').then(() => {
     try {
       const shoutboxWin = document.getElementById('shoutbox-window');
       if (shoutboxWin) {
