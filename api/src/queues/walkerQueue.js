@@ -52,7 +52,7 @@ async function resolveLootTable(lootTableKey) {
 
   } else if (lootTable.mode === 'multi-drop') {
     // Pick N times from pool
-    const dropCount = lootTable.drops || 1;
+    const dropCount = lootTable.drops || lootTable.rolls || 1;
     for (let i = 0; i < dropCount; i++) {
       const totalWeight = lootTable.pool.reduce((sum, item) => sum + item.weight, 0);
       let roll = Math.random() * totalWeight;
