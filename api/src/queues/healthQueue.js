@@ -37,12 +37,14 @@ healthQueue.process('regenerate-health', async (job) => {
     }
 
     // Regenerate player health (1% of max_health) and mana (fixed rate)
+    // Use the IDs from the SELECT to avoid regenerating inactive/offline players
+    const activeUserIds = playersNeedingRegen.map(p => p.user_id);
     await gameDb.query(
       `UPDATE players 
        SET health = LEAST(health + CEIL(max_health * 0.01), max_health),
            mana = LEAST(mana + ?, max_mana)
-       WHERE health < max_health OR mana < max_mana`,
-      [REGEN_RATES.PLAYER_MANA]
+       WHERE user_id IN (?) AND (health < max_health OR mana < max_mana)`,
+      [REGEN_RATES.PLAYER_MANA, activeUserIds]
     );
 
     // Get updated values for players who were regenerated
