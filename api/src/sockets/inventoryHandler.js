@@ -331,7 +331,8 @@ function registerInventoryHandlers(socket, user, io, deps) {
         if (slotToDb.hasOwnProperty(requestedSlot)) {
           slot = slotToDb[requestedSlot];
         } else {
-          slot = requestedSlot;
+          if (callback) callback({ success: false, error: 'Invalid equipment slot' });
+          return;
         }
       }
 
