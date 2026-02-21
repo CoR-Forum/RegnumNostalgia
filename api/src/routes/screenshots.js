@@ -219,8 +219,8 @@ router.delete('/:id', authenticateJWT, async (req, res) => {
     const db = screenshotsDb();
 
     db.run(
-      'DELETE FROM screenshots WHERE id = ?',
-      [id],
+      'DELETE FROM screenshots WHERE id = ? AND user_id = ?',
+      [id, req.user.userId],
       function(err) {
         if (err) {
           logger.error('Failed to delete screenshot', { error: err.message, id });
