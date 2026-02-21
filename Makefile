@@ -15,3 +15,8 @@ frontend-logs:
 # build frontend for production (outputs to frontend/dist/)
 build-frontend:
 	docker compose run --rm frontend sh -c "npm install && npm run build"
+
+# sync node_modules from containers to host (for VS Code type checking)
+sync-types:
+	docker compose cp api:/app/node_modules ./api/node_modules
+	docker compose cp frontend:/app/node_modules ./frontend/node_modules

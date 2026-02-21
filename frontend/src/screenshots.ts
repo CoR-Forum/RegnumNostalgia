@@ -1,0 +1,67 @@
+/**
+ * Screenshot markers — load screenshots from API and display as dot markers on the map.
+ */
+
+import { gameState } from './state';
+import { gameToLatLng } from './map-state';
+import { updateMarkerCollection } from './marker-utils';
+
+export async function loadAndDisplayScreenshots() {
+  try {
+    const headers = {};
+    if (gameState && gameState.sessionToken) {
+      headers['X-Session-Token'] = gameState.sessionToken;
+    }
+    const res = await fetch('/api/screenshots', {
+      method: 'GET',
+      headers,
+      credentials: 'same-origin',
+      cache: 'no-store'
+    });
+    const data = await res.json();
+    if (data.success && data.screenshots) {
+      displayScreenshotMarkers(data.screenshots);
+    }
+  } catch (e) {
+    console.error('Failed to load screenshots:', e);
+  }
+}
+
+export function displayScreenshotMarkers(screenshots) {
+  if (!gameState.screenshots) {
+    gameState.screenshots = new Map();
+  }
+
+  updateMarkerCollection(gameState.screenshots, screenshots, s => s.id, (screenshot) => {
+    const latLng = gameToLatLng(screenshot.x, screenshot.y);
+
+    const icon = L.divIcon({
+      className: 'screenshot-marker',
+      html: '<div class="screenshot-dot"></div>',
+      iconSize: [8, 8],
+      iconAnchor: [4, 4]
+    });
+
+    const name = screenshot.name?.en || screenshot.name?.de || screenshot.name?.es || 'Unnamed';
+    const description = screenshot.description?.en || screenshot.description?.de || screenshot.description?.es || '';
+    const location = screenshot.location || '';
+    const visibleCharacters = screenshot.visibleCharacters || '';
+
+    const tooltipHtml = `
+      <div style="max-width: 250px;">
+        <div style="margin-bottom: 6px;">
+          <img src="${window.screenshotManager ? window.screenshotManager.getScreenshotUrl(screenshot.filename) : ''}" style="width: 100%; height: auto; border-radius: 3px; display: block;">
+        </div>
+        <div style="font-weight: 700; margin-bottom: 4px; font-size: 13px; color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">${name}</div>
+        ${location ? `<div style="color: #aaa; font-size: 10px; margin-bottom: 4px; font-weight: 500;">${location}</div>` : ''}
+        ${visibleCharacters ? `<div style="color: #60a5fa; font-size: 10px; margin-bottom: 4px; font-weight: 500;">👥 ${visibleCharacters}</div>` : ''}
+        ${description ? `<div style="font-size: 10px; line-height: 1.3; color: #ccc;">${description}</div>` : ''}
+      </div>
+    `;
+
+    return {
+      marker: L.marker(latLng, { icon }),
+      tooltip: { content: tooltipHtml, options: { className: 'screenshot-tooltip', direction: 'top', offset: [0, -4] } }
+    };
+  });
+}

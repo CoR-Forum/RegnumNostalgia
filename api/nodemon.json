@@ -1,7 +1,8 @@
 {
   "watch": ["."],
-  "ext": "js,json",
-  "ignore": ["node_modules", "logs", "*.test.js"],
+  "ext": "ts,json",
+  "ignore": ["node_modules", "logs", "dist", "*.test.ts"],
+  "exec": "tsx src/server.ts",
   "delay": 500,
   "env": {
     "NODE_ENV": "development"

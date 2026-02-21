@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Install build dependencies for native modules
 RUN apk add --no-cache python3 make g++
@@ -9,7 +9,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (include dev dependencies for nodemon)
+# Install dependencies (include dev dependencies for nodemon & tsx)
 RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy application code
@@ -24,5 +24,5 @@ USER node
 # Expose port
 EXPOSE 3000
 
-# Start application with nodemon for hot reload
-CMD ["npx", "nodemon", "src/server.js"]
+# Start application with nodemon + tsx for TypeScript hot reload
+CMD ["npx", "nodemon"]

@@ -106,37 +106,37 @@ regnum-nostalgia/
 │   ├── screenshotManager.js          # Screenshot manager
 │   ├── build-path.js                 # Path builder UI
 │   ├── package.json                  # Vite dependency
-│   ├── vite.config.js                # Vite dev/build config
+│   ├── vite.config.ts                # Vite dev/build config
 │   └── src/
-│       ├── login.js                  # Login entry point (session check, auth, realm selection)
-│       ├── main.js                   # Game entry point (loaded dynamically after login)
-│       ├── state.js                  # Reactive state store (subscribe, batchUpdate)
-│       ├── utils.js                  # escapeHtml, formatDurationSeconds, getErrorMessage
-│       ├── items.js                  # getItemName, getItemTypeLabel
-│       ├── api.js                    # apiCall, emitOrApi (HTTP + WebSocket)
-│       ├── server-time.js            # In-game time display & fetch
-│       ├── map-state.js              # Map instance accessors (map, totalH, totalW, gameToLatLng, latLngToGame)
-│       ├── map-init.js               # Leaflet map creation & tile loading (v1/v1-compressed: rastercoords + L.tileLayer, v2: L.imageOverlay)
-│       ├── rastercoords.js           # leaflet-rastercoords plugin for v1 tile coordinate mapping
-│       ├── tooltip.js                # Item/equipment hover tooltips
-│       ├── windows.js                # Draggable/closable window system, z-index stacking
-│       ├── player-ui.js              # HUD buttons, stats display
-│       ├── player.js                 # Player marker & state updates
-│       ├── players.js                # Other players' markers
-│       ├── territories.js            # Territory markers & health bars
-│       ├── superbosses.js            # World boss markers & respawn
-│       ├── screenshots.js            # Screenshot markers on map
-│       ├── marker-utils.js           # Shared marker lifecycle (create/update/remove-stale)
-│       ├── inventory.js              # Inventory display & drag-drop
-│       ├── equipment.js              # Equipment slots & rendering
-│       ├── walking.js                # Click-to-move & pathfinding
-│       ├── context-menu.js           # Right-click map context menu
-│       ├── audio.js                  # Music/SFX playback & volume
-│       ├── socket-client.js          # WebSocket client & event handlers
-│       ├── castbar.js                 # Cast bar UI for spell casting
-│       ├── spells.js                  # Active spell UI & tooltip display
-│       ├── quickbar.js                # Quickbar (5×10 quick-cast slots)
-│       ├── init.js                   # Game bootstrap, HTML partial loaders
+│       ├── login.ts                  # Login entry point (session check, auth, realm selection)
+│       ├── main.ts                   # Game entry point (loaded dynamically after login)
+│       ├── state.ts                  # Reactive state store (subscribe, batchUpdate)
+│       ├── utils.ts                  # escapeHtml, formatDurationSeconds, getErrorMessage
+│       ├── items.ts                  # getItemName, getItemTypeLabel
+│       ├── api.ts                    # apiCall, emitOrApi (HTTP + WebSocket)
+│       ├── server-time.ts            # In-game time display & fetch
+│       ├── map-state.ts              # Map instance accessors (map, totalH, totalW, gameToLatLng, latLngToGame)
+│       ├── map-init.ts               # Leaflet map creation & tile loading (v1/v1-compressed: rastercoords + L.tileLayer, v2: L.imageOverlay)
+│       ├── rastercoords.ts           # leaflet-rastercoords plugin for v1 tile coordinate mapping
+│       ├── tooltip.ts                # Item/equipment hover tooltips
+│       ├── windows.ts                # Draggable/closable window system, z-index stacking
+│       ├── player-ui.ts              # HUD buttons, stats display
+│       ├── player.ts                 # Player marker & state updates
+│       ├── players.ts                # Other players' markers
+│       ├── territories.ts            # Territory markers & health bars
+│       ├── superbosses.ts            # World boss markers & respawn
+│       ├── screenshots.ts            # Screenshot markers on map
+│       ├── marker-utils.ts           # Shared marker lifecycle (create/update/remove-stale)
+│       ├── inventory.ts              # Inventory display & drag-drop
+│       ├── equipment.ts              # Equipment slots & rendering
+│       ├── walking.ts                # Click-to-move & pathfinding
+│       ├── context-menu.ts           # Right-click map context menu
+│       ├── audio.ts                  # Music/SFX playback & volume
+│       ├── socket-client.ts          # WebSocket client & event handlers
+│       ├── castbar.ts                 # Cast bar UI for spell casting
+│       ├── spells.ts                  # Active spell UI & tooltip display
+│       ├── quickbar.ts                # Quickbar (4×10 quick-cast slots)
+│       ├── init.ts                   # Game bootstrap, HTML partial loaders
 │       └── styles/
 │           ├── login.css             # Login & loading screen styles
 │           └── main.css              # Game UI styles
@@ -152,45 +152,71 @@ regnum-nostalgia/
 │       ├── 3d/                       # 3D models
 │       ├── original-map/             # Original map tiles
 │       └── *.png, *.webp, *.jpg      # Logos, backgrounds
-├── api/                              # Node.js backend
+├── api/                              # Node.js backend (TypeScript)
 │   ├── src/
-│   │   ├── server.js                 # Express + Socket.io server
+│   │   ├── server.ts                 # Express + Socket.io server
+│   │   ├── types/                    # TypeScript interfaces for all domain entities
+│   │   │   ├── index.ts              # Barrel export
+│   │   │   ├── player.ts             # PlayerRow, SocketUser, PlayerStats
+│   │   │   ├── item.ts               # ItemRow, ItemStats, ItemTemplate
+│   │   │   ├── inventory.ts          # InventoryRow, EquipmentRow, QuickbarRow
+│   │   │   ├── world.ts              # TerritoryRow, SuperbossRow, WalkerRow
+│   │   │   ├── spells.ts             # ActiveSpellRow, SpellCooldown
+│   │   │   ├── settings.ts           # UserSettingsRow
+│   │   │   ├── config.ts             # LootTable, QueueIntervals, etc.
+│   │   │   ├── socket-events.ts      # Typed Socket.IO events
+│   │   │   ├── cache.ts              # Cache key/TTL types
+│   │   │   └── common.ts             # UnixTimestamp, DbBoolean, Realm
 │   │   ├── config/
-│   │   │   ├── database.js           # MariaDB + Redis + SQLite connections
-│   │   │   ├── cache.js              # Redis caching layer (items, levels, territories, settings)
-│   │   │   ├── constants.js          # Game configuration & loot tables
-│   │   │   └── logger.js             # Winston logger setup
+│   │   │   ├── database.ts           # MariaDB + Redis + SQLite connections
+│   │   │   ├── cache/                # Redis caching layer (split by domain)
+│   │   │   │   ├── index.ts          # Barrel re-export
+│   │   │   │   ├── keys.ts           # CACHE_KEYS & TTL constants
+│   │   │   │   ├── items.ts          # Item/level lookups, preloadStaticData
+│   │   │   │   ├── territories.ts    # Territory & superboss cache
+│   │   │   │   ├── serverTime.ts     # Server time cache
+│   │   │   │   ├── players.ts        # Online tracking, last_active, GM status
+│   │   │   │   ├── settings.ts       # User settings cache
+│   │   │   │   ├── walkers.ts        # Walker state & walk speed
+│   │   │   │   ├── shoutbox.ts       # Chat message cache
+│   │   │   │   └── spells.ts         # Active spells & cooldowns
+│   │   │   ├── constants.ts          # Game configuration & loot tables
+│   │   │   └── logger.ts             # Winston logger setup
 │   │   ├── middleware/
-│   │   │   └── auth.js               # JWT authentication
+│   │   │   └── auth.ts               # JWT authentication
 │   │   ├── routes/
-│   │   │   ├── auth.js               # Login, realm selection
-│   │   │   ├── settings.js           # User settings
-│   │   │   └── screenshots.js        # Screenshot management
+│   │   │   ├── auth.ts               # Login, realm selection
+│   │   │   ├── settings.ts           # User settings
+│   │   │   └── screenshots.ts        # Screenshot management
 │   │   ├── sockets/
-│   │   │   ├── index.js              # Socket orchestrator & shared state
-│   │   │   ├── inventoryHandler.js   # Inventory, equipment, items
-│   │   │   ├── movementHandler.js    # Position updates, pathfinding
-│   │   │   ├── collectableHandler.js # Spawned item collection
-│   │   │   ├── editorHandler.js      # Region/path/wall/water CRUD
-│   │   │   ├── logHandler.js         # Player log retrieval
-│   │   │   ├── spellHandler.js       # Spell casting & active spell queries
-│   │   │   ├── quickbarHandler.js    # Quickbar slot CRUD
-│   │   │   └── shoutbox.js           # Chat/shoutbox polling
+│   │   │   ├── index.ts              # Socket orchestrator & shared state
+│   │   │   ├── inventoryHandler.ts   # Inventory, equipment, items
+│   │   │   ├── movementHandler.ts    # Position updates, pathfinding
+│   │   │   ├── collectableHandler.ts # Spawned item collection
+│   │   │   ├── editorHandler.ts      # Region/path/wall/water CRUD
+│   │   │   ├── logHandler.ts         # Player log retrieval
+│   │   │   ├── spellHandler.ts       # Spell casting & active spell queries
+│   │   │   ├── quickbarHandler.ts    # Quickbar slot CRUD
+│   │   │   └── shoutbox.ts           # Chat/shoutbox polling
 │   │   ├── queues/
-│   │   │   ├── walkerQueue.js        # Movement processor (1s)
-│   │   │   ├── healthQueue.js        # Health/mana regen (1s)
-│   │   │   ├── spellQueue.js         # Spell tick processor (1s)
-│   │   │   ├── timeQueue.js          # Ingame time sync (10s)
-│   │   │   ├── territoryQueue.js     # Territory updates (10s)
-│   │   │   └── spawnQueue.js         # Collectable spawning (5s)
+│   │   │   ├── walkerQueue.ts        # Movement processor (1s)
+│   │   │   ├── healthQueue.ts        # Health/mana regen (1s)
+│   │   │   ├── spellQueue.ts         # Spell tick processor (1s)
+│   │   │   ├── timeQueue.ts          # Ingame time sync (10s)
+│   │   │   ├── territoryQueue.ts     # Territory updates (10s)
+│   │   │   └── spawnQueue.ts         # Collectable spawning (5s)
 │   │   ├── services/
-│   │   │   ├── pathfinding.js        # Dijkstra pathfinding + wall detection
-│   │   │   └── settingsService.js    # Settings upsert (shared by routes + sockets)
+│   │   │   ├── pathfinding.ts        # Dijkstra pathfinding + wall detection
+│   │   │   ├── settingsService.ts    # Settings upsert (shared by routes + sockets)
+│   │   │   ├── lootService.ts        # Loot table resolution (weighted/multi-drop/independent)
+│   │   │   ├── inventoryService.ts   # Stackable item insertion
+│   │   │   └── regionTracker.ts      # Shared userRegions Map (sockets + queues)
 │   │   └── utils/
-│   │       ├── geometry.js           # Shared point-in-polygon, distance
-│   │       └── permissions.js        # Shared GM/admin permission check
+│   │       ├── geometry.ts           # Shared point-in-polygon, distance
+│   │       └── permissions.ts        # Shared GM/admin permission check
 │   ├── gameData/                     # JSON game data (regions, paths, items)
 │   ├── scripts/                      # DB init, item import
+│   ├── tsconfig.json                 # TypeScript config
 │   ├── package.json
 │   └── Dockerfile
 ├── nginx/

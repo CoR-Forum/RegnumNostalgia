@@ -37,6 +37,8 @@ services:
       - ./api/scripts:/app/scripts
       - ./api/gameData:/app/gameData
       - ./api/logs:/app/logs
+      - ./api/tsconfig.json:/app/tsconfig.json:ro
+      - ./api/nodemon.json:/app/nodemon.json:ro
     working_dir: /app
     env_file:
       - .env
