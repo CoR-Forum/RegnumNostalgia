@@ -493,14 +493,15 @@ function initializeShoutboxHandlers(socket, user) {
       // Add to Redis cache
       await addShoutboxMessage(messageData);
 
-      // Broadcast to all clients except sender (they get it via callback)
-      socket.broadcast.emit('shoutbox:message', messageData);
-
-      // Update last shoutbox ID to prevent polling from re-sending this message
+      // Update last shoutbox ID BEFORE broadcasting to prevent the poller
+      // from picking up this message and broadcasting it a second time
       const currentLastId = await getLastShoutboxId();
       if (result.insertId > currentLastId) {
         await setLastShoutboxId(result.insertId);
       }
+
+      // Broadcast to all clients except sender (they get it via callback)
+      socket.broadcast.emit('shoutbox:message', messageData);
 
       if (callback) {
         callback({ success: true, message: messageData });
