@@ -16,7 +16,7 @@ async function authenticateJWT(req, res, next) {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded; // { userId, username, realm }
+    req.user = decoded; // { userId, username }
 
     // Buffer last_active update in Redis (flushed to DB every 5s)
     bufferLastActive(decoded.userId);
