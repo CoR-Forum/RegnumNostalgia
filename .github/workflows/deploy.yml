@@ -63,7 +63,7 @@ jobs:
           REMOTE_HOST="${SSH_PATH%%:*}"
           REMOTE_DIR="${SSH_PATH#*:}"
           echo "Connecting to $REMOTE_HOST and restarting compose in $REMOTE_DIR"
-          ssh -o StrictHostKeyChecking=no "$REMOTE_HOST" "cd \"$REMOTE_DIR\" && docker compose down && docker compose up -d --build"
+          ssh -o StrictHostKeyChecking=no "$REMOTE_HOST" "cd \"$REMOTE_DIR\" && docker compose down --remove-orphans && docker compose up -d --build --remove-orphans"
 
       - name: Prune docker system on remote
         env:
