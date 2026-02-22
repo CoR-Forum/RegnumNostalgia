@@ -154,7 +154,7 @@ function tryRestoreOpen(id, saved) {
 
 // ── initWindow ──
 
-export function initWindow({ id, headerId, closeId, onClose, draggable = true }) {
+export function initWindow({ id, headerId, closeId, onClose = null, draggable = true }) {
   const win = document.getElementById(id);
   if (!win) return;
 

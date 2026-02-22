@@ -7,8 +7,22 @@ import { gameToLatLng } from './map-state';
 import { formatDurationSeconds } from './utils';
 import { updateMarkerCollection, buildHealthBar } from './marker-utils';
 
-export function updateSuperbosses(bosses) {
-  updateMarkerCollection(gameState.superbosses, bosses, b => b.bossId, (boss) => {
+interface SuperbossData {
+  bossId: number;
+  name: string;
+  iconName?: string;
+  iconUrl?: string;
+  health: number;
+  maxHealth: number;
+  x: number;
+  y: number;
+  level?: number;
+  lvl?: number;
+  respawnInSeconds?: number;
+}
+
+export function updateSuperbosses(bosses: SuperbossData[]) {
+  updateMarkerCollection(gameState.superbosses, bosses, (b: SuperbossData) => b.bossId, (boss: SuperbossData) => {
     const { iconName, maxHealth, health } = boss;
 
     const iconUrl = boss.iconUrl || (iconName ? `${MARKER_CDN_BASE}/${iconName}` : null);

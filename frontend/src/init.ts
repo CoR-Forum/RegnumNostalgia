@@ -32,7 +32,7 @@ function loadPartial(url, containerId) {
 
       // Move non-script nodes into the container
       Array.from(tmp.childNodes).forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE && node.tagName.toLowerCase() === 'script') return;
+        if (node.nodeType === Node.ELEMENT_NODE && (node as Element).tagName.toLowerCase() === 'script') return;
         container.appendChild(node);
       });
 
@@ -105,7 +105,7 @@ async function initGame(progress) {
     initializeWebSocket();
 
     // Wait for socket to connect (or timeout)
-    await new Promise((resolve) => {
+    await new Promise<void>((resolve) => {
       if (window.socket && window.socket.connected) return resolve();
       const onConnect = () => { cleanup(); resolve(); };
       const timeout = setTimeout(() => { cleanup(); resolve(); }, 3000);
