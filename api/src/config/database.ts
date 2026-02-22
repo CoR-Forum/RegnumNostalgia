@@ -72,20 +72,29 @@ async function testConnections() {
     // Test game DB
     await gameDbPool.query('SELECT 1');
     logger.info('Game database connection successful');
+  } catch (error) {
+    logger.error('Game database connection failed', { error: error.message || String(error) });
+    throw error;
+  }
 
+  try {
     // Test forum DB
     await forumDbPool.query('SELECT 1');
     logger.info('Forum database connection successful');
+  } catch (error) {
+    logger.warn('Forum database connection failed — shoutbox will be unavailable', { error: error.message || String(error) });
+  }
 
+  try {
     // Test Redis
     await redisClient.ping();
     logger.info('Redis connection successful');
-
-    return true;
   } catch (error) {
-    logger.error('Database connection test failed', { error: error.message });
+    logger.error('Redis connection failed', { error: error.message || String(error) });
     throw error;
   }
+
+  return true;
 }
 
 module.exports = {

@@ -50,14 +50,14 @@ async function resolveUser(userIdentifier) {
  * @param {string|number} targetUserIdentifier - The user ID or username to receive the item
  * @param {number} quantity - The quantity of items to give (default: 1)
  */
-async function handleItemAddCommand(socket, user, templateKey, targetUserIdentifier, quantity = 1) {
+async function handleItemAddCommand(socket, user, templateKey, targetUserIdentifier, quantity: any = 1) {
   try {
     // Validate inputs
     if (!templateKey || !targetUserIdentifier) {
       return { success: false, error: 'Usage: /item <template_key> <user_id|username> [quantity]' };
     }
 
-    const parsedQuantity = parseInt(quantity, 10) || 1;
+    const parsedQuantity = parseInt(String(quantity), 10) || 1;
 
     if (parsedQuantity <= 0 || parsedQuantity > 10000) {
       return { success: false, error: 'Quantity must be between 1 and 10000' };
@@ -134,8 +134,8 @@ async function handleItemAddCommand(socket, user, templateKey, targetUserIdentif
     });
 
     // Notify target user if they're connected to reload their inventory
-    const targetSocket = Array.from(socket.nsp.sockets.values())
-      .find(s => s.user && s.user.userId === parsedUserId);
+    const targetSocket: any = Array.from(socket.nsp.sockets.values())
+      .find((s: any) => s.user && s.user.userId === parsedUserId);
 
     if (targetSocket) {
       // Trigger inventory reload for target user
@@ -153,7 +153,7 @@ async function handleItemAddCommand(socket, user, templateKey, targetUserIdentif
       error: error.message,
       userId: user.userId,
       templateKey,
-      targetUserId
+      targetUserId: targetUserIdentifier
     });
     return { success: false, error: 'Failed to give item' };
   }
@@ -167,14 +167,14 @@ async function handleItemAddCommand(socket, user, templateKey, targetUserIdentif
  * @param {string|number} targetUserIdentifier - The user ID or username to lose the item
  * @param {number} quantity - The quantity of items to remove (default: 1)
  */
-async function handleItemRemoveCommand(socket, user, templateKey, targetUserIdentifier, quantity = 1) {
+async function handleItemRemoveCommand(socket, user, templateKey, targetUserIdentifier, quantity: any = 1) {
   try {
     // Validate inputs
     if (!templateKey || !targetUserIdentifier) {
       return { success: false, error: 'Usage: /itemrem <template_key> <user_id|username> [quantity]' };
     }
 
-    const parsedQuantity = parseInt(quantity, 10) || 1;
+    const parsedQuantity = parseInt(String(quantity), 10) || 1;
 
     if (parsedQuantity <= 0 || parsedQuantity > 10000) {
       return { success: false, error: 'Quantity must be between 1 and 10000' };
@@ -257,8 +257,8 @@ async function handleItemRemoveCommand(socket, user, templateKey, targetUserIden
     });
 
     // Notify target user if they're connected to reload their inventory
-    const targetSocket = Array.from(socket.nsp.sockets.values())
-      .find(s => s.user && s.user.userId === parsedUserId);
+    const targetSocket: any = Array.from(socket.nsp.sockets.values())
+      .find((s: any) => s.user && s.user.userId === parsedUserId);
 
     if (targetSocket) {
       targetSocket.emit('inventory:refresh');
@@ -275,7 +275,7 @@ async function handleItemRemoveCommand(socket, user, templateKey, targetUserIden
       error: error.message,
       userId: user.userId,
       templateKey,
-      targetUserId
+      targetUserId: targetUserIdentifier
     });
     return { success: false, error: 'Failed to remove item' };
   }

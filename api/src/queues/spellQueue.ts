@@ -4,9 +4,9 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS } = require('../config/constants');
 const logger = require('../config/logger');
 const { getActiveSpells, tickActiveSpells, setActiveSpells, invalidateWalkSpeed } = require('../config/cache');
 
-let io = null;
+let io: any = null;
 
-function setSocketIO(socketIO) {
+function setSocketIO(socketIO: any) {
   io = socketIO;
 }
 
@@ -206,3 +206,5 @@ module.exports = {
   initSpellQueue,
   setSocketIO
 };
+
+export {};

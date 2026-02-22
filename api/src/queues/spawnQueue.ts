@@ -15,8 +15,8 @@ const { getItemByTemplateKey } = require('../config/cache');
 
 const regionsData = require('../../gameData/regions.json');
 
-let spawnQueue = null;
-let io = null;
+let spawnQueue: any = null;
+let io: any = null;
 
 // pointInPolygon, minDistanceToEdge, getRandomPointInPolygon imported from ../utils/geometry
 
@@ -342,3 +342,5 @@ function initSpawnQueue(socketIo) {
 }
 
 module.exports = { initSpawnQueue, spawnQueue };
+
+export {};

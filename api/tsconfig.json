@@ -4,6 +4,7 @@
     "target": "ES2022",
     "module": "commonjs",
     "moduleResolution": "node",
+    "moduleDetection": "force",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,

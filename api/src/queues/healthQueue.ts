@@ -4,9 +4,9 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, REGEN_RATES } = require('../config/co
 const logger = require('../config/logger');
 const { invalidateTerritories, invalidateSuperbosses } = require('../config/cache');
 
-let io = null;
+let io: any = null;
 
-function setSocketIO(socketIO) {
+function setSocketIO(socketIO: any) {
   io = socketIO;
 }
 
@@ -224,3 +224,5 @@ module.exports = {
   initHealthQueue,
   setSocketIO
 };
+
+export {};

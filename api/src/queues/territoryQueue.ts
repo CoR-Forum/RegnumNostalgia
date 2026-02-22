@@ -5,9 +5,9 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, WARSTATUS_API_URL } = require('../con
 const logger = require('../config/logger');
 const { invalidateTerritories } = require('../config/cache');
 
-let io = null;
+let io: any = null;
 
-function setSocketIO(socketIO) {
+function setSocketIO(socketIO: any) {
   io = socketIO;
 }
 
@@ -124,10 +124,10 @@ territoryQueue.process('sync-territories', async (job) => {
 
       // Emit capture sound only to users who have sounds enabled and capture sounds enabled
       try {
-        const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+        const sockets: any[] = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
         for (const s of sockets) {
           try {
-            const user = s && s.user ? s.user : null;
+            const user = s && (s as any).user ? (s as any).user : null;
             const settings = user && user.settings ? user.settings : null;
             if (!settings) continue;
             // sfx should respect global sounds flag and capture specific flag
@@ -217,3 +217,5 @@ module.exports = {
   initTerritoryQueue,
   setSocketIO
 };
+
+export {};

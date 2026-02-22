@@ -4,9 +4,9 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, SERVER_TIME_TICK_SECONDS } = require(
 const logger = require('../config/logger');
 const { setCachedServerTime } = require('../config/cache');
 
-let io = null;
+let io: any = null;
 
-function setSocketIO(socketIO) {
+function setSocketIO(socketIO: any) {
   io = socketIO;
 }
 
@@ -121,3 +121,5 @@ module.exports = {
   initTimeQueue,
   setSocketIO
 };
+
+export {};

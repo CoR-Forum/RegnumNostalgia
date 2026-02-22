@@ -56,7 +56,7 @@ function registerInventoryHandlers(socket, user, io, deps) {
       );
 
       const equippedIds = equipmentRows.length > 0 ? 
-        Object.values(equipmentRows[0]).filter(id => id > 0) : [];
+        Object.values(equipmentRows[0]).filter((id: any) => id > 0) : [];
 
       // Get inventory items — minimal fields for the list.
       // Detailed fields loaded on hover via `item:details`.

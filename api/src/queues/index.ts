@@ -6,12 +6,12 @@ const { territoryQueue, initTerritoryQueue, setSocketIO: setTerritoryIO } = requ
 const { initSpawnQueue } = require('./spawnQueue');
 const logger = require('../config/logger');
 
-let spawnQueue = null;
+let spawnQueue: any = null;
 
 /**
  * Initialize all Bull queues with Socket.io instance
  */
-async function initializeQueues(io) {
+async function initializeQueues(io: any) {
   logger.info('Initializing Bull queues...');
 
   // Set Socket.io instance for all queues
@@ -58,3 +58,5 @@ module.exports = {
   initializeQueues,
   closeQueues
 };
+
+export {};

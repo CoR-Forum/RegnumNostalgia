@@ -4,17 +4,17 @@ const { QUEUE_INTERVALS, BULL_JOB_OPTIONS, COLLECTABLE_CONFIG } = require('../co
 const logger = require('../config/logger');
 const { addPlayerLog } = require('../sockets');
 const { pointInPolygon, distance } = require('../utils/geometry');
-const { getItemByTemplateKey, updatePlayerPosition, bufferLastActive, getActiveWalkers, updateWalkerIndex, removeActiveWalker, getCachedWalkSpeed, computeAndCacheWalkSpeed } = require('../config/cache');
+const { getItemByTemplateKey, getItemById, updatePlayerPosition, bufferLastActive, getActiveWalkers, updateWalkerIndex, removeActiveWalker, getCachedWalkSpeed, computeAndCacheWalkSpeed } = require('../config/cache');
 const { resolveLootTable } = require('../services/lootService');
 const { addToInventory } = require('../services/inventoryService');
 const { userRegions } = require('../services/regionTracker');
 
-let io = null; // Socket.io instance, injected later
+let io: any = null; // Socket.io instance, injected later
 
 /**
  * Set Socket.io instance for emitting events
  */
-function setSocketIO(socketIO) {
+function setSocketIO(socketIO: any) {
   io = socketIO;
 }
 
@@ -183,8 +183,8 @@ walkerQueue.process('process-walkers', async (job) => {
 
                   // Emit individual item-added events to the collecting player
                   if (io) {
-                    const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
-                    const userSocket = sockets.find(s => s && s.user && s.user.userId === walker.user_id);
+                    const sockets: any[] = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+                    const userSocket = sockets.find((s: any) => s && s.user && s.user.userId === walker.user_id);
 
                     if (userSocket) {
                       for (const item of itemsCollected) {
@@ -242,8 +242,8 @@ walkerQueue.process('process-walkers', async (job) => {
               } else {
                 // Item already collected by someone else
                 if (io) {
-                  const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
-                  const userSocket = sockets.find(s => s && s.user && s.user.userId === walker.user_id);
+                  const sockets: any[] = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+                  const userSocket = sockets.find((s: any) => s && s.user && s.user.userId === walker.user_id);
 
                   if (userSocket) {
                     userSocket.emit('collectable:failed', {
@@ -325,9 +325,9 @@ walkerQueue.process('process-walkers', async (job) => {
             // Find the socket for this user (if connected)
             let targetSocket = null;
             try {
-              const sockets = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
+              const sockets: any[] = io.sockets && io.sockets.sockets ? Array.from(io.sockets.sockets.values()) : [];
               for (const s of sockets) {
-                if (s && s.user && s.user.userId === walker.user_id) {
+                if (s && (s as any).user && (s as any).user.userId === walker.user_id) {
                   targetSocket = s;
                   break;
                 }
@@ -409,3 +409,5 @@ module.exports = {
   resolveLootTable,
   addToInventory
 };
+
+export {};
