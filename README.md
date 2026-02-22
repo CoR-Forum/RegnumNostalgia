@@ -288,7 +288,7 @@ The frontend is decomposed into 23 ES modules under `frontend/src/`. Key pattern
 - `cache:online_players` - Sorted set of online player data (scored by timestamp)
 - `cache:player:{userId}` - Player position/realm JSON (TTL: 10s)
 - `cache:last_active` - Sorted set of userId → timestamp, batch-flushed to DB every 5s
-- `cache:shoutbox:messages` - List of recent shoutbox messages (newest at head, max 50)
+- `cache:shoutbox:messages` - List of recent shoutbox messages (chronological order, oldest at head, max 50)
 - `cache:shoutbox:last_id` - Last polled shoutbox entry ID (persists across restarts)
 - `cache:walkers:active` - Hash of walkerId → walker state JSON (active walkers)
 - `cache:walkers:user:{userId}` - Current active walkerId for a user
@@ -314,7 +314,7 @@ The API uses Redis as a comprehensive caching layer (see `api/src/config/cache.j
 | **Online Players** | Sorted set | N/A | Cleaned every 10s (stale > 30s removed) |
 | **Player Positions** | Updated on move | 10s | On each movement step |
 | **Last Active** | Buffered in sorted set | N/A | Batch-flushed to DB every 5s |
-| **Shoutbox Messages** | Redis list (newest at head) | N/A | New messages pushed on send/poll, trimmed to 50 |
+| **Shoutbox Messages** | Redis list (chronological, oldest at head) | N/A | New messages RPUSH'd on send/poll, trimmed to 50 |
 | **Shoutbox Last ID** | Persisted in Redis | Permanent | Updated on each poll/send |
 | **Active Walkers** | Redis hash (walker state per tick) | N/A | Added on create, removed on complete/interrupt |
 | **Walk Speed** | Lazy-load + TTL | 60s | Invalidated on equip/unequip and spell expiry |

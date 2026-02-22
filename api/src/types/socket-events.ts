@@ -144,11 +144,11 @@ export interface SocketResponse<T = unknown> {
 // ─── Shoutbox message ───────────────────────────────────────────────────────
 
 export interface ShoutboxMessage {
-  entryID: number;
+  entryId: number;
   username: string;
   message: string;
   time: number;
-  userID: number;
+  userId: number;
 }
 
 // ─── Socket handler deps (dependency injection pattern) ─────────────────────

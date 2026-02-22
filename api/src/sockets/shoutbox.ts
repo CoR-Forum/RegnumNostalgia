@@ -425,30 +425,8 @@ function initializeShoutboxHandlers(socket, user) {
             message: composed
           };
 
-          // Fill the gap: any forum messages that arrived between currentLastId
-          // and this insertId would be permanently skipped by the poller if we
-          // just jump lastShoutboxId to res.insertId directly.
+          // Update lastShoutboxId to avoid re-broadcasts from polling
           const currentLastId = await getLastShoutboxId();
-          if (res.insertId > currentLastId + 1) {
-            const [gapMsgs] = await forumDb.query(
-              `SELECT entryID, userID, username, time, message
-               FROM wcf1_shoutbox_entry
-               WHERE shoutboxID = 1 AND entryID > ? AND entryID < ?
-               ORDER BY entryID ASC`,
-              [currentLastId, res.insertId]
-            );
-            for (const gm of gapMsgs) {
-              const gapData = {
-                entryId: gm.entryID,
-                userId: gm.userID,
-                username: gm.username,
-                time: gm.time,
-                message: gm.message
-              };
-              await addShoutboxMessage(gapData);
-              socket.nsp.emit('shoutbox:message', gapData);
-            }
-          }
           if (res.insertId > currentLastId) await setLastShoutboxId(res.insertId);
 
           // Add to Redis cache
@@ -502,31 +480,8 @@ function initializeShoutboxHandlers(socket, user) {
       await addShoutboxMessage(messageData);
 
       // Update last shoutbox ID BEFORE broadcasting to prevent the poller
-      // from picking up this message and broadcasting it a second time.
-      // Also fill any gap caused by forum messages that arrived between the
-      // previous lastShoutboxId and this insertId — without this, forum
-      // messages in the gap are permanently skipped by the poller.
+      // from picking up this message and broadcasting it a second time
       const currentLastId = await getLastShoutboxId();
-      if (result.insertId > currentLastId + 1) {
-        const [gapMsgs] = await forumDb.query(
-          `SELECT entryID, userID, username, time, message
-           FROM wcf1_shoutbox_entry
-           WHERE shoutboxID = 1 AND entryID > ? AND entryID < ?
-           ORDER BY entryID ASC`,
-          [currentLastId, result.insertId]
-        );
-        for (const gm of gapMsgs) {
-          const gapData = {
-            entryId: gm.entryID,
-            userId: gm.userID,
-            username: gm.username,
-            time: gm.time,
-            message: gm.message
-          };
-          await addShoutboxMessage(gapData);
-          socket.nsp.emit('shoutbox:message', gapData);
-        }
-      }
       if (result.insertId > currentLastId) {
         await setLastShoutboxId(result.insertId);
       }

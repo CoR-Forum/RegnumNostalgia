@@ -308,14 +308,14 @@
     window.onShoutboxMessage = function(data) {
       if (data && data.message) {
         const msg = {
-          entryID: data.entryID || 0,
+          entryId: data.entryId || 0,
           time: data.time || Math.floor(Date.now() / 1000),
           username: data.username || 'anon',
           message: data.message
         };
         
         // Update last message tracking
-        if (msg.entryID > lastMessageId) lastMessageId = msg.entryID;
+        if (msg.entryId > lastMessageId) lastMessageId = msg.entryId;
         if (msg.time > lastMessageTime) lastMessageTime = msg.time;
         
         // Append new message (keep at most 50 messages visible)

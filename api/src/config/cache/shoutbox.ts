@@ -1,7 +1,8 @@
 /**
  * Cache: Shoutbox Messages
  *
- * Redis list for recent chat messages (newest at head).
+ * Redis list for recent chat messages in chronological order
+ * (oldest at head / index 0, newest at tail).
  * Includes last polled entry ID for external forum shoutbox sync.
  */
 import type { ShoutboxMessage } from '../../types';
@@ -29,18 +30,18 @@ async function getCachedShoutboxMessages(): Promise<ShoutboxMessage[] | null> {
 
 /**
  * Initialize shoutbox cache with an array of messages (oldest first / chronological order).
- * Stores in Redis list with newest at head (LPUSH) so LRANGE 0..49 returns newest first.
- * We reverse to push oldest first so newest ends up at head.
+ * Stores in Redis list with oldest at head (index 0), newest at tail.
+ * LRANGE 0..49 returns oldest-to-newest (chronological).
  */
 async function setShoutboxMessages(messages: ShoutboxMessage[]): Promise<void> {
   try {
     const pipeline = redis.pipeline();
     pipeline.del(CACHE_KEYS.SHOUTBOX_MESSAGES);
-    // Push in reverse order so newest is at index 0
-    for (let i = messages.length - 1; i >= 0; i--) {
-      pipeline.lpush(CACHE_KEYS.SHOUTBOX_MESSAGES, JSON.stringify(messages[i]));
+    // RPUSH in chronological order: oldest at index 0, newest at tail
+    for (const msg of messages) {
+      pipeline.rpush(CACHE_KEYS.SHOUTBOX_MESSAGES, JSON.stringify(msg));
     }
-    pipeline.ltrim(CACHE_KEYS.SHOUTBOX_MESSAGES, 0, SHOUTBOX_MAX_MESSAGES - 1);
+    pipeline.ltrim(CACHE_KEYS.SHOUTBOX_MESSAGES, -SHOUTBOX_MAX_MESSAGES, -1);
     await pipeline.exec();
   } catch (e: any) {
     logger.error('Redis set failed (shoutbox messages)', { error: e.message });
@@ -48,12 +49,12 @@ async function setShoutboxMessages(messages: ShoutboxMessage[]): Promise<void> {
 }
 
 /**
- * Add a new shoutbox message to the cache (pushes to head, trims to max).
+ * Add a new shoutbox message to the cache (pushes to tail, trims oldest from head).
  */
 async function addShoutboxMessage(message: ShoutboxMessage): Promise<void> {
   try {
-    await redis.lpush(CACHE_KEYS.SHOUTBOX_MESSAGES, JSON.stringify(message));
-    await redis.ltrim(CACHE_KEYS.SHOUTBOX_MESSAGES, 0, SHOUTBOX_MAX_MESSAGES - 1);
+    await redis.rpush(CACHE_KEYS.SHOUTBOX_MESSAGES, JSON.stringify(message));
+    await redis.ltrim(CACHE_KEYS.SHOUTBOX_MESSAGES, -SHOUTBOX_MAX_MESSAGES, -1);
   } catch (e: any) {
     logger.error('Redis push failed (shoutbox message)', { error: e.message });
   }
@@ -73,10 +74,21 @@ async function getLastShoutboxId(): Promise<number> {
 
 /**
  * Set the last polled shoutbox entry ID in Redis.
+ * Uses a Lua script so the value only ever moves forward — safe to call
+ * concurrently from multiple socket handlers without risking a rollback.
  */
+const SET_IF_GREATER_SCRIPT = `
+local cur = tonumber(redis.call('GET', KEYS[1]) or '0')
+if tonumber(ARGV[1]) > cur then
+  redis.call('SET', KEYS[1], ARGV[1])
+  return 1
+end
+return 0
+`;
+
 async function setLastShoutboxId(id: number): Promise<void> {
   try {
-    await redis.set(CACHE_KEYS.SHOUTBOX_LAST_ID, String(id));
+    await redis.eval(SET_IF_GREATER_SCRIPT, 1, CACHE_KEYS.SHOUTBOX_LAST_ID, String(id));
   } catch (e: any) {
     logger.error('Redis set failed (shoutbox last id)', { error: e.message });
   }
