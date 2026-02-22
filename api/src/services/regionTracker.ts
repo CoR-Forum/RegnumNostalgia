@@ -9,6 +9,7 @@
  * Consolidates the previously duplicated Maps from sockets/index.ts
  * and queues/walkerQueue.ts into a single source of truth.
  */
+export {};
 
 /** Map<userId, regionId | null> */
 const userRegions: Map<number, string | null> = new Map();
