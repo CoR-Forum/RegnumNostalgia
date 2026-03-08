@@ -315,7 +315,7 @@ function initSpawnQueue(socketIo) {
   spawnQueue = new Bull('spawn-queue', {
     redis: {
       host: process.env.REDIS_HOST || 'redis',
-      port: process.env.REDIS_PORT || 6379
+      port: parseInt(process.env.REDIS_PORT || '6379')
     }
   });
 

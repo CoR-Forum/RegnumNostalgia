@@ -178,14 +178,14 @@ router.put('/:id', authenticateJWT, async (req, res) => {
            description_en = ?, description_de = ?, description_es = ?,
            location = ?, visible_characters = ?, x = ?, y = ?,
            updated_at = datetime('now')
-       WHERE id = ?`,
+       WHERE id = ? AND uploaded_by = ?`,
       [
         nameEn, nameDe, nameEs,
         descriptionEn, descriptionDe, descriptionEs,
         location, visibleCharacters,
         x ? parseFloat(x) : null,
         y ? parseFloat(y) : null,
-        id
+        id, req.user.username
       ],
       function(err) {
         if (err) {

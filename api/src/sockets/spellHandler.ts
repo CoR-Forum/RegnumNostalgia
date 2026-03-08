@@ -136,7 +136,7 @@ function registerSpellHandlers(socket, user, io, deps) {
       socket.emit('inventory:refresh');
 
       // Log
-      addPlayerLog(user.userId, `Cast ${invItem.name}`, 'success', io);
+      await addPlayerLog(user.userId, `Cast ${invItem.name}`, 'success', io);
 
       logger.info('Spell cast', { userId: user.userId, spell: stats.spell, spellId });
 

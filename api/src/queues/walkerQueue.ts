@@ -52,8 +52,15 @@ walkerQueue.process('process-walkers', async (job) => {
     let processed = 0;
 
     for (const walker of walkers) {
-      const positions = typeof walker.positions === 'string' ?
-        JSON.parse(walker.positions) : walker.positions;
+      let positions;
+      try {
+        positions = typeof walker.positions === 'string'
+          ? JSON.parse(walker.positions)
+          : walker.positions;
+      } catch (e) {
+        logger.error('Failed to parse walker positions', { walkerId: walker.walker_id });
+        continue;
+      }
 
       // Determine how many steps to advance this tick based on equipment walk_speed
       let totalWalkSpeed = 0;
@@ -280,6 +287,10 @@ walkerQueue.process('process-walkers', async (job) => {
 
       // Advance walker to next position
       const newPos = positions[nextIndex];
+      if (!newPos) {
+        logger.error('Walker position undefined', { walkerId: walker.walker_id, nextIndex });
+        continue;
+      }
 
       // Update walker index in Redis (skip DB write for intermediate steps)
       await updateWalkerIndex(walker.walker_id, nextIndex);
