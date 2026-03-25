@@ -5,6 +5,9 @@
     <div id="build-path-header" style="padding: 3px 4px; background: linear-gradient(180deg, #000080 0%, #1084d0 100%); cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
       <h2 style="margin: 0; flex: 1; font-size: 11px; font-weight: 700; color: #ffffff;">Region Editor</h2>
       <div style="display:flex;gap:8px;align-items:center">
+        <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;">
+          <input id="build-path-search" type="search" placeholder="Search regions, paths, walls..." style="padding:4px 8px;border:1px solid #333;background:#222;color:#fff;font-size:11px;width:260px;" />
+        </label>
         <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-paths" type="checkbox" style="transform:scale(1.1)" /> <span>Show paths</span></label>
         <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><input id="build-path-toggle-regions" type="checkbox" style="transform:scale(1.1)" /> <span>Show regions</span></label>
         <label style="display:flex;align-items:center;gap:6px;color:#fff;font-size:11px;margin-right:6px;"><span style="font-size:11px;color:#fff">Mode</span>
@@ -18,6 +21,8 @@
         <button id="build-path-close" class="btn" style="width:auto;padding:4px 8px;">Close</button>
       </div>
     </div>
+    <!-- Search results panel -->
+    <div id="build-path-search-results" style="display:none;position:absolute;right:12px;top:36px;width:360px;max-height:320px;overflow:auto;background:#0f0f12;border:1px solid #333;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,0.8);z-index:1100;font-family: monospace;font-size:12px;color:#e0e0e0;"></div>
     <div style="padding:8px;display:flex;gap:8px;">
       <!-- Left panel: Lists -->
       <div style="flex:0 0 280px;display:flex;flex-direction:column;gap:8px;">
@@ -151,6 +156,18 @@
     // Use querySelector to skip any Vite-injected scripts at the top
     const panel = wrap.querySelector('#build-path-panel') || wrap.firstElementChild;
     if (panel) document.body.appendChild(panel);
+
+    // innerHTML does not execute <script> tags — re-execute them manually
+    if (html) {
+      try {
+        wrap.querySelectorAll('script').forEach(s => {
+          const script = document.createElement('script');
+          script.textContent = s.textContent;
+          document.head.appendChild(script);
+        });
+      } catch (e) { console.debug('build-path:ensurePanel script exec', e); }
+    }
+
     return document.getElementById('build-path-panel');
   }
 
@@ -487,6 +504,7 @@
       hidePanel,
       onMapClick,
       updateBuildPathPolyline,
+      editItem,
       // Walk path API
       drawWalkPath: internalDrawWalkPath,
       setWalkerPositions,
@@ -506,6 +524,7 @@
     water: [],
     initialized: false
   };
+  window.editorState = editorState;
 
   // Tab switching
   function initEditorTabs() {
