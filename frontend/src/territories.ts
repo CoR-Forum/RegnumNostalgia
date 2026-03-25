@@ -24,6 +24,7 @@ export function updateTerritories(territories) {
         <div class="territory-marker">
           <div class="territory-icon" style="background-image: url('${iconUrl}');"></div>
           ${healthBarHtml}
+          <div class="territory-name-label">${territory.name}</div>
         </div>
       `,
       iconSize: [40, 44],

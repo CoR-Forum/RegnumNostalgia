@@ -214,6 +214,7 @@
     .territory-marker{
       display: flex;
       flex-direction: column;
+      position: relative;
       align-items: center;
       gap: 2px;
     }
@@ -250,6 +251,22 @@
       height: 100%;
       transition: width 0.3s ease;
       border-radius: 2px;
+    }
+    .custom-territory-marker {
+      overflow: visible !important;
+    }
+    .territory-name-label {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: 3px;
+      white-space: nowrap;
+      font-size: 11px;
+      font-weight: 600;
+      color: #fff;
+      text-shadow: 0 0 3px #000, 0 1px 2px #000;
+      pointer-events: none;
     }
     /* Allies (same realm / self) */
     .health-ally{ background-color: #22c55e; }
