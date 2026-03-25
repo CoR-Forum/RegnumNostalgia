@@ -1,7 +1,7 @@
 export {};
 
-const { gameDb } = require('../config/database');
-const { getItemByTemplateKey } = require('../config/cache');
+const { gameDb, forumDb } = require('../config/database');
+const { getItemByTemplateKey, addShoutboxMessage, getLastShoutboxId, setLastShoutboxId } = require('../config/cache');
 const logger = require('../config/logger');
 const fs = require('fs').promises;
 const path = require('path');
@@ -98,6 +98,26 @@ function registerPropertyHandler(socket: any, user: any, io: any) {
 
       // 7. Refresh buyer's inventory display
       socket.emit('inventory:updated');
+
+      // 8. Post system message to shoutbox
+      const currencyDisplay = String(region.buy_currency).replace(/_/g, ' ');
+      const chatMsg = prevUsername
+        ? `${user.username} bought the property "${region.name}" from ${prevUsername} for ${region.buy_price} ${currencyDisplay}.`
+        : `${user.username} bought the property "${region.name}" for ${region.buy_price} ${currencyDisplay}.`;
+      try {
+        const [res] = await forumDb.query(
+          `INSERT INTO wcf1_shoutbox_entry (shoutboxID, userID, username, time, message) VALUES (1, 0, 'System', ?, ?)`,
+          [now, chatMsg]
+        );
+        const systemMessage = { entryId: (res as any).insertId, userId: 0, username: 'System', time: now, message: chatMsg };
+        const currentLastId = await getLastShoutboxId();
+        if ((res as any).insertId > currentLastId) await setLastShoutboxId((res as any).insertId);
+        await addShoutboxMessage(systemMessage);
+        io.emit('shoutbox:message', systemMessage);
+      } catch (chatErr: any) {
+        logger.error('Failed to post property purchase shoutbox message', { error: chatErr.message });
+        io.emit('shoutbox:message', { entryId: 0, userId: 0, username: 'System', time: now, message: chatMsg });
+      }
 
       callback({ success: true });
     } catch (err: any) {
