@@ -24,7 +24,6 @@ export function updateTerritories(territories) {
         <div class="territory-marker">
           <div class="territory-icon" style="background-image: url('${iconUrl}');"></div>
           ${healthBarHtml}
-          <div class="territory-name-label">${territory.name}</div>
         </div>
       `,
       iconSize: [40, 44],
@@ -32,7 +31,7 @@ export function updateTerritories(territories) {
     });
 
     const statusText = isContested ? '<div class="status-contested">⚔️ Contested!</div>' : '';
-    const ttHtml = `
+    const detailHtml = `
       <div class="tooltip-title">${territory.name}</div>
       <div class="tooltip-row"><strong>Health:</strong> ${health.toLocaleString()}/${maxHealth.toLocaleString()}</div>
       ${statusText}
@@ -40,7 +39,16 @@ export function updateTerritories(territories) {
 
     return {
       marker: L.marker(latLng, { icon }),
-      tooltip: { content: ttHtml, options: { className: 'info-tooltip', sticky: false, permanent: false, interactive: false, direction: 'top', offset: [0, -40] } }
+      afterAdd: (marker) => {
+        marker.bindTooltip(territory.name, {
+          permanent: true,
+          direction: 'bottom',
+          className: 'territory-label',
+          offset: [0, 6]
+        });
+        marker.on('mouseover', () => marker.setTooltipContent(detailHtml));
+        marker.on('mouseout', () => marker.setTooltipContent(territory.name));
+      }
     };
   });
 }

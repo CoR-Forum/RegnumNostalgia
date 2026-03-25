@@ -47,12 +47,14 @@ export function updateMarkerCollection(stateMap, entities, getId, markerFactory)
     const result = markerFactory(entity, map);
     if (!result) return;
 
-    const { marker, tooltip } = result;
+    const { marker, tooltip, afterAdd } = result;
     marker.addTo(map);
 
     if (tooltip) {
       marker.bindTooltip(tooltip.content, tooltip.options);
     }
+
+    if (afterAdd) afterAdd(marker);
 
     stateMap.set(id, marker);
   });

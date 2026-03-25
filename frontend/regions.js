@@ -175,6 +175,25 @@
         const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
         try { poly.addTo(mapRef); poly.bringToFront(); } catch (e) {}
         layers.push(poly);
+
+        // Add permanent name label for city/safe regions
+        if (r.name && (String(r.type) === 'city' || String(r.type) === 'safe')) {
+          try {
+            const center = poly.getBounds().getCenter();
+            const labelMarker = L.marker(center, {
+              icon: L.divIcon({
+                className: 'region-name-label',
+                html: `<span>${r.name}</span>`,
+                iconSize: null,
+                iconAnchor: null
+              }),
+              interactive: false,
+              zIndexOffset: -100
+            });
+            labelMarker.addTo(mapRef);
+            layers.push(labelMarker);
+          } catch (e) {}
+        }
       }
 
       if (layers.length > 0) {
