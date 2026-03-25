@@ -189,6 +189,104 @@
     }
   }
 
+  // ── Properties (buyable regions) ──────────────────────────────────────────
+
+  const CURRENCY_NAMES = {
+    gold_coin: 'Gold',
+    ximerin: 'Ximerin',
+    magnanite: 'Magnanite',
+    magnanite_ingot: 'Magnanite Ingot'
+  };
+
+  function escapeHtmlProp(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function renderProperties() {
+    try {
+      if (!mapRef) return;
+      // Clear existing properties layer
+      if (gameStateRef.propertiesLayer) {
+        try { mapRef.removeLayer(gameStateRef.propertiesLayer); } catch(e){}
+        gameStateRef.propertiesLayer = null;
+      }
+
+      const regions = (gameStateRef && gameStateRef.regionsData) || [];
+      const buyable = regions.filter(r => r.buyable);
+      if (!buyable.length) return;
+
+      const layers = [];
+      for (const r of buyable) {
+        const pos = r.coordinates || r.positions || [];
+        const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
+        if (!latlngs || !latlngs.length) continue;
+
+        const isOwned = !!r.owned_by;
+        const isOwnedByMe = r.owned_by_user_id != null && r.owned_by_user_id === gameStateRef.userId;
+
+        let fillColor, strokeColor, dashArray;
+        if (isOwnedByMe) {
+          fillColor = '#ffd700'; strokeColor = '#ffd700'; dashArray = null;
+        } else if (isOwned) {
+          fillColor = '#888888'; strokeColor = '#aaaaaa'; dashArray = null;
+        } else {
+          fillColor = '#ffffff'; strokeColor = '#ffaa00'; dashArray = '6, 4';
+        }
+
+        const poly = L.polygon(latlngs, {
+          color: strokeColor,
+          weight: 2,
+          dashArray,
+          fillColor,
+          fillOpacity: 0.25,
+          interactive: true
+        });
+
+        const currencyName = CURRENCY_NAMES[r.buy_currency] || r.buy_currency;
+        let popupHtml = `<div style="font-family:'MS Sans Serif',Arial,sans-serif;font-size:12px;min-width:180px;padding:2px;">
+          <b style="font-size:13px;">${escapeHtmlProp(r.name)}</b>`;
+
+        if (isOwnedByMe) {
+          popupHtml += `<br><span style="color:#ffd700;">✓ Your property</span>`;
+        } else if (isOwned) {
+          popupHtml += `<br><span style="color:#aaa;">Owned by: ${escapeHtmlProp(r.owned_by)}</span>`;
+          popupHtml += `<br><span style="color:#888;font-size:11px;">Price was: ${r.buy_price} ${escapeHtmlProp(currencyName)}</span>`;
+        } else {
+          popupHtml += `<br><span style="color:#0a4;">For sale: ${r.buy_price} ${escapeHtmlProp(currencyName)}</span>`;
+          popupHtml += `<br><button onclick="window.buyProperty('${escapeHtmlProp(r.id)}','${escapeHtmlProp(r.name)}',${r.buy_price},'${escapeHtmlProp(currencyName)}')" style="margin-top:6px;padding:4px 12px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:12px;width:100%;">Buy Property</button>`;
+        }
+
+        popupHtml += `</div>`;
+        poly.bindPopup(popupHtml);
+        try { poly.addTo(mapRef); } catch(e){}
+        layers.push(poly);
+      }
+
+      if (layers.length) {
+        gameStateRef.propertiesLayer = L.layerGroup(layers).addTo(mapRef);
+      }
+    } catch(e) { console.error('renderProperties error', e); }
+  }
+
+  window.buyProperty = function(regionId, regionName, price, currencyName) {
+    if (!confirm(`Buy "${regionName}" for ${price} ${currencyName}?`)) return;
+    const socket = window.getSocket && window.getSocket();
+    if (!socket || !socket.connected) {
+      window.addLogMessage && window.addLogMessage('Not connected to server', 'error');
+      return;
+    }
+    socket.emit('property:purchase', { regionId }, (resp) => {
+      if (resp && resp.success) {
+        window.addLogMessage && window.addLogMessage(`Property "${regionName}" purchased!`, 'info');
+      } else {
+        const msg = (resp && resp.error) ? resp.error : 'Purchase failed';
+        window.addLogMessage && window.addLogMessage(msg, 'error');
+      }
+    });
+  };
+
+  // ── Walk permission ────────────────────────────────────────────────────────
+
   function isLatLngWalkAllowed(latlng) {
     try {
       const game = typeof window.latLngToGame === 'function' ? window.latLngToGame(latlng) : { x: Math.round(latlng.lng), y: Math.round((typeof window.totalH !== 'undefined' ? window.totalH : 6144) - latlng.lat) };
@@ -349,6 +447,8 @@
 
     // expose loadAndRenderRegions globally
     window.loadAndRenderRegions = loadAndRenderRegions;
+    // expose properties layer
+    window.renderProperties = renderProperties;
     // expose permission helpers
     window.isLatLngWalkAllowed = isLatLngWalkAllowed;
     window.isLatLngWalkAllowedAsync = isLatLngWalkAllowedAsync;

@@ -73,6 +73,30 @@ export interface ServerTimeRow {
   tick_seconds: number;
 }
 
+// ─── Properties (player-owned regions) ──────────────────────────────────────
+
+export interface PropertyRow {
+  property_id: number;
+  region_id: string;
+  owner_user_id: number;
+  owner_username: string;
+  purchase_price: number;
+  purchase_currency: string;
+  purchased_at: UnixTimestamp;
+}
+
+export interface PropertyOwnershipLogRow {
+  log_id: number;
+  region_id: string;
+  previous_owner_user_id: number | null;
+  previous_owner_username: string | null;
+  new_owner_user_id: number;
+  new_owner_username: string;
+  purchase_price: number;
+  purchase_currency: string;
+  purchased_at: UnixTimestamp;
+}
+
 // ─── Walker (movement path state) ───────────────────────────────────────────
 
 export interface WalkerRow {

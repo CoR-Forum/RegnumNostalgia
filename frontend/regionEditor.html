@@ -106,6 +106,27 @@
               <span>Walkable</span>
             </label>
           </div>
+          <div style="margin-bottom:8px;border-top:1px solid #333;padding-top:8px;">
+            <label style="display:flex;align-items:center;gap:6px;color:#e0e0e0;font-size:11px;">
+              <input id="edit-buyable" type="checkbox" style="transform:scale(1.1)" />
+              <span>For Sale (Property)</span>
+            </label>
+          </div>
+          <div id="buyable-price-fields" style="display:none;">
+            <div style="margin-bottom:8px;">
+              <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Price:</label>
+              <input id="edit-buy-price" type="number" min="1" value="100" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+            </div>
+            <div style="margin-bottom:8px;">
+              <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Currency:</label>
+              <select id="edit-buy-currency" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
+                <option value="gold_coin">Gold</option>
+                <option value="ximerin">Ximerin</option>
+                <option value="magnanite">Magnanite</option>
+                <option value="magnanite_ingot">Magnanite Ingot</option>
+              </select>
+            </div>
+          </div>
         </div>
         <div id="path-fields" style="display:none;">
           <div style="margin-bottom:8px;">
@@ -319,6 +340,15 @@
   searchInput && searchInput.addEventListener('keydown', (e)=>{
     if (e.key === 'Escape') { resultsEl.style.display='none'; searchInput.blur(); }
   });
+
+  // Toggle buyable price fields when the "For Sale" checkbox changes
+  const buyableCheck = document.getElementById('edit-buyable');
+  if (buyableCheck) {
+    buyableCheck.addEventListener('change', () => {
+      const priceFields = document.getElementById('buyable-price-fields');
+      if (priceFields) priceFields.style.display = buyableCheck.checked ? 'block' : 'none';
+    });
+  }
 
   // keep index up-to-date if lists are populated later by other scripts:
   function updateIndexFromDOM() {

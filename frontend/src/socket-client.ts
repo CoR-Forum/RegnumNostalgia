@@ -384,7 +384,19 @@ export function initializeWebSocket() {
     if (data && data.regions) {
       gameState.regionsData = data.regions;
       try { if (window.loadAndRenderRegions && typeof window.loadAndRenderRegions === 'function') window.loadAndRenderRegions(); } catch (e) {}
+      try { if ((window as any).renderProperties) (window as any).renderProperties(); } catch (e) {}
     }
+  });
+
+  socket.on('property:updated', (data: { regionId: string; ownedBy: string; ownedByUserId: number }) => {
+    if (gameState.regionsData) {
+      const region = gameState.regionsData.find((r: any) => r.id === data.regionId);
+      if (region) {
+        (region as any).owned_by = data.ownedBy;
+        (region as any).owned_by_user_id = data.ownedByUserId;
+      }
+    }
+    try { if ((window as any).renderProperties) (window as any).renderProperties(); } catch (e) {}
   });
 
   // ── Collectable events ──

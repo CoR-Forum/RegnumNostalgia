@@ -105,6 +105,27 @@
                 <span>Walkable</span>
               </label>
             </div>
+            <div style="margin-bottom:8px;border-top:1px solid #333;padding-top:8px;">
+              <label style="display:flex;align-items:center;gap:6px;color:#e0e0e0;font-size:11px;">
+                <input id="edit-buyable" type="checkbox" style="transform:scale(1.1)" />
+                <span>For Sale (Property)</span>
+              </label>
+            </div>
+            <div id="buyable-price-fields" style="display:none;">
+              <div style="margin-bottom:8px;">
+                <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Price:</label>
+                <input id="edit-buy-price" type="number" min="1" value="100" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;" />
+              </div>
+              <div style="margin-bottom:8px;">
+                <label style="display:block;color:#e0e0e0;font-size:11px;margin-bottom:4px;">Currency:</label>
+                <select id="edit-buy-currency" style="width:100%;padding:4px;background:#222;border:1px solid #333;color:#e0e0e0;font-size:11px;">
+                  <option value="gold_coin">Gold</option>
+                  <option value="ximerin">Ximerin</option>
+                  <option value="magnanite">Magnanite</option>
+                  <option value="magnanite_ingot">Magnanite Ingot</option>
+                </select>
+              </div>
+            </div>
           </div>
           <div id="path-fields" style="display:none;">
             <div style="margin-bottom:8px;">
@@ -1069,6 +1090,15 @@
       if (walkableCheck) walkableCheck.checked = item.walkable !== false;
       if (musicInput) musicInput.value = item.music || item.musicFile || item.music_file || '';
 
+      const buyableCheck = document.getElementById('edit-buyable');
+      const buyPriceInput = document.getElementById('edit-buy-price');
+      const buyCurrencySelect = document.getElementById('edit-buy-currency');
+      const buyablePriceFields = document.getElementById('buyable-price-fields');
+      if (buyableCheck) buyableCheck.checked = !!item.buyable;
+      if (buyPriceInput) buyPriceInput.value = item.buy_price || 100;
+      if (buyCurrencySelect) buyCurrencySelect.value = item.buy_currency || 'gold_coin';
+      if (buyablePriceFields) buyablePriceFields.style.display = item.buyable ? 'block' : 'none';
+
       // Show coordinates in textarea
       if (ta && item.coordinates) {
         ta.value = formatPointsToTextarea(item.coordinates);
@@ -1135,6 +1165,15 @@
     if (btnSave) btnSave.addEventListener('click', saveItem);
     if (btnCancel) btnCancel.addEventListener('click', cancelEdit);
     if (btnDelete) btnDelete.addEventListener('click', deleteItem);
+
+    // Toggle buyable price fields visibility
+    const buyableCheck = document.getElementById('edit-buyable');
+    if (buyableCheck) {
+      buyableCheck.addEventListener('change', () => {
+        const priceFields = document.getElementById('buyable-price-fields');
+        if (priceFields) priceFields.style.display = buyableCheck.checked ? 'block' : 'none';
+      });
+    }
   }
 
   async function saveItem() {
@@ -1176,6 +1215,9 @@
       item.owner = document.getElementById('edit-owner')?.value || 'neutral';
       item.walkable = document.getElementById('edit-walkable')?.checked !== false;
       item.music = document.getElementById('edit-music')?.value || '';
+      item.buyable = !!document.getElementById('edit-buyable')?.checked;
+      item.buy_price = parseInt(document.getElementById('edit-buy-price')?.value) || 0;
+      item.buy_currency = document.getElementById('edit-buy-currency')?.value || 'gold_coin';
       item.coordinates = positions;
     } else if (editingType === 'water') {
       item.opacity = parseFloat(document.getElementById('edit-water-opacity')?.value) || 0.4;

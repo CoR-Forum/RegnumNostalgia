@@ -393,6 +393,38 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
 
+    // properties - player-owned regions (current owner)
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS properties (
+        property_id INT AUTO_INCREMENT PRIMARY KEY,
+        region_id VARCHAR(64) NOT NULL,
+        owner_user_id INT NOT NULL,
+        owner_username VARCHAR(255) NOT NULL,
+        purchase_price INT NOT NULL,
+        purchase_currency VARCHAR(32) NOT NULL,
+        purchased_at INT NOT NULL,
+        UNIQUE KEY unique_region (region_id),
+        INDEX idx_properties_owner (owner_user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
+    // property_ownership_log - full ownership history (append-only)
+    await gameDb.query(`
+      CREATE TABLE IF NOT EXISTS property_ownership_log (
+        log_id INT AUTO_INCREMENT PRIMARY KEY,
+        region_id VARCHAR(64) NOT NULL,
+        previous_owner_user_id INT NULL,
+        previous_owner_username VARCHAR(255) NULL,
+        new_owner_user_id INT NOT NULL,
+        new_owner_username VARCHAR(255) NOT NULL,
+        purchase_price INT NOT NULL,
+        purchase_currency VARCHAR(32) NOT NULL,
+        purchased_at INT NOT NULL,
+        INDEX idx_pol_region (region_id),
+        INDEX idx_pol_new_owner (new_owner_user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+
     logger.info('Database initialization completed');
   } catch (err) {
     logger.error('Database initialization failed', { error: err.message });

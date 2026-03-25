@@ -20,6 +20,7 @@ const { registerEditorHandlers } = require('./editorHandler');
 const { registerLogHandlers } = require('./logHandler');
 const { registerSpellHandlers } = require('./spellHandler');
 const { registerQuickbarHandlers } = require('./quickbarHandler');
+const { registerPropertyHandler } = require('./propertyHandler');
 
 // Store connected sockets by userId
 const connectedUsers = new Map();
@@ -111,6 +112,7 @@ function initializeSocketHandlers(io) {
 
     // ==================== EDITOR (REGIONS/PATHS/WALLS/WATER) ====================
     registerEditorHandlers(socket, user, io);
+    registerPropertyHandler(socket, user, io);
 
     // ==================== DISCONNECT ====================
     socket.on('disconnect', () => {
@@ -297,11 +299,18 @@ async function sendInitialGameState(socket, user) {
       });
     }
 
-    // Send paths and regions data
+    // Send paths and regions data (regions augmented with live property ownership)
     try {
       const paths = require('../../gameData/paths.json');
-      const regions = require('../../gameData/regions.json');
+      const regionsRaw = require('../../gameData/regions.json');
       socket.emit('paths:list', { paths });
+      const [propertyRows] = await gameDb.query('SELECT region_id, owner_user_id, owner_username FROM properties');
+      const propertyMap: Record<string, { owner_user_id: number; owner_username: string }> = {};
+      for (const p of propertyRows as any[]) propertyMap[p.region_id] = p;
+      const regions = regionsRaw.map((r: any) => propertyMap[r.id]
+        ? { ...r, owned_by: propertyMap[r.id].owner_username, owned_by_user_id: propertyMap[r.id].owner_user_id }
+        : r
+      );
       socket.emit('regions:list', { regions });
 
       // If player is inside a region with music, start playing
