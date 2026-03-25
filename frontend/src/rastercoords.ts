@@ -19,9 +19,6 @@ L.RasterCoords = function (map, imgsize, tilesize) {
   this.height = imgsize[1];
   this.tilesize = tilesize || 256;
   this.zoom = this.zoomLevel();
-  if (this.width && this.height) {
-    this.setMaxBounds();
-  }
 };
 
 L.RasterCoords.prototype = {

@@ -48,7 +48,6 @@ function initV1TiledMap(resolve, reject) {
     crs: L.CRS.Simple,
     minZoom: 1,
     maxZoom: 7,
-    maxBoundsViscosity: 0.5,
     zoomControl: false,
     scrollWheelZoom: true,
     doubleClickZoom: false,
@@ -60,6 +59,13 @@ function initV1TiledMap(resolve, reject) {
   const rc = new L.RasterCoords(map, imgDims);
   // rc.zoomLevel() === 5 for 6144px/256px tiles
   map.setView(rc.unproject([imgDims[0] / 2, imgDims[1] / 2]), 3);
+
+  // Allow generous panning past the edges; snap back on release (viscosity=0 default)
+  const sw = rc.unproject([0, imgDims[1]]);
+  const ne = rc.unproject([imgDims[0], 0]);
+  const latPad = (ne.lat - sw.lat) * 0.3;
+  const lngPad = (ne.lng - sw.lng) * 0.3;
+  map.setMaxBounds([[sw.lat - latPad, sw.lng - lngPad], [ne.lat + latPad, ne.lng + lngPad]]);
 
   setMapState(map, GAME_SIZE, GAME_SIZE);
   setRasterCoords(rc);
@@ -123,7 +129,8 @@ function initV2OverlayMap(resolve, reject) {
     const fullBounds = [[0, 0], [totalH, totalW]];
     map.fitBounds(fullBounds);
 
-    const pad = 1000 * Math.max(scaleX, scaleY);
+    // Allow generous panning past the edges; snap back on release (viscosity=0 default)
+    const pad = Math.max(totalH, totalW) * 0.3;
     map.setMaxBounds([[-pad, -pad], [totalH + pad, totalW + pad]]);
     setMapState(map, totalH, totalW);
 
@@ -156,7 +163,6 @@ function createLeafletMap() {
     crs: L.CRS.Simple,
     minZoom: -3,
     maxZoom: 2,
-    maxBoundsViscosity: 0.5,
     zoomControl: false,
     scrollWheelZoom: true,
     doubleClickZoom: false,
