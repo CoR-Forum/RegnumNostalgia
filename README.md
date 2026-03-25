@@ -12,14 +12,14 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 - **Real-time Movement**: Click-to-move pathfinding with animated walking between waypoints (1s updates)
 - **Live Multiplayer**: See other players in real-time via WebSocket (98% reduction in HTTP requests)
 - **Character Progression**: Level 1-60 with XP-based advancement system
-- **Combat System**: Engage territories and superbosses with dynamic health/mana management
+- **Territory & Boss Tracking**: Monitor realm-owned forts/castles and world bosses with live health and respawn timers (combat UI not yet available)
 
 ### Advanced Systems
 - **Inventory & Equipment**: 10 equipment slots (head, body, hands, shoulders, legs, weapons, rings, amulet)
 - **Item System**: Weapons, armor, consumables with rarity tiers (common, uncommon, rare, epic, legendary)
 - **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed, damage potions deal damage over time), with active spell UI, cast bar, stacking rules (parallel/sequential), and per-spell cooldowns
 - **Quickbar**: 4 rows × 10 slots for quick item use; drag items from inventory to add, drag between slots to move/swap, drag outside to remove; scroll between rows with mouse wheel or arrow buttons, keyboard shortcuts (1-0); hover tooltips (toggleable in settings); persisted in database
-- **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution
+- **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution (stored server-side; UI display planned)
 - **Territory Control**: Realm-owned forts and castles with health and vulnerability mechanics
 - **World Bosses**: Superbosses with spawn timers and respawn mechanics
 - **In-game Time**: Server-synchronized day/night cycle (150s = 1 ingame hour)
@@ -86,9 +86,13 @@ Open http://localhost/game in your browser
 
 6. **Login & Play**:
    - Use your cor-forum.de credentials
-   - Select your realm (this choice is permanent!)
-   - Click anywhere on the map to move your character
-   - See other online players as colored markers in real-time
+   - Select your realm (this choice is permanent!): Syrtis (Elves), Alsius (Dwarves), or Ignis (Humans)
+   - **Move**: Right-click the map → "Walk here" to pathfind to any walkable tile
+   - **Chat**: Open the Shoutbox window to send and receive real-time messages
+   - **Items**: Open Inventory to manage items; drag consumables to the Quickbar (keys 1–0) for quick use
+   - **Spells**: Right-click a potion in your inventory or quickbar to cast it — watch the cast bar and active buff icons
+   - **World**: Territories and World Bosses show live health and ownership on the map
+   - **Other players**: See all online players as colored realm markers in real-time
    - Open browser DevTools → Console to see "WebSocket connected"
 
 ## 📁 Project Structure
@@ -449,6 +453,8 @@ Ignis: [5000, 618]    // Red/Humans
 - Automated calculation via background process
 
 ### Combat
+> **Not yet available to players.** The backend tracks health, damage formulas, and territory/boss state, but there is no UI to initiate attacks. This section describes the planned system.
+
 - Damage: `Strength × 0.5 + Intelligence × 0.3 + Item Bonuses`
 - Armor: `Constitution × 0.5 + Dexterity × 0.3 + Item Bonuses`
 - Health regen: 1% of max health per second via healthQueue (1s tick)
