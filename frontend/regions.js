@@ -281,27 +281,31 @@
         const currencyName = CURRENCY_NAMES[r.buy_currency] || r.buy_currency;
         const fmtPrice = (n) => Number(n).toLocaleString('de-DE');
 
-        let statusHtml, priceHtml = '', actionHtml = '';
+        let statusHtml, hintHtml = '';
         if (isOwnedByMe) {
-          statusHtml = `<div class="prop-tt-status prop-tt-mine">★ Your Property</div>`;
-          priceHtml  = `<div class="prop-tt-price">Paid: ${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
+          statusHtml = `<div class="prop-tt-status prop-tt-mine">★ Your Property</div>
+                        <div class="prop-tt-price">Paid: ${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
         } else if (isOwned) {
-          statusHtml = `<div class="prop-tt-status prop-tt-owned">Owned by ${escapeHtmlProp(r.owned_by)}</div>`;
-          priceHtml  = `<div class="prop-tt-price">Sold for: ${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
+          statusHtml = `<div class="prop-tt-status prop-tt-owned">Owned by ${escapeHtmlProp(r.owned_by)}</div>
+                        <div class="prop-tt-price">Sold for: ${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
         } else {
-          statusHtml = `<div class="prop-tt-status prop-tt-forsale">For Sale</div>`;
-          priceHtml  = `<div class="prop-tt-price">${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
-          actionHtml = `<button class="prop-tt-buy" onclick="window.buyProperty('${escapeHtmlProp(r.id)}','${escapeHtmlProp(r.name)}',${r.buy_price},'${escapeHtmlProp(currencyName)}')">Buy Property</button>`;
+          statusHtml = `<div class="prop-tt-status prop-tt-forsale">For Sale</div>
+                        <div class="prop-tt-price">${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
+          hintHtml   = `<div class="prop-tt-hint">Click to buy</div>`;
         }
 
         const ttHtml = `<div class="prop-tooltip">
           <div class="prop-tt-name">${escapeHtmlProp(r.name)}</div>
           ${statusHtml}
-          ${priceHtml}
-          ${actionHtml}
+          ${hintHtml}
         </div>`;
 
-        poly.bindTooltip(ttHtml, { sticky: false, direction: 'top', interactive: true, className: 'prop-tooltip-wrap' });
+        poly.bindTooltip(ttHtml, { sticky: true, direction: 'top', interactive: false, className: 'prop-tooltip-wrap' });
+
+        if (!isOwned && !isOwnedByMe) {
+          poly.on('click', () => window.buyProperty(r.id, r.name, r.buy_price, currencyName));
+        }
+
         try { poly.addTo(mapRef); } catch(e){}
         layers.push(poly);
       }
