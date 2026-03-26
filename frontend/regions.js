@@ -279,17 +279,18 @@
         });
 
         const currencyName = CURRENCY_NAMES[r.buy_currency] || r.buy_currency;
+        const fmtPrice = (n) => Number(n).toLocaleString('de-DE');
 
         let statusHtml, priceHtml = '', actionHtml = '';
         if (isOwnedByMe) {
           statusHtml = `<div class="prop-tt-status prop-tt-mine">★ Your Property</div>`;
-          priceHtml  = `<div class="prop-tt-price">Paid: ${r.buy_price} ${escapeHtmlProp(currencyName)}</div>`;
+          priceHtml  = `<div class="prop-tt-price">Paid: ${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
         } else if (isOwned) {
           statusHtml = `<div class="prop-tt-status prop-tt-owned">Owned by ${escapeHtmlProp(r.owned_by)}</div>`;
-          priceHtml  = `<div class="prop-tt-price">Sold for: ${r.buy_price} ${escapeHtmlProp(currencyName)}</div>`;
+          priceHtml  = `<div class="prop-tt-price">Sold for: ${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
         } else {
           statusHtml = `<div class="prop-tt-status prop-tt-forsale">For Sale</div>`;
-          priceHtml  = `<div class="prop-tt-price">${r.buy_price} ${escapeHtmlProp(currencyName)}</div>`;
+          priceHtml  = `<div class="prop-tt-price">${fmtPrice(r.buy_price)} ${escapeHtmlProp(currencyName)}</div>`;
           actionHtml = `<button class="prop-tt-buy" onclick="window.buyProperty('${escapeHtmlProp(r.id)}','${escapeHtmlProp(r.name)}',${r.buy_price},'${escapeHtmlProp(currencyName)}')">Buy Property</button>`;
         }
 
@@ -312,7 +313,7 @@
   }
 
   window.buyProperty = function(regionId, regionName, price, currencyName) {
-    if (!confirm(`Buy "${regionName}" for ${price} ${currencyName}?`)) return;
+    if (!confirm(`Buy "${regionName}" for ${Number(price).toLocaleString('de-DE')} ${currencyName}?`)) return;
     const socket = window.getSocket && window.getSocket();
     if (!socket || !socket.connected) {
       window.addLogMessage && window.addLogMessage('Not connected to server', 'error');
