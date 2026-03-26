@@ -544,8 +544,8 @@
    (Originally the second <style> block near the bottom of index.html)
    ========================================================================== */
 
-    .region-name-label { background: transparent !important; border: none !important; box-shadow: none !important; }
-    .region-name-label span { color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: 0 0 4px #000, 0 1px 3px #000; pointer-events: none; }
+    .region-name-label { background: transparent !important; border: none !important; box-shadow: none !important; overflow: visible !important; }
+    .region-name-label span { display: block; transform: translateX(-50%); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; text-shadow: 0 0 4px #000, 0 1px 3px #000; pointer-events: none; }
     .info-tooltip { background: rgba(20,20,24,0.95); color: #fff; border-radius:6px; padding:8px; font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,0.6); }
     .info-tooltip .tooltip-title { font-weight:700; margin-bottom:6px; font-size:14px }
     .info-tooltip .tooltip-row { margin-bottom:4px }

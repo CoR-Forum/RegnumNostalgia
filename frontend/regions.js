@@ -175,25 +175,6 @@
         const poly = L.polygon(latlngs, { color: stroke, weight: 2, opacity: 0.9, fillColor: fill, fillOpacity: 0.25, interactive: false });
         try { poly.addTo(mapRef); poly.bringToFront(); } catch (e) {}
         layers.push(poly);
-
-        // Add permanent name label for city/safe regions
-        if (r.name && (String(r.type) === 'city' || String(r.type) === 'safe')) {
-          try {
-            const center = poly.getBounds().getCenter();
-            const labelMarker = L.marker(center, {
-              icon: L.divIcon({
-                className: 'region-name-label',
-                html: `<span>${r.name}</span>`,
-                iconSize: null,
-                iconAnchor: null
-              }),
-              interactive: false,
-              zIndexOffset: -100
-            });
-            labelMarker.addTo(mapRef);
-            layers.push(labelMarker);
-          } catch (e) {}
-        }
       }
 
       if (layers.length > 0) {
@@ -201,10 +182,46 @@
       }
       console.debug('loadAndRenderRegions: rendered', layers.length, 'region layers');
 
+      renderCityLabels();
       return regions;
     } catch (err) {
       console.error('Failed to load regions:', err);
       return [];
+    }
+  }
+
+  // ── City / Safe-zone name labels (always visible) ─────────────────────────
+
+  function renderCityLabels() {
+    if (!mapRef) return;
+    if (gameStateRef.cityLabelsLayer) {
+      try { mapRef.removeLayer(gameStateRef.cityLabelsLayer); } catch(e) {}
+      gameStateRef.cityLabelsLayer = null;
+    }
+    const regions = gameStateRef.regionsData || [];
+    const labelLayers = [];
+    for (const r of regions) {
+      if (!r.name || (String(r.type) !== 'city' && String(r.type) !== 'safe')) continue;
+      const pos = r.coordinates || r.positions || [];
+      const latlngs = positionsToLatLngsRef ? positionsToLatLngsRef(pos) : [];
+      if (!latlngs || latlngs.length === 0) continue;
+      try {
+        const center = L.polygon(latlngs).getBounds().getCenter();
+        const marker = L.marker(center, {
+          icon: L.divIcon({
+            className: 'region-name-label',
+            html: `<span>${r.name}</span>`,
+            iconSize: [0, 0],
+            iconAnchor: [0, 0]
+          }),
+          interactive: false,
+          zIndexOffset: -100
+        });
+        labelLayers.push(marker);
+      } catch(e) {}
+    }
+    if (labelLayers.length > 0) {
+      gameStateRef.cityLabelsLayer = L.layerGroup(labelLayers).addTo(mapRef);
     }
   }
 
@@ -468,6 +485,7 @@
     window.loadAndRenderRegions = loadAndRenderRegions;
     // expose properties layer
     window.renderProperties = renderProperties;
+    window.renderCityLabels = renderCityLabels;
     // expose permission helpers
     window.isLatLngWalkAllowed = isLatLngWalkAllowed;
     window.isLatLngWalkAllowedAsync = isLatLngWalkAllowedAsync;
