@@ -279,21 +279,28 @@
         });
 
         const currencyName = CURRENCY_NAMES[r.buy_currency] || r.buy_currency;
-        let popupHtml = `<div style="font-family:'MS Sans Serif',Arial,sans-serif;font-size:12px;min-width:180px;padding:2px;">
-          <b style="font-size:13px;">${escapeHtmlProp(r.name)}</b>`;
 
+        let statusHtml, priceHtml = '', actionHtml = '';
         if (isOwnedByMe) {
-          popupHtml += `<br><span style="color:#ffd700;">✓ Your property</span>`;
+          statusHtml = `<div class="prop-tt-status prop-tt-mine">★ Your Property</div>`;
+          priceHtml  = `<div class="prop-tt-price">Paid: ${r.buy_price} ${escapeHtmlProp(currencyName)}</div>`;
         } else if (isOwned) {
-          popupHtml += `<br><span style="color:#aaa;">Owned by: ${escapeHtmlProp(r.owned_by)}</span>`;
-          popupHtml += `<br><span style="color:#888;font-size:11px;">Price was: ${r.buy_price} ${escapeHtmlProp(currencyName)}</span>`;
+          statusHtml = `<div class="prop-tt-status prop-tt-owned">Owned by ${escapeHtmlProp(r.owned_by)}</div>`;
+          priceHtml  = `<div class="prop-tt-price">Sold for: ${r.buy_price} ${escapeHtmlProp(currencyName)}</div>`;
         } else {
-          popupHtml += `<br><span style="color:#0a4;">For sale: ${r.buy_price} ${escapeHtmlProp(currencyName)}</span>`;
-          popupHtml += `<br><button onclick="window.buyProperty('${escapeHtmlProp(r.id)}','${escapeHtmlProp(r.name)}',${r.buy_price},'${escapeHtmlProp(currencyName)}')" style="margin-top:6px;padding:4px 12px;background:#0a4;color:#fff;border:none;cursor:pointer;font-size:12px;width:100%;">Buy Property</button>`;
+          statusHtml = `<div class="prop-tt-status prop-tt-forsale">For Sale</div>`;
+          priceHtml  = `<div class="prop-tt-price">${r.buy_price} ${escapeHtmlProp(currencyName)}</div>`;
+          actionHtml = `<button class="prop-tt-buy" onclick="window.buyProperty('${escapeHtmlProp(r.id)}','${escapeHtmlProp(r.name)}',${r.buy_price},'${escapeHtmlProp(currencyName)}')">Buy Property</button>`;
         }
 
-        popupHtml += `</div>`;
-        poly.bindPopup(popupHtml);
+        const ttHtml = `<div class="prop-tooltip">
+          <div class="prop-tt-name">${escapeHtmlProp(r.name)}</div>
+          ${statusHtml}
+          ${priceHtml}
+          ${actionHtml}
+        </div>`;
+
+        poly.bindTooltip(ttHtml, { sticky: false, direction: 'top', interactive: true, className: 'prop-tooltip-wrap' });
         try { poly.addTo(mapRef); } catch(e){}
         layers.push(poly);
       }

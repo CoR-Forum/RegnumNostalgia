@@ -550,6 +550,18 @@
     .info-tooltip .tooltip-title { font-weight:700; margin-bottom:6px; font-size:14px }
     .info-tooltip .tooltip-row { margin-bottom:4px }
     .info-tooltip .status-contested { color:#ffb4b4; font-weight:700 }
+    /* Property tooltips */
+    .leaflet-tooltip.prop-tooltip-wrap { background: transparent; border: none; box-shadow: none; padding: 0; }
+    .leaflet-tooltip.prop-tooltip-wrap::before { display: none; }
+    .prop-tooltip { background: rgba(15,15,20,0.96); border: 1px solid rgba(255,200,80,0.35); border-radius: 8px; padding: 10px 13px; min-width: 160px; box-shadow: 0 4px 16px rgba(0,0,0,0.7); }
+    .prop-tt-name { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+    .prop-tt-status { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .prop-tt-forsale { color: #4ade80; }
+    .prop-tt-mine { color: #ffd700; }
+    .prop-tt-owned { color: #9ca3af; }
+    .prop-tt-price { font-size: 11px; color: #a0a0a0; margin-bottom: 6px; }
+    .prop-tt-buy { margin-top: 4px; width: 100%; padding: 5px 0; background: #16a34a; color: #fff; border: none; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .prop-tt-buy:hover { background: #15803d; }
     /* UI image overlay (bottom-right) */
     #ui-image-overlay{
       position: fixed;
