@@ -17,7 +17,7 @@ async function getCachedUserSettings(gameDb: Pool, userId: number): Promise<User
   } catch (e) { /* fall through */ }
 
   const [rows] = await gameDb.query(
-    'SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled FROM user_settings WHERE user_id = ?',
+    'SELECT music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled, show_territory_names, show_player_names, show_superboss_names, show_collectable_labels FROM user_settings WHERE user_id = ?',
     [userId]
   ) as [any[], unknown];
 
@@ -31,7 +31,11 @@ async function getCachedUserSettings(gameDb: Pool, userId: number): Promise<User
     collectionSoundsEnabled: rows[0].collection_sounds_enabled === 1,
     collectionSoundsVolume: typeof rows[0].collection_sounds_volume === 'number' ? rows[0].collection_sounds_volume : parseFloat(rows[0].collection_sounds_volume) || 1.0,
     mapVersion: rows[0].map_version || 'v1-compressed',
-    quickbarTooltipsEnabled: rows[0].quickbar_tooltips_enabled === 1
+    quickbarTooltipsEnabled: rows[0].quickbar_tooltips_enabled === 1,
+    showTerritoryNames: rows[0].show_territory_names === 1,
+    showPlayerNames: rows[0].show_player_names === 1,
+    showSuperbossNames: rows[0].show_superboss_names === 1,
+    showCollectableLabels: rows[0].show_collectable_labels === 1
   } : null;
 
   if (settings) {

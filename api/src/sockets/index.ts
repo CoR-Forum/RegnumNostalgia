@@ -163,6 +163,10 @@ function registerSettingsHandler(socket, user, io) {
       if (typeof data.collectionSoundsVolume !== 'undefined') s.settings.collectionSoundsVolume = typeof data.collectionSoundsVolume === 'number' ? data.collectionSoundsVolume : parseFloat(data.collectionSoundsVolume) || 1.0;
       if (typeof data.mapVersion !== 'undefined') s.settings.mapVersion = ('' + data.mapVersion) || 'v1-compressed';
       if (typeof data.quickbarTooltipsEnabled !== 'undefined') s.settings.quickbarTooltipsEnabled = data.quickbarTooltipsEnabled ? 1 : 0;
+      if (typeof data.showTerritoryNames !== 'undefined') s.settings.showTerritoryNames = data.showTerritoryNames ? 1 : 0;
+      if (typeof data.showPlayerNames !== 'undefined') s.settings.showPlayerNames = data.showPlayerNames ? 1 : 0;
+      if (typeof data.showSuperbossNames !== 'undefined') s.settings.showSuperbossNames = data.showSuperbossNames ? 1 : 0;
+      if (typeof data.showCollectableLabels !== 'undefined') s.settings.showCollectableLabels = data.showCollectableLabels ? 1 : 0;
       socket.user = s;
 
       // Persist settings to DB

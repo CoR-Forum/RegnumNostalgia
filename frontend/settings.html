@@ -14,7 +14,7 @@
 #settings-window input[type=range]:focus{ outline:none; }
 </style>
 
-<div id="settings-window" class="ui-window" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px; height: 360px; z-index: 10000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
+<div id="settings-window" class="ui-window" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 420px; min-height: 360px; z-index: 10000; display: none; flex-direction: column; font-family: 'MS Sans Serif', Arial, sans-serif;">
   <div id="settings-header" class="ui-window-titlebar" style="cursor: move; display: flex; justify-content: space-between; align-items: center; user-select: none;">
     <h2 style="margin: 0; flex: 1; font-size: 10px; font-weight: 700; color: #ffffff; font-family: 'MS Sans Serif', Arial, sans-serif; text-align: center;">Settings</h2>
     <button id="settings-close-btn" class="ui-window-close-btn" onclick="(function(){const w=document.getElementById('settings-window'); if (w) w.style.display='none';})();"></button>
@@ -66,6 +66,26 @@
     <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-quickbar-tooltips" checked> Quickbar Tooltips</label>
     </div>
+
+    <div style="border-top:1px solid rgba(255,255,255,0.06);margin:10px 0 8px 0;padding-top:8px;">
+      <span style="font-size:11px;font-weight:700;color:#bfcbdc;">Map Labels</span>
+    </div>
+
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-show-territory-names" checked> Show Territory Names</label>
+    </div>
+
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-show-player-names" checked> Show Player Names</label>
+    </div>
+
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-show-superboss-names" checked> Show Superboss Names</label>
+    </div>
+
+    <div class="settings-row" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <label style="font-size:11px;display:flex;align-items:center;gap:8px;"><input type="checkbox" id="setting-show-collectable-labels" checked> Show Collectable Labels</label>
+    </div>
   </div>
   <div id="settings-footer" style="padding:8px 12px 12px 12px; font-size:11px; color:#bfcbdc; border-top:1px solid rgba(255,255,255,0.02); display:flex; justify-content:center; align-items:center;">
     <span id="settings-map-version-display">Map: v1-compressed</span>
@@ -93,6 +113,13 @@
         document.getElementById('setting-collection-volume').value = (typeof r.settings.collectionSoundsVolume === 'number' ? r.settings.collectionSoundsVolume : parseFloat(r.settings.collectionSoundsVolume)) || 1.0;
         document.getElementById('setting-map-version').value = r.settings.mapVersion || 'v1-compressed';
         document.getElementById('setting-quickbar-tooltips').checked = r.settings.quickbarTooltipsEnabled !== 0;
+        // Map label visibility settings
+        document.getElementById('setting-show-territory-names').checked = r.settings.showTerritoryNames !== 0;
+        document.getElementById('setting-show-player-names').checked = r.settings.showPlayerNames !== 0;
+        document.getElementById('setting-show-superboss-names').checked = r.settings.showSuperbossNames !== 0;
+        document.getElementById('setting-show-collectable-labels').checked = r.settings.showCollectableLabels !== 0;
+        // Apply map label visibility immediately
+        try { applyMapLabelVisibility(); } catch (e) {}
         // Apply quickbar tooltips setting immediately
         try { if (window.setQuickbarTooltipsEnabled) window.setQuickbarTooltipsEnabled(r.settings.quickbarTooltipsEnabled !== 0); } catch (e) {}
         // Apply to AudioManager immediately
@@ -141,7 +168,11 @@
           collectionSoundsEnabled: document.getElementById('setting-collection-enabled').checked ? 1 : 0,
           collectionSoundsVolume: parseFloat(document.getElementById('setting-collection-volume').value),
           mapVersion: (document.getElementById('setting-map-version') && document.getElementById('setting-map-version').value) ? document.getElementById('setting-map-version').value : 'v1-compressed',
-          quickbarTooltipsEnabled: document.getElementById('setting-quickbar-tooltips').checked ? 1 : 0
+          quickbarTooltipsEnabled: document.getElementById('setting-quickbar-tooltips').checked ? 1 : 0,
+          showTerritoryNames: document.getElementById('setting-show-territory-names').checked ? 1 : 0,
+          showPlayerNames: document.getElementById('setting-show-player-names').checked ? 1 : 0,
+          showSuperbossNames: document.getElementById('setting-show-superboss-names').checked ? 1 : 0,
+          showCollectableLabels: document.getElementById('setting-show-collectable-labels').checked ? 1 : 0
         };
         if (window.socket && window.socket.emit) window.socket.emit('user:settings:update', payload);
       } catch (e) { /* ignore */ }
@@ -151,6 +182,9 @@
   // Wire UI interactions
   const btn = document.getElementById('settings-btn');
   if (btn) btn.addEventListener('click', (e)=>{ e.preventDefault(); openSettings(); });
+
+  // Load and apply settings on startup (especially map label visibility)
+  try { loadSettingsToUI(); } catch (e) {}
 
   // Save/Cancel removed: settings auto-save on change via debounced emit
 
@@ -165,6 +199,25 @@
   const collectionVolEl = document.getElementById('setting-collection-volume');
   const mapVersionEl = document.getElementById('setting-map-version');
   const quickbarTooltipsEl = document.getElementById('setting-quickbar-tooltips');
+  const showTerritoryNamesEl = document.getElementById('setting-show-territory-names');
+  const showPlayerNamesEl = document.getElementById('setting-show-player-names');
+  const showSuperbossNamesEl = document.getElementById('setting-show-superboss-names');
+  const showCollectableLabelsEl = document.getElementById('setting-show-collectable-labels');
+
+  /** Toggle body CSS classes to show/hide map labels */
+  function applyMapLabelVisibility() {
+    const body = document.body;
+    const territoryChecked = showTerritoryNamesEl ? showTerritoryNamesEl.checked : true;
+    const playerChecked = showPlayerNamesEl ? showPlayerNamesEl.checked : true;
+    const superbossChecked = showSuperbossNamesEl ? showSuperbossNamesEl.checked : true;
+    const collectableChecked = showCollectableLabelsEl ? showCollectableLabelsEl.checked : true;
+    body.classList.toggle('hide-territory-names', !territoryChecked);
+    body.classList.toggle('hide-player-names', !playerChecked);
+    body.classList.toggle('hide-superboss-names', !superbossChecked);
+    body.classList.toggle('hide-collectable-labels', !collectableChecked);
+  }
+  // Expose for use in loadSettingsToUI
+  window.applyMapLabelVisibility = applyMapLabelVisibility;
 
   if (musicEnabledEl) {
     musicEnabledEl.addEventListener('change', (e) => {
@@ -238,6 +291,34 @@
     quickbarTooltipsEl.addEventListener('change', (e) => {
       const enabled = !!e.target.checked;
       try { if (window.setQuickbarTooltipsEnabled) window.setQuickbarTooltipsEnabled(enabled); } catch (err) {}
+      scheduleEmitSettings();
+    });
+  }
+
+  if (showTerritoryNamesEl) {
+    showTerritoryNamesEl.addEventListener('change', () => {
+      applyMapLabelVisibility();
+      scheduleEmitSettings();
+    });
+  }
+
+  if (showPlayerNamesEl) {
+    showPlayerNamesEl.addEventListener('change', () => {
+      applyMapLabelVisibility();
+      scheduleEmitSettings();
+    });
+  }
+
+  if (showSuperbossNamesEl) {
+    showSuperbossNamesEl.addEventListener('change', () => {
+      applyMapLabelVisibility();
+      scheduleEmitSettings();
+    });
+  }
+
+  if (showCollectableLabelsEl) {
+    showCollectableLabelsEl.addEventListener('change', () => {
+      applyMapLabelVisibility();
       scheduleEmitSettings();
     });
   }

@@ -22,7 +22,11 @@ router.get('/', authenticateJWT, async (req, res) => {
         collectionSoundsEnabled: row.collectionSoundsEnabled ? 1 : 0,
         collectionSoundsVolume: typeof row.collectionSoundsVolume === 'number' ? row.collectionSoundsVolume : 1.0,
         mapVersion: row.mapVersion || 'v1-compressed',
-        quickbarTooltipsEnabled: row.quickbarTooltipsEnabled ? 1 : 0
+        quickbarTooltipsEnabled: row.quickbarTooltipsEnabled ? 1 : 0,
+        showTerritoryNames: row.showTerritoryNames ? 1 : 0,
+        showPlayerNames: row.showPlayerNames ? 1 : 0,
+        showSuperbossNames: row.showSuperbossNames ? 1 : 0,
+        showCollectableLabels: row.showCollectableLabels ? 1 : 0
       }});
     }
     // return defaults
@@ -36,7 +40,11 @@ router.get('/', authenticateJWT, async (req, res) => {
       collectionSoundsEnabled: 1,
       collectionSoundsVolume: 1.0,
       mapVersion: 'v1-compressed',
-      quickbarTooltipsEnabled: 1
+      quickbarTooltipsEnabled: 1,
+      showTerritoryNames: 1,
+      showPlayerNames: 1,
+      showSuperbossNames: 1,
+      showCollectableLabels: 1
     }});
   } catch (err) {
     logger.error('Failed to get user settings', { error: err.message });

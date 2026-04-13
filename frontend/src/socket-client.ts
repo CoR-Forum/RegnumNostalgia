@@ -99,7 +99,7 @@ function createCollectableMarker(item) {
       ${desc ? `<div class="tooltip-row" style="color:#cfcfcf">${escapeHtml(desc)}</div>` : ''}
       <div class="tooltip-row" style="color:#aaa;font-style:italic;margin-top:4px;">Click to walk &amp; collect</div>
     `;
-    marker.bindTooltip(ttHtml, { className: 'info-tooltip', direction: 'top', offset: [0, -20] });
+    marker.bindTooltip(ttHtml, { className: 'info-tooltip collectable-tooltip', direction: 'top', offset: [0, -20] });
   } catch (e) { /* ignore */ }
 
   // Click handler to collect

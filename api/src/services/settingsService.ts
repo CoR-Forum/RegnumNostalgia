@@ -16,7 +16,11 @@ function parseSettings(body, defaults = {}) {
     collectionSoundsEnabled: 1,
     collectionSoundsVolume: 1.0,
     mapVersion: 'v1-compressed',
-    quickbarTooltipsEnabled: 1
+    quickbarTooltipsEnabled: 1,
+    showTerritoryNames: 1,
+    showPlayerNames: 1,
+    showSuperbossNames: 1,
+    showCollectableLabels: 1
   }, defaults);
 
   const src = body || {};
@@ -32,6 +36,10 @@ function parseSettings(body, defaults = {}) {
     collection_sounds_volume:    typeof src.collectionSoundsVolume === 'number' ? src.collectionSoundsVolume : parseFloat(src.collectionSoundsVolume ?? d.collectionSoundsVolume) || 1.0,
     map_version:                 typeof src.mapVersion === 'string' ? src.mapVersion : (src.mapVersion || d.mapVersion || 'v1-compressed'),
     quickbar_tooltips_enabled:   (typeof src.quickbarTooltipsEnabled !== 'undefined' ? src.quickbarTooltipsEnabled : d.quickbarTooltipsEnabled) ? 1 : 0,
+    show_territory_names:        (typeof src.showTerritoryNames !== 'undefined' ? src.showTerritoryNames : d.showTerritoryNames) ? 1 : 0,
+    show_player_names:           (typeof src.showPlayerNames !== 'undefined' ? src.showPlayerNames : d.showPlayerNames) ? 1 : 0,
+    show_superboss_names:        (typeof src.showSuperbossNames !== 'undefined' ? src.showSuperbossNames : d.showSuperbossNames) ? 1 : 0,
+    show_collectable_labels:     (typeof src.showCollectableLabels !== 'undefined' ? src.showCollectableLabels : d.showCollectableLabels) ? 1 : 0,
   };
 }
 
@@ -46,8 +54,8 @@ async function upsertUserSettings(db, userId, body) {
   const updatedAt = Math.floor(Date.now() / 1000);
 
   await db.query(
-    `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO user_settings (user_id, music_enabled, music_volume, sounds_enabled, sound_volume, capture_sounds_enabled, capture_sounds_volume, collection_sounds_enabled, collection_sounds_volume, map_version, quickbar_tooltips_enabled, show_territory_names, show_player_names, show_superboss_names, show_collectable_labels, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        music_enabled = VALUES(music_enabled),
        music_volume = VALUES(music_volume),
@@ -59,11 +67,17 @@ async function upsertUserSettings(db, userId, body) {
        collection_sounds_volume = VALUES(collection_sounds_volume),
        map_version = VALUES(map_version),
        quickbar_tooltips_enabled = VALUES(quickbar_tooltips_enabled),
+       show_territory_names = VALUES(show_territory_names),
+       show_player_names = VALUES(show_player_names),
+       show_superboss_names = VALUES(show_superboss_names),
+       show_collectable_labels = VALUES(show_collectable_labels),
        updated_at = VALUES(updated_at)`,
     [userId, s.music_enabled, s.music_volume, s.sounds_enabled, s.sound_volume,
      s.capture_sounds_enabled, s.capture_sounds_volume,
      s.collection_sounds_enabled, s.collection_sounds_volume,
-     s.map_version, s.quickbar_tooltips_enabled, updatedAt]
+     s.map_version, s.quickbar_tooltips_enabled,
+     s.show_territory_names, s.show_player_names, s.show_superboss_names, s.show_collectable_labels,
+     updatedAt]
   );
 }
 

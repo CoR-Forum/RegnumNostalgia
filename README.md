@@ -34,6 +34,7 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 - **Redis Pub/Sub**: Real-time event broadcasting across workers
 - **RESTful API**: Node.js/Express backend with comprehensive endpoints
 - **Responsive UI**: Draggable windows, HUD elements, territory/boss overlays
+- **Map Label Toggles**: Settings checkboxes to show/hide territory names, player names, superboss names, and collectable labels on the map
 - **Queue Monitoring**: Bull Board dashboard for job management
 
 ## 🚀 Quick Start

@@ -550,6 +550,11 @@
     .info-tooltip .tooltip-title { font-weight:700; margin-bottom:6px; font-size:14px }
     .info-tooltip .tooltip-row { margin-bottom:4px }
     .info-tooltip .status-contested { color:#ffb4b4; font-weight:700 }
+    /* Map label visibility toggles */
+    body.hide-territory-names .leaflet-tooltip.territory-label { display: none !important; }
+    body.hide-player-names .leaflet-tooltip.player-tooltip { display: none !important; }
+    body.hide-superboss-names .leaflet-tooltip.superboss-tooltip { display: none !important; }
+    body.hide-collectable-labels .leaflet-tooltip.collectable-tooltip { display: none !important; }
     /* Property tooltips */
     .leaflet-tooltip.prop-tooltip-wrap { background: transparent; border: none; box-shadow: none; padding: 0; }
     .leaflet-tooltip.prop-tooltip-wrap::before { display: none; }

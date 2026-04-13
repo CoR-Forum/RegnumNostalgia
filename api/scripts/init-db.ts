@@ -337,6 +337,10 @@ async function initDatabase() {
         collection_sounds_volume DOUBLE NOT NULL DEFAULT 1.0,
         map_version VARCHAR(8) NOT NULL DEFAULT 'v1',
         quickbar_tooltips_enabled TINYINT(1) NOT NULL DEFAULT 1,
+        show_territory_names TINYINT(1) NOT NULL DEFAULT 1,
+        show_player_names TINYINT(1) NOT NULL DEFAULT 1,
+        show_superboss_names TINYINT(1) NOT NULL DEFAULT 1,
+        show_collectable_labels TINYINT(1) NOT NULL DEFAULT 1,
         updated_at INT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES players(user_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4

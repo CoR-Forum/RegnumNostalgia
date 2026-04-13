@@ -14,6 +14,10 @@ export interface UserSettingsRow {
   collection_sounds_volume: number;
   map_version: string;
   quickbar_tooltips_enabled: DbBoolean;
+  show_territory_names: DbBoolean;
+  show_player_names: DbBoolean;
+  show_superboss_names: DbBoolean;
+  show_collectable_labels: DbBoolean;
   updated_at: UnixTimestamp;
 }
 
@@ -30,4 +34,8 @@ export interface UserSettingsPayload {
   collectionSoundsVolume?: number;
   mapVersion?: string;
   quickbarTooltipsEnabled?: boolean;
+  showTerritoryNames?: boolean;
+  showPlayerNames?: boolean;
+  showSuperbossNames?: boolean;
+  showCollectableLabels?: boolean;
 }
