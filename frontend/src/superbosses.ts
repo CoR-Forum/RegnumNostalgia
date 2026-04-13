@@ -55,7 +55,7 @@ export function updateSuperbosses(bosses: SuperbossData[]) {
 
     return {
       marker: L.marker(latLng, { icon }),
-      tooltip: { content: ttHtml, options: { className: 'info-tooltip', sticky: false, permanent: false, interactive: false, direction: 'top', offset: [0, -40] } }
+      tooltip: { content: ttHtml, options: { className: 'info-tooltip superboss-tooltip', sticky: false, permanent: false, interactive: false, direction: 'top', offset: [0, -40] } }
     };
   });
 }
