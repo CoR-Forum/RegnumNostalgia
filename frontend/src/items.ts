@@ -21,7 +21,6 @@ export function getItemTypeLabel(item) {
     }
   }
   const t = item.itemType || item.type || '';
-  if (t === 'mount') return 'Mount';
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
