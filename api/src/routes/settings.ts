@@ -23,10 +23,10 @@ router.get('/', authenticateJWT, async (req, res) => {
         collectionSoundsVolume: typeof row.collectionSoundsVolume === 'number' ? row.collectionSoundsVolume : 1.0,
         mapVersion: row.mapVersion || 'v1-compressed',
         quickbarTooltipsEnabled: row.quickbarTooltipsEnabled ? 1 : 0,
-        showTerritoryNames: row.showTerritoryNames !== false ? 1 : 0,
-        showPlayerNames: row.showPlayerNames !== false ? 1 : 0,
-        showSuperbossNames: row.showSuperbossNames !== false ? 1 : 0,
-        showCollectableLabels: row.showCollectableLabels !== false ? 1 : 0
+        showTerritoryNames: row.showTerritoryNames ? 1 : 0,
+        showPlayerNames: row.showPlayerNames ? 1 : 0,
+        showSuperbossNames: row.showSuperbossNames ? 1 : 0,
+        showCollectableLabels: row.showCollectableLabels ? 1 : 0
       }});
     }
     // return defaults
