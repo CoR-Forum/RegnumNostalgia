@@ -16,8 +16,9 @@ A fully-featured browser-based MMORPG built on the nostalgic Old World map from 
 
 ### Advanced Systems
 - **Inventory & Equipment**: 10 equipment slots (head, body, hands, shoulders, legs, weapons, rings, amulet)
-- **Item System**: Weapons, armor, consumables with rarity tiers (common, uncommon, rare, epic, legendary)
+- **Item System**: Weapons, armor, consumables, mounts with rarity tiers (common, uncommon, rare, epic, legendary)
 - **Spell System**: Consumable items cast as timed buffs (health/mana potions restore over time, speed potions boost walk speed, damage potions deal damage over time), with active spell UI, cast bar, stacking rules (parallel/sequential), and per-spell cooldowns
+- **Mount System**: Mount items can be used from inventory or quickbar to cast a speed buff; mounts are not consumed on use and remain in the player's inventory; each mount has a specific walk speed bonus, duration, cast time, and cooldown
 - **Quickbar**: 4 rows × 10 slots for quick item use; drag items from inventory to add, drag between slots to move/swap, drag outside to remove; scroll between rows with mouse wheel or arrow buttons, keyboard shortcuts (1-0); hover tooltips (toggleable in settings); persisted in database
 - **Attribute System**: Intelligence, Dexterity, Concentration, Strength, Constitution (stored server-side; UI display planned)
 - **Territory Control**: Realm-owned forts and castles with health and vulnerability mechanics
@@ -90,8 +91,9 @@ Open http://localhost/game in your browser
    - Select your realm (this choice is permanent!): Syrtis (Elves), Alsius (Dwarves), or Ignis (Humans)
    - **Move**: Right-click the map → "Walk here" to pathfind to any walkable tile
    - **Chat**: Open the Shoutbox window to send and receive real-time messages
-   - **Items**: Open Inventory to manage items; drag consumables to the Quickbar (keys 1–0) for quick use
+   - **Items**: Open Inventory to manage items; drag consumables or mounts to the Quickbar (keys 1–0) for quick use
    - **Spells**: Right-click a potion in your inventory or quickbar to cast it — watch the cast bar and active buff icons
+   - **Mounts**: Right-click a mount item in your inventory or quickbar to ride it — the mount grants a speed buff and is not consumed
    - **World**: Territories and World Bosses show live health and ownership on the map
    - **Other players**: See all online players as colored realm markers in real-time
    - Open browser DevTools → Console to see "WebSocket connected"
@@ -378,7 +380,7 @@ Connected via Socket.io to `ws://localhost/socket.io/`
 - `position:update` - Manual position change `{ x, y }`
 - `move:request` - Initiate pathfinding `{ destinationX, destinationY }`
 - `shoutbox:send` - Post chat message `{ message }` (supports GM commands: `/item <template_key> <user_id|username> [qty]`, `/itemrem`)
-- `spell:cast` - Cast a consumable spell from inventory `{ inventoryId, templateKey }`
+- `spell:cast` - Cast a consumable spell or mount from inventory `{ inventoryId }` (mounts are not consumed)
 - `spell:active` - Request all active spells for current user
 
 ### Server → Client (Listen)

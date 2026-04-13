@@ -1,0 +1,38 @@
+[
+  {
+    "template_key": "mount_horse",
+    "name": "Horse",
+    "type": "mount",
+    "description": "A sturdy horse that increases movement speed by 5 for 120 seconds",
+    "stats": { "spell": "mount_horse", "walk_speed": 5, "duration": 120, "max_spell_stack": 1, "spell_stack_mode": "parallel", "cast_time": 2, "cooldown": 10 },
+    "rarity": "common",
+    "stackable": 0,
+    "level": 1,
+    "equipment_slot": null,
+    "icon_name": "mount-horse.png"
+  },
+  {
+    "template_key": "mount_warhorse",
+    "name": "Warhorse",
+    "type": "mount",
+    "description": "A powerful warhorse that increases movement speed by 10 for 120 seconds",
+    "stats": { "spell": "mount_warhorse", "walk_speed": 10, "duration": 120, "max_spell_stack": 1, "spell_stack_mode": "parallel", "cast_time": 2, "cooldown": 10 },
+    "rarity": "uncommon",
+    "stackable": 0,
+    "level": 10,
+    "equipment_slot": null,
+    "icon_name": "mount-warhorse.png"
+  },
+  {
+    "template_key": "mount_unicorn",
+    "name": "Unicorn",
+    "type": "mount",
+    "description": "A magical unicorn that increases movement speed by 15 for 180 seconds",
+    "stats": { "spell": "mount_unicorn", "walk_speed": 15, "duration": 180, "max_spell_stack": 1, "spell_stack_mode": "parallel", "cast_time": 2, "cooldown": 10 },
+    "rarity": "rare",
+    "stackable": 0,
+    "level": 20,
+    "equipment_slot": null,
+    "icon_name": "mount-unicorn.png"
+  }
+]

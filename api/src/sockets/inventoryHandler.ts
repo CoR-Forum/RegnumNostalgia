@@ -84,6 +84,7 @@ function registerInventoryHandlers(socket, user, io, deps) {
         try {
           parsedStats = typeof item.stats === 'string' ? JSON.parse(item.stats) : item.stats;
         } catch (e) { /* ignore */ }
+        const isMount = item.type === 'mount' && parsedStats?.spell;
         return {
           inventoryId: item.inventory_id,
           itemId: item.item_id,
@@ -95,7 +96,8 @@ function registerInventoryHandlers(socket, user, io, deps) {
           type: item.type,
           rarity: item.rarity,
           spellKey: parsedStats?.spell || null,
-          cooldown: parsedStats?.cooldown || 0
+          cooldown: parsedStats?.cooldown || 0,
+          isMount: isMount || false
         };
       });
 

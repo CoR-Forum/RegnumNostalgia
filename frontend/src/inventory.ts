@@ -105,8 +105,9 @@ export function displayInventory(items) {
         const itemDetails = await getItemDetails();
         const isUsable = itemDetails.type === 'premium' && itemDetails.stats && itemDetails.stats.loot_table;
         const isSpell = itemDetails.type === 'consumable' && itemDetails.stats && itemDetails.stats.spell;
+        const isMount = itemDetails.type === 'mount' && itemDetails.stats && itemDetails.stats.spell;
 
-        if (isSpell) {
+        if (isSpell || isMount) {
           // Cast spell (with optional cast time)
           if (isCasting()) { if (window.addLogMessage) window.addLogMessage('Already casting a spell', 'error'); return; }
           const _spellKey = itemDetails.stats.spell;

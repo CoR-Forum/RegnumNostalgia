@@ -20,7 +20,7 @@ export function getItemTypeLabel(item) {
       default: return item.itemType || '';
     }
   }
-  const t = item.itemType || '';
+  const t = item.itemType || item.type || '';
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
