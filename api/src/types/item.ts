@@ -110,6 +110,7 @@ export type ItemType =
   | 'misc'
   | 'premium'
   | 'magic_gem'
+  | 'mount'
   | string;
 
 export type ItemRarity =

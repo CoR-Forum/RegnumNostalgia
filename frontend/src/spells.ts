@@ -21,7 +21,10 @@ const SPELL_NAMES = {
   health_potion: 'Health Potion',
   mana_potion: 'Mana Potion',
   speed_potion: 'Speed Potion',
-  damage_potion: 'Damage Potion'
+  damage_potion: 'Damage Potion',
+  mount_horse: 'Horse',
+  mount_warhorse: 'Warhorse',
+  mount_unicorn: 'Unicorn'
 };
 
 /**

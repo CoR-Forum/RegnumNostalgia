@@ -6,7 +6,7 @@ const { getItemByTemplateKey, getActiveSpells, setActiveSpells, addActiveSpell, 
  * Register spell-related socket handlers.
  * 
  * Events:
- *   spell:cast   — Cast a consumable spell from inventory (uses 1 quantity)
+ *   spell:cast   — Cast a consumable spell or mount from inventory (uses 1 quantity for consumables; mounts are not consumed)
  *   spell:active — Get all active spells for the current user
  */
 function registerSpellHandlers(socket, user, io, deps) {
@@ -33,8 +33,8 @@ function registerSpellHandlers(socket, user, io, deps) {
 
       const invItem = invRows[0];
 
-      // Must be a consumable with spell stats
-      if (invItem.type !== 'consumable') {
+      // Must be a consumable or mount with spell stats
+      if (invItem.type !== 'consumable' && invItem.type !== 'mount') {
         return callback({ success: false, error: 'This item cannot be cast as a spell' });
       }
 
@@ -68,17 +68,20 @@ function registerSpellHandlers(socket, user, io, deps) {
         return callback({ success: false, error: maxStack === 1 ? 'This spell is already active' : `Max ${maxStack} stacks reached` });
       }
 
-      // Consume 1 quantity
-      if (invItem.quantity > 1) {
-        await gameDb.query(
-          'UPDATE inventory SET quantity = quantity - 1 WHERE inventory_id = ?',
-          [inventoryId]
-        );
-      } else {
-        await gameDb.query(
-          'DELETE FROM inventory WHERE inventory_id = ?',
-          [inventoryId]
-        );
+      // Consume 1 quantity (skip for mounts — they are not consumed on use)
+      const isMount = invItem.type === 'mount';
+      if (!isMount) {
+        if (invItem.quantity > 1) {
+          await gameDb.query(
+            'UPDATE inventory SET quantity = quantity - 1 WHERE inventory_id = ?',
+            [inventoryId]
+          );
+        } else {
+          await gameDb.query(
+            'DELETE FROM inventory WHERE inventory_id = ?',
+            [inventoryId]
+          );
+        }
       }
 
       // Insert active spell
